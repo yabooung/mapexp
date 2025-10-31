@@ -1,0 +1,37 @@
+export * from './colors'
+export * from './regions'
+
+/**
+ * 애플리케이션 상수
+ */
+export const APP_NAME = 'MAPEXP'
+export const APP_VERSION = '1.0.0'
+export const APP_DESCRIPTION = '일본/한국 지역 경험치 맵'
+
+/**
+ * LocalStorage 키
+ */
+export const STORAGE_KEYS = {
+  MAP_DATA: 'mapexp_data',
+  USER_SETTINGS: 'mapexp_settings',
+  SELECTED_COUNTRY: 'mapexp_country',
+} as const
+
+/**
+ * 기본 설정값
+ */
+export const DEFAULT_SETTINGS = {
+  theme: 'light' as const,
+  language: 'ko' as const,
+  defaultCountry: 'japan' as const,
+  showLegend: true,
+  showStats: true,
+  enableAnimation: true,
+}
+
+/**
+ * 데이터 버전
+ */
+export const DATA_VERSION = '1.0'
+
+
