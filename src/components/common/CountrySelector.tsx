@@ -1,0 +1,37 @@
+'use client'
+
+import { useMapExpStore } from '@/store'
+
+/**
+ * 국가 선택 컴포넌트
+ */
+export default function CountrySelector() {
+  const { country, setCountry } = useMapExpStore()
+
+  return (
+    <div className="inline-flex rounded-lg bg-gray-200 p-1">
+      <button
+        onClick={() => setCountry('japan')}
+        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          country === 'japan'
+            ? 'bg-white text-gray-900 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+        }`}
+      >
+        <span className="mr-2">🇯🇵</span>
+        일본
+      </button>
+      <button
+        onClick={() => setCountry('korea')}
+        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          country === 'korea'
+            ? 'bg-white text-gray-900 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+        }`}
+      >
+        <span className="mr-2">🇰🇷</span>
+        한국
+      </button>
+    </div>
+  )
+}
