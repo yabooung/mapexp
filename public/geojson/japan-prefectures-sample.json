@@ -1,0 +1,80 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "tokyo",
+        "name": "東京都",
+        "name_en": "Tokyo",
+        "name_ko": "도쿄"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [139.3, 35.5], [139.9, 35.5], [139.9, 35.9], [139.3, 35.9], [139.3, 35.5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "osaka",
+        "name": "大阪府",
+        "name_en": "Osaka",
+        "name_ko": "오사카"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [135.2, 34.4], [135.7, 34.4], [135.7, 34.9], [135.2, 34.9], [135.2, 34.4]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "kyoto",
+        "name": "京都府",
+        "name_en": "Kyoto",
+        "name_ko": "교토"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [135.4, 34.9], [135.9, 34.9], [135.9, 35.6], [135.4, 35.6], [135.4, 34.9]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hokkaido",
+        "name": "北海道",
+        "name_en": "Hokkaido",
+        "name_ko": "홋카이도"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [139.5, 41.5], [145.5, 41.5], [145.5, 45.5], [139.5, 45.5], [139.5, 41.5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fukuoka",
+        "name": "福岡県",
+        "name_en": "Fukuoka",
+        "name_ko": "후쿠오카"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [130.1, 33.4], [130.7, 33.4], [130.7, 33.9], [130.1, 33.9], [130.1, 33.4]
+        ]]
+      }
+    }
+  ]
+}

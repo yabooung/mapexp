@@ -1,14 +1,29 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import CountrySelector from '@/components/common/CountrySelector'
 import RegionList from '@/components/region/RegionList'
 import RegionModal from '@/components/region/RegionModal'
 import StatsPanel from '@/components/stats/StatsPanel'
 
+// Leaflet을 dynamic import (SSR 비활성화)
+const MapView = dynamic(() => import('@/components/map/MapView'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[600px] flex items-center justify-center bg-gray-100 rounded-lg">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">지도 로딩 중...</p>
+      </div>
+    </div>
+  ),
+})
+
 export default function Home() {
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
   const [showStats, setShowStats] = useState(true)
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
 
   const handleRegionClick = (regionId: string) => {
     setSelectedRegionId(regionId)
@@ -33,6 +48,30 @@ export default function Home() {
         <CountrySelector />
       </div>
 
+      {/* 뷰 모드 전환 */}
+      <div className="mb-4 flex items-center gap-2">
+        <button
+          onClick={() => setViewMode('map')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            viewMode === 'map'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          🗺️ 지도 보기
+        </button>
+        <button
+          onClick={() => setViewMode('list')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            viewMode === 'list'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          📋 리스트 보기
+        </button>
+      </div>
+
       {/* 메인 컨텐츠 */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* 통계 패널 (데스크톱: 사이드바, 모바일: 토글) */}
@@ -51,10 +90,16 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 지역 리스트 */}
+        {/* 지도 또는 리스트 */}
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-lg shadow-sm p-6 min-h-[600px]">
-            <RegionList onRegionClick={handleRegionClick} />
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            {viewMode === 'map' ? (
+              <MapView onRegionClick={handleRegionClick} />
+            ) : (
+              <div className="p-6 min-h-[600px]">
+                <RegionList onRegionClick={handleRegionClick} />
+              </div>
+            )}
           </div>
         </div>
       </div>
