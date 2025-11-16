@@ -244,9 +244,20 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     })
   }
 
-  // 지도 중심 및 줌 설정
+  // 지도 중심, 줌, 경계 설정
   const mapCenter = country === 'japan' ? [36.5, 138.0] : [36.5, 127.5]
   const mapZoom = country === 'japan' ? 5 : 7
+
+  // 지도 이동 범위 제한 (maxBounds)
+  const mapBounds = country === 'japan'
+    ? [
+        [24.0, 122.0],  // 남서쪽 (오키나와 남쪽)
+        [46.0, 148.0],  // 북동쪽 (홋카이도 북동쪽)
+      ]
+    : [
+        [33.0, 124.0],  // 남서쪽 (제주 남쪽)
+        [39.0, 132.0],  // 북동쪽 (강원도 북동쪽)
+      ]
 
   if (isLoading) {
     return (
@@ -278,6 +289,10 @@ export default function MapView({ onRegionClick }: MapViewProps) {
       <MapContainer
         center={mapCenter as [number, number]}
         zoom={mapZoom}
+        minZoom={country === 'japan' ? 4 : 6}
+        maxZoom={18}
+        maxBounds={mapBounds as [[number, number], [number, number]]}
+        maxBoundsViscosity={1.0}
         style={{ width: '100%', height: '100%', minHeight: '600px' }}
         className="z-0"
         scrollWheelZoom={true}
