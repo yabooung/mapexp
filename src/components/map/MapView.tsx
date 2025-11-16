@@ -92,7 +92,7 @@ const REGION_ID_MAP: Record<string, Record<string, string>> = {
  * Leaflet 지도 뷰 컴포넌트 (TopoJSON 사용)
  */
 export default function MapView({ onRegionClick }: MapViewProps) {
-  const { country, getRegionById } = useMapExpStore()
+  const { country, getRegionById, addRegion, updateRegion } = useMapExpStore()
   const [geoData, setGeoData] = useState<GeoJsonObject | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -222,11 +222,49 @@ export default function MapView({ onRegionClick }: MapViewProps) {
       className: 'region-tooltip',
     })
 
+    // 클릭 이벤트 핸들러
+    const handleClick = (e: LeafletMouseEvent) => {
+      e.originalEvent.preventDefault()
+
+      // Shift 키를 누르고 클릭하면 모달 열기 (세부 설정)
+      if (e.originalEvent.shiftKey) {
+        onRegionClick(regionId)
+        return
+      }
+
+      // 일반 클릭: 레벨 순환 (0→1→2→3→4→0)
+      const currentLevel = regionExp?.level ?? ExpLevel.UNVISITED
+      let nextLevel: ExpLevel
+
+      // 0-4 순환 (마스터는 Shift+클릭으로만 설정 가능)
+      if (currentLevel >= ExpLevel.RESIDED) {
+        nextLevel = ExpLevel.UNVISITED
+      } else {
+        nextLevel = (currentLevel + 1) as ExpLevel
+      }
+
+      // 레벨 업데이트
+      if (regionExp) {
+        updateRegion(regionId, { level: nextLevel })
+      } else {
+        addRegion({
+          regionId,
+          level: nextLevel,
+          updatedAt: new Date().toISOString(),
+        })
+      }
+
+      // 스타일 즉시 업데이트를 위해 강제 리렌더링
+      setTimeout(() => {
+        const target = e.target
+        const newStyle = getRegionStyle(feature)
+        target.setStyle(newStyle)
+      }, 50)
+    }
+
     // 클릭 이벤트
     layer.on({
-      click: (e: LeafletMouseEvent) => {
-        onRegionClick(regionId)
-      },
+      click: handleClick,
       mouseover: (e: LeafletMouseEvent) => {
         const target = e.target
         target.setStyle({
@@ -312,8 +350,8 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         )}
       </MapContainer>
 
-      {/* 범례 */}
-      <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs z-[1000]">
+      {/* 범례 & 조작 가이드 */}
+      <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs z-[1000] max-w-[200px]">
         <div className="font-semibold mb-2">경험치 레벨</div>
         {[
           { level: 0, label: '미방문', color: EXP_COLORS[0] },
@@ -325,12 +363,27 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         ].map((item) => (
           <div key={item.level} className="flex items-center gap-2 mt-1">
             <div
-              className="w-4 h-4 rounded border border-gray-300"
+              className="w-4 h-4 rounded border border-gray-300 flex-shrink-0"
               style={{ backgroundColor: item.color }}
             />
-            <span>{item.label}</span>
+            <span className="text-[11px]">{item.label}</span>
           </div>
         ))}
+
+        {/* 구분선 */}
+        <div className="border-t border-gray-200 my-2"></div>
+
+        {/* 조작 가이드 */}
+        <div className="text-[10px] text-gray-600 space-y-1">
+          <div className="flex items-start gap-1">
+            <span className="font-medium text-blue-600">클릭:</span>
+            <span>레벨 순환 (0-4)</span>
+          </div>
+          <div className="flex items-start gap-1">
+            <span className="font-medium text-purple-600">Shift+클릭:</span>
+            <span>상세 설정</span>
+          </div>
+        </div>
       </div>
     </div>
   )
