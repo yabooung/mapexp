@@ -49,27 +49,37 @@ export default function Home() {
       </div>
 
       {/* 뷰 모드 전환 */}
-      <div className="mb-4 flex items-center gap-2">
-        <button
-          onClick={() => setViewMode('map')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            viewMode === 'map'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          🗺️ 지도 보기
-        </button>
-        <button
-          onClick={() => setViewMode('list')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            viewMode === 'list'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          📋 리스트 보기
-        </button>
+      <div className="mb-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode('map')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              viewMode === 'map'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            🗺️ 지도 보기
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              viewMode === 'list'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            📋 리스트 보기
+          </button>
+        </div>
+
+        {/* 사용 가이드 */}
+        {viewMode === 'map' && (
+          <div className="mt-2 text-xs text-gray-600 bg-blue-50 px-3 py-2 rounded-md">
+            💡 <span className="font-medium">지도 클릭</span>으로 빠르게 레벨 변경 (0→1→2→3→4→0)
+            | <span className="font-medium">Shift+클릭</span> 또는 <span className="font-medium">리스트 클릭</span>으로 상세 설정
+          </div>
+        )}
       </div>
 
       {/* 메인 컨텐츠 */}
