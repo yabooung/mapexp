@@ -96,42 +96,51 @@ export default function MapView({ onRegionClick }: MapViewProps) {
   const [geoData, setGeoData] = useState<GeoJsonObject | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // TopoJSON 데이터 로드 및 GeoJSON 변환
+  // GeoJSON/TopoJSON 데이터 로드
   useEffect(() => {
     const loadGeoData = async () => {
       setIsLoading(true)
       try {
         let url: string
-        let objectName: string
+        let isTopoJSON: boolean
 
         if (country === 'japan') {
-          // jpn-atlas CDN (정확한 도도부현 경계)
-          url = 'https://unpkg.com/jpn-atlas@2/prefectures-all.json'
-          objectName = 'prefectures'
+          // 로컬 GeoJSON (dataofjapan/land)
+          url = '/geojson/japan-prefectures.json'
+          isTopoJSON = false
         } else {
-          // 한국 TopoJSON CDN
-          url = 'https://raw.githubusercontent.com/southkorea/southkorea-maps/master/gadm/json/skorea-provinces-topo.json'
-          objectName = 'skorea-provinces-2018-topo'
+          // 로컬 TopoJSON (southkorea-maps)
+          url = '/geojson/korea-provinces.json'
+          isTopoJSON = true
         }
 
         const response = await fetch(url)
-        if (!response.ok) throw new Error('Failed to load TopoJSON')
+        if (!response.ok) throw new Error('Failed to load map data')
 
-        const topoData = (await response.json()) as Topology
+        let geoJson: GeoJsonObject
 
-        // TopoJSON → GeoJSON 변환
-        const objects = topoData.objects[objectName]
-        if (!objects) {
-          console.error('Available objects:', Object.keys(topoData.objects))
-          throw new Error(`Object '${objectName}' not found in TopoJSON`)
+        if (isTopoJSON) {
+          // TopoJSON → GeoJSON 변환 (한국)
+          const topoData = (await response.json()) as Topology
+          const objectName = 'skorea-provinces-2018-topo'
+          const objects = topoData.objects[objectName]
+
+          if (!objects) {
+            console.error('Available objects:', Object.keys(topoData.objects))
+            throw new Error(`Object '${objectName}' not found in TopoJSON`)
+          }
+
+          geoJson = feature(topoData, objects) as GeoJsonObject
+        } else {
+          // 이미 GeoJSON (일본)
+          geoJson = await response.json()
         }
-
-        const geoJson = feature(topoData, objects) as GeoJsonObject
 
         // 지역 ID 매핑
         if (geoJson.type === 'FeatureCollection') {
           geoJson.features.forEach((feat) => {
-            const nameJa = feat.properties?.name_ja || feat.properties?.name
+            // 일본: nam_ja, 한국: NAME_1 또는 name_ko
+            const nameJa = feat.properties?.nam_ja || feat.properties?.name_ja
             const nameKo = feat.properties?.name_ko || feat.properties?.NAME_1 || feat.properties?.name
             const originalName = country === 'japan' ? nameJa : nameKo
 
@@ -141,7 +150,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
               feat.properties = {
                 ...feat.properties,
                 id: mappedId,
-                name_ko: nameKo,
+                name_ko: country === 'japan' ? feat.properties?.nam_ja : nameKo,
                 name: originalName,
               }
             } else {
