@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useMapExpStore } from '@/store'
 import { getRegionMetadata } from '@/data/regions'
-import { ExpLevel } from '@/types'
+import { ExpLevel, Visit } from '@/types'
 import { EXP_LEVEL_LABELS } from '@/types/region'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
 import toast from 'react-hot-toast'
+import VisitList from './VisitList'
 
 interface RegionModalProps {
   isOpen: boolean
@@ -39,6 +40,7 @@ export default function RegionModal({
   const [totalNights, setTotalNights] = useState(
     existingRegion?.totalNights?.toString() ?? ''
   )
+  const [visits, setVisits] = useState<Visit[]>(existingRegion?.visits ?? [])
 
   // 지역이 변경되면 폼 초기화
   useEffect(() => {
@@ -49,6 +51,7 @@ export default function RegionModal({
       setMemo(existing?.memo ?? '')
       setVisitCount(existing?.visitCount?.toString() ?? '')
       setTotalNights(existing?.totalNights?.toString() ?? '')
+      setVisits(existing?.visits ?? [])
     }
   }, [isOpen, regionId, getRegionById])
 
@@ -56,27 +59,6 @@ export default function RegionModal({
 
   const handleSave = () => {
     // 검증
-    if (level === ExpLevel.MASTER) {
-      const count = parseInt(visitCount)
-      const nights = totalNights ? parseInt(totalNights) : 0
-
-      if (!visitCount || isNaN(count) || count < 1) {
-        toast.error('방문 횟수를 입력해주세요 (최소 1회)')
-        return
-      }
-
-      // 마스터 조건: 3회 이상 & 3박 이상 OR 30일 이상
-      const meetsCondition =
-        (count >= 3 && nights >= 3) || nights >= 30
-
-      if (!meetsCondition) {
-        toast.error(
-          '마스터 조건: (3회 이상 & 3박 이상) 또는 30일 이상'
-        )
-        return
-      }
-    }
-
     if (memo.length > 500) {
       toast.error('메모는 최대 500자까지 입력 가능합니다')
       return
@@ -90,6 +72,7 @@ export default function RegionModal({
       visitDate: visitDate || undefined,
       visitCount: visitCount ? parseInt(visitCount) : undefined,
       totalNights: totalNights ? parseInt(totalNights) : undefined,
+      visits,
       updatedAt: new Date().toISOString(),
     }
 
@@ -192,43 +175,33 @@ export default function RegionModal({
           </div>
         </div>
 
-        {/* 레벨 5 추가 입력 */}
+        {/* 레벨 5 안내 */}
         {level === ExpLevel.MASTER && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
-            <p className="text-sm font-medium text-yellow-800">
-              마스터 레벨 추가 정보
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-sm font-medium text-yellow-800 mb-1">
+              마스터 레벨 (8점)
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">
-                  방문 횟수 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={visitCount}
-                  onChange={(e) => setVisitCount(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="회"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">
-                  총 숙박일
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={totalNights}
-                  onChange={(e) => setTotalNights(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="일"
-                />
+            <p className="text-xs text-yellow-700">
+              해당 지역에 대해 깊은 이해와 경험(예: 3회 이상 방문, 3박 이상 체류 등)이 있는 경우 선택해주세요.
+            </p>
+            {/* 자동 계산된 통계 표시 */}
+            <div className="mt-3 flex gap-4 text-xs font-medium text-yellow-800">
+              <div className="bg-white/50 px-2 py-1 rounded">
+                총 방문: {visits.length}회
               </div>
             </div>
-            <p className="text-xs text-gray-600">
-              조건: (3회 이상 & 3박 이상) 또는 30일 이상
-            </p>
+          </div>
+        )}
+
+        <div className="border-t border-gray-200 my-2"></div>
+
+        {/* 방문 기록 관리 (New) */}
+        <VisitList visits={visits} onChange={setVisits} />
+
+        {/* 기존 메모/날짜 입력 (레거시 - 필요하다면 유지하지만, 방문 기록으로 대체 권장) */}
+        {(visits.length === 0) && (
+          <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-gray-500">
+            <p>💡 방문 기록을 추가하면 방문 횟수와 숙박일이 자동 계산됩니다.</p>
           </div>
         )}
 

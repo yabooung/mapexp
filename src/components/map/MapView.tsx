@@ -232,8 +232,9 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         return
       }
 
-      // 일반 클릭: 레벨 순환 (0→1→2→3→4→0)
-      const currentLevel = regionExp?.level ?? ExpLevel.UNVISITED
+      // 최신 상태 가져오기 (Closure 문제 해결)
+      const currentExp = useMapExpStore.getState().getRegionById(regionId)
+      const currentLevel = currentExp?.level ?? ExpLevel.UNVISITED
       let nextLevel: ExpLevel
 
       // 0-4 순환 (마스터는 Shift+클릭으로만 설정 가능)
@@ -244,7 +245,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
       }
 
       // 레벨 업데이트
-      if (regionExp) {
+      if (currentExp) {
         updateRegion(regionId, { level: nextLevel })
       } else {
         addRegion({

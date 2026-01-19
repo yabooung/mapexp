@@ -1,7 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useMapExpStore } from '@/store'
+import { parseShareUrl } from '@/lib/share'
+import toast from 'react-hot-toast'
 import CountrySelector from '@/components/common/CountrySelector'
 import RegionList from '@/components/region/RegionList'
 import RegionModal from '@/components/region/RegionModal'
@@ -21,9 +25,38 @@ const MapView = dynamic(() => import('@/components/map/MapView'), {
 })
 
 export default function Home() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const { importData } = useMapExpStore()
+  
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
   const [showStats, setShowStats] = useState(true)
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
+
+  // 공유 URL 처리
+  useEffect(() => {
+    const shareCode = searchParams.get('share')
+    if (shareCode) {
+      if (confirm('공유된 지도를 불러오시겠습니까?\n주의: 현재 내 지도가 덮어씌워집니다.')) {
+        const data = parseShareUrl(shareCode)
+        if (data && data.regions) {
+          importData({
+            country: data.country || 'japan',
+            regions: data.regions,
+            version: '1.0.0', // 임시 버전
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          })
+          toast.success('공유된 지도를 불러왔습니다!')
+        } else {
+          toast.error('잘못된 공유 링크입니다.')
+        }
+      }
+      
+      // URL 정리
+      router.replace('/')
+    }
+  }, [searchParams, router, importData])
 
   const handleRegionClick = (regionId: string) => {
     setSelectedRegionId(regionId)

@@ -41,15 +41,27 @@ export const EXP_LEVEL_LABELS_EN: Record<ExpLevel, string> = {
 }
 
 /**
+ * 방문 기록
+ */
+export interface Visit {
+  id: string // 고유 ID (UUID or timestamp)
+  startDate: string // 시작일 (ISO 8601)
+  endDate: string // 종료일 (ISO 8601)
+  title?: string // 방문 제목 (예: 여름 휴가)
+  memo?: string // 메모
+}
+
+/**
  * 지역 경험치 데이터
  */
 export interface RegionExp {
   regionId: string // 지역 ID (예: 'tokyo', 'seoul')
   level: ExpLevel // 경험치 레벨
-  memo?: string // 메모 (선택, 최대 500자)
-  visitDate?: string // 방문 날짜 (ISO 8601 형식)
-  visitCount?: number // 방문 횟수 (레벨 5 전용)
-  totalNights?: number // 총 숙박일 (레벨 5 전용)
+  memo?: string // 메모 (레거시 - 호환성 유지)
+  visitDate?: string // 방문 날짜 (레거시 - 호환성 유지)
+  visitCount?: number // 방문 횟수 (자동 계산됨)
+  totalNights?: number // 총 숙박일 (자동 계산됨)
+  visits?: Visit[] // 방문 기록 리스트 (New)
   updatedAt: string // 마지막 수정 시간
 }
 
