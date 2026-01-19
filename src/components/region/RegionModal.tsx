@@ -96,12 +96,12 @@ export default function RegionModal({
   }
 
   const levelDescriptions = {
-    [ExpLevel.UNVISITED]: '방문한 적 없음',
-    [ExpLevel.PASSED]: '공항, 역 등에서 환승만',
-    [ExpLevel.STOPPED]: '2-3시간 정도 짧게 방문',
-    [ExpLevel.VISITED]: '반나절 ~ 하루 정도 방문',
-    [ExpLevel.RESIDED]: '1박 이상 숙박',
-    [ExpLevel.MASTER]: '마스터/거주 (3회 이상 & 3박 이상 OR 30일 이상)',
+    [ExpLevel.UNVISITED]: '미경현 (스친 적도 없다) - 0점',
+    [ExpLevel.PASSED]: '통과했다 (철도/차 통과, 배 기항. 항공기 제외) - 1점',
+    [ExpLevel.LANDED]: '내렸다 (환승이나 휴게소 휴식 등) - 2점',
+    [ExpLevel.VISITED]: '걸었다 (묵었던 적은 없다) - 3점',
+    [ExpLevel.STAYED]: '묵었다 (야간 통과는 제외) - 4점',
+    [ExpLevel.RESIDED]: '살았다 (3개월 정도의 장기 체류 포함) - 5점',
   }
 
   return (
@@ -163,7 +163,7 @@ export default function RegionModal({
                         <span className="font-medium">
                           Lv.{lvNum} - {EXP_LEVEL_LABELS[lvNum]}
                         </span>
-                        {lvNum === ExpLevel.MASTER && <span>⭐</span>}
+                        {lvNum === ExpLevel.RESIDED && <span>👑</span>}
                       </div>
                       <p className="text-sm text-gray-600 mt-1">
                         {levelDescriptions[lvNum]}
@@ -175,14 +175,14 @@ export default function RegionModal({
           </div>
         </div>
 
-        {/* 레벨 5 안내 */}
-        {level === ExpLevel.MASTER && (
+        {/* 레벨 5 설명 */}
+        {level === ExpLevel.RESIDED && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-sm font-medium text-yellow-800 mb-1">
-              마스터 레벨 (8점)
+              거주 (居住) - 5점 최고 등급
             </p>
             <p className="text-xs text-yellow-700">
-              해당 지역에 대해 깊은 이해와 경험(예: 3회 이상 방문, 3박 이상 체류 등)이 있는 경우 선택해주세요.
+              해당 지역에서 생활한 경험이 있거나, 3개월 이상 장기 체류한 경우에 해당합니다.
             </p>
             {/* 자동 계산된 통계 표시 */}
             <div className="mt-3 flex gap-4 text-xs font-medium text-yellow-800">

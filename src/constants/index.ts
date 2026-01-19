@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS = {
   showLegend: true,
   showStats: true,
   enableAnimation: true,
+  mapMode: 'standard' as const,
 }
 
 /**

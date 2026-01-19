@@ -92,7 +92,7 @@ const REGION_ID_MAP: Record<string, Record<string, string>> = {
  * Leaflet 지도 뷰 컴포넌트 (TopoJSON 사용)
  */
 export default function MapView({ onRegionClick }: MapViewProps) {
-  const { country, getRegionById, addRegion, updateRegion } = useMapExpStore()
+  const { country, getRegionById, addRegion, updateRegion, settings, updateSettings } = useMapExpStore()
   const [geoData, setGeoData] = useState<GeoJsonObject | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -185,13 +185,13 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     const regionId = feature.properties.id as string
     const regionExp = getRegionById(regionId)
     const level = regionExp?.level ?? ExpLevel.UNVISITED
-    const isMaster = level === ExpLevel.MASTER
+    const isResided = level === ExpLevel.RESIDED
 
     return {
       fillColor: EXP_COLORS[level],
       fillOpacity: level === ExpLevel.UNVISITED ? 0.3 : 0.7,
-      color: isMaster ? '#FFD700' : level === ExpLevel.UNVISITED ? '#ccc' : '#fff',
-      weight: isMaster ? 2.5 : level === ExpLevel.UNVISITED ? 0.5 : 1.5,
+      color: isResided ? '#FFD700' : level === ExpLevel.UNVISITED ? '#ccc' : '#fff',
+      weight: isResided ? 2.5 : level === ExpLevel.UNVISITED ? 0.5 : 1.5,
     }
   }
 
@@ -205,7 +205,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     const level = regionExp?.level ?? ExpLevel.UNVISITED
 
     // 툴팁 내용 (레벨 정보 포함)
-    const levelLabels = ['미방문', '통과', '정차', '방문', '거주', '마스터 ⭐']
+    const levelLabels = ['미답', '통과', '접지', '방문', '숙박', '거주 👑']
     const tooltipContent = `
       <div style="text-align: center;">
         <div style="font-weight: bold; font-size: 14px;">${regionName}</div>
@@ -237,7 +237,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
       const currentLevel = currentExp?.level ?? ExpLevel.UNVISITED
       let nextLevel: ExpLevel
 
-      // 0-4 순환 (마스터는 Shift+클릭으로만 설정 가능)
+      // 0-5 순환 (거주가 최고 레벨)
       if (currentLevel >= ExpLevel.RESIDED) {
         nextLevel = ExpLevel.UNVISITED
       } else {
@@ -326,6 +326,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
   return (
     <div className="w-full h-full rounded-lg overflow-hidden shadow-lg">
       <MapContainer
+        key={settings.mapMode} // 모드 변경 시 맵 인스턴스 재생성 (옵션 적용을 위해)
         center={mapCenter as [number, number]}
         zoom={mapZoom}
         minZoom={country === 'japan' ? 4 : 6}
@@ -334,12 +335,18 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         maxBoundsViscosity={1.0}
         style={{ width: '100%', height: '100%', minHeight: '600px' }}
         className="z-0"
-        scrollWheelZoom={true}
+        scrollWheelZoom={settings.mapMode === 'standard'}
+        dragging={settings.mapMode === 'standard'}
+        doubleClickZoom={settings.mapMode === 'standard'}
+        touchZoom={settings.mapMode === 'standard'}
+        zoomControl={settings.mapMode === 'standard'}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        {settings.mapMode === 'standard' && (
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+        )}
 
         {geoData && (
           <GeoJSON
@@ -351,20 +358,40 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         )}
       </MapContainer>
 
-      {/* 범례 & 조작 가이드 */}
-      <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs z-[1000] max-w-[200px]">
-        <div className="font-semibold mb-2">경험치 레벨</div>
+      {/* 범례 & 조작 가이드 & 모드 전환 */}
+      <div className={`absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs z-1000 max-w-[200px] transition-opacity duration-300 ${settings.mapMode === 'simple' ? 'opacity-80 hover:opacity-100' : 'opacity-100'}`}>
+        {/* 모드 전환 버튼 */}
+        <button
+          onClick={() =>
+            updateSettings({
+              mapMode: settings.mapMode === 'standard' ? 'simple' : 'standard',
+            })
+          }
+          className="w-full mb-3 py-1.5 px-2 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 text-gray-700 font-medium flex items-center justify-center gap-2 transition-colors"
+        >
+          {settings.mapMode === 'standard' ? (
+            <>
+              <span>⬜</span> 심플 모드
+            </>
+          ) : (
+            <>
+              <span>🗺️</span> 상세 모드
+            </>
+          )}
+        </button>
+
+        <div className="font-semibold mb-2">경험치 레벨 (경현도)</div>
         {[
-          { level: 0, label: '미방문', color: EXP_COLORS[0] },
-          { level: 1, label: '통과', color: EXP_COLORS[1] },
-          { level: 2, label: '정차', color: EXP_COLORS[2] },
-          { level: 3, label: '방문', color: EXP_COLORS[3] },
-          { level: 4, label: '거주', color: EXP_COLORS[4] },
-          { level: 5, label: '마스터 ⭐', color: EXP_COLORS[5] },
+          { level: 0, label: '미답 (0)', color: EXP_COLORS[0] },
+          { level: 1, label: '통과 (1)', color: EXP_COLORS[1] },
+          { level: 2, label: '접지 (2)', color: EXP_COLORS[2] },
+          { level: 3, label: '방문 (3)', color: EXP_COLORS[3] },
+          { level: 4, label: '숙박 (4)', color: EXP_COLORS[4] },
+          { level: 5, label: '거주/마스터 (5)', color: EXP_COLORS[5] },
         ].map((item) => (
           <div key={item.level} className="flex items-center gap-2 mt-1">
             <div
-              className="w-4 h-4 rounded border border-gray-300 flex-shrink-0"
+              className="w-4 h-4 rounded border border-gray-300 shrink-0"
               style={{ backgroundColor: item.color }}
             />
             <span className="text-[11px]">{item.label}</span>

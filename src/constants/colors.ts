@@ -7,10 +7,10 @@ import { ExpLevel } from '@/types/region'
 export const EXP_COLORS: Record<ExpLevel, string> = {
   [ExpLevel.UNVISITED]: '#E5E5E5', // 회색
   [ExpLevel.PASSED]: '#FEF3C7', // 연노랑
-  [ExpLevel.STOPPED]: '#FCD34D', // 노랑
+  [ExpLevel.LANDED]: '#FCD34D', // 노랑
   [ExpLevel.VISITED]: '#F59E0B', // 주황
-  [ExpLevel.RESIDED]: '#DC2626', // 빨강
-  [ExpLevel.MASTER]: '#FFD700', // 금색
+  [ExpLevel.STAYED]: '#DC2626', // 빨강
+  [ExpLevel.RESIDED]: '#FFD700', // 금색
 }
 
 /**
@@ -19,10 +19,10 @@ export const EXP_COLORS: Record<ExpLevel, string> = {
 export const EXP_BG_CLASSES: Record<ExpLevel, string> = {
   [ExpLevel.UNVISITED]: 'bg-exp-unvisited',
   [ExpLevel.PASSED]: 'bg-exp-passed',
-  [ExpLevel.STOPPED]: 'bg-exp-stopped',
+  [ExpLevel.LANDED]: 'bg-exp-stopped',
   [ExpLevel.VISITED]: 'bg-exp-visited',
-  [ExpLevel.RESIDED]: 'bg-exp-resided',
-  [ExpLevel.MASTER]: 'bg-exp-master',
+  [ExpLevel.STAYED]: 'bg-exp-resided',
+  [ExpLevel.RESIDED]: 'bg-exp-master',
 }
 
 /**
@@ -31,10 +31,10 @@ export const EXP_BG_CLASSES: Record<ExpLevel, string> = {
 export const EXP_TEXT_CLASSES: Record<ExpLevel, string> = {
   [ExpLevel.UNVISITED]: 'text-exp-unvisited',
   [ExpLevel.PASSED]: 'text-exp-passed',
-  [ExpLevel.STOPPED]: 'text-exp-stopped',
+  [ExpLevel.LANDED]: 'text-exp-stopped',
   [ExpLevel.VISITED]: 'text-exp-visited',
-  [ExpLevel.RESIDED]: 'text-exp-resided',
-  [ExpLevel.MASTER]: 'text-exp-master',
+  [ExpLevel.STAYED]: 'text-exp-resided',
+  [ExpLevel.RESIDED]: 'text-exp-master',
 }
 
 /**

@@ -1,31 +1,31 @@
 /**
- * 지역 경험치 레벨
- * 0: 미방문 (unvisited)
- * 1: 통과 (passed)
- * 2: 정차 (stopped)
- * 3: 방문 (visited)
- * 4: 거주 (resided)
- * 5: 마스터 (master)
+ * 지역 경험치 레벨 (경현도 기준)
+ * 0: 미답 (Unvisited) - 0점
+ * 1: 통과 (Passed) - 1점
+ * 2: 접지 (Landed) - 2점
+ * 3: 방문 (Visited) - 3점
+ * 4: 숙박 (Stayed) - 4점
+ * 5: 거주 (Resided) - 5점
  */
 export enum ExpLevel {
   UNVISITED = 0,
   PASSED = 1,
-  STOPPED = 2,
+  LANDED = 2,
   VISITED = 3,
-  RESIDED = 4,
-  MASTER = 5,
+  STAYED = 4,
+  RESIDED = 5,
 }
 
 /**
  * 레벨별 라벨
  */
 export const EXP_LEVEL_LABELS: Record<ExpLevel, string> = {
-  [ExpLevel.UNVISITED]: '미방문',
+  [ExpLevel.UNVISITED]: '미답 (미경현)',
   [ExpLevel.PASSED]: '통과',
-  [ExpLevel.STOPPED]: '정차',
+  [ExpLevel.LANDED]: '접지',
   [ExpLevel.VISITED]: '방문',
+  [ExpLevel.STAYED]: '숙박',
   [ExpLevel.RESIDED]: '거주',
-  [ExpLevel.MASTER]: '마스터',
 }
 
 /**
@@ -34,10 +34,10 @@ export const EXP_LEVEL_LABELS: Record<ExpLevel, string> = {
 export const EXP_LEVEL_LABELS_EN: Record<ExpLevel, string> = {
   [ExpLevel.UNVISITED]: 'Unvisited',
   [ExpLevel.PASSED]: 'Passed',
-  [ExpLevel.STOPPED]: 'Stopped',
+  [ExpLevel.LANDED]: 'Landed',
   [ExpLevel.VISITED]: 'Visited',
+  [ExpLevel.STAYED]: 'Stayed',
   [ExpLevel.RESIDED]: 'Resided',
-  [ExpLevel.MASTER]: 'Master',
 }
 
 /**

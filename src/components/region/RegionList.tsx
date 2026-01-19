@@ -65,7 +65,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
     const currentLevel = regionExp?.level ?? ExpLevel.UNVISITED
     let nextLevel: ExpLevel
 
-    // 0 -> 1 -> 2 -> 3 -> 4 -> 0 (마스터는 제외, 마스터 -> 0)
+    // 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 0
     if (currentLevel >= ExpLevel.RESIDED) {
       nextLevel = ExpLevel.UNVISITED
     } else {
