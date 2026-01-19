@@ -18,11 +18,8 @@ export default function StatsPanel() {
   const levelCounts = getLevelCounts()
   const totalRegions = TOTAL_REGIONS[country]
 
-  // 레벨별 점수 계산 (마스터는 8점, 나머지는 레벨 값)
+  // 레벨별 점수 계산 (경현도 기준: 레벨 = 점수)
   const getLevelPoints = (level: ExpLevel, count: number) => {
-    if (level === ExpLevel.MASTER) {
-      return count * 8
-    }
     return count * level
   }
 
@@ -56,11 +53,11 @@ export default function StatsPanel() {
             </p>
           </div>
 
-          {/* 마스터 지역 */}
+          {/* 거주(최고레벨) 지역 */}
           <div className="text-center p-4 bg-yellow-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">마스터 ⭐</p>
+            <p className="text-sm text-gray-600 mb-1">거주 👑</p>
             <p className="text-3xl font-bold text-yellow-600">
-              {levelCounts[ExpLevel.MASTER]}
+              {levelCounts[ExpLevel.RESIDED]}
             </p>
           </div>
         </div>
@@ -74,10 +71,10 @@ export default function StatsPanel() {
 
         <div className="space-y-2">
           {[
-            ExpLevel.MASTER,
             ExpLevel.RESIDED,
+            ExpLevel.STAYED,
             ExpLevel.VISITED,
-            ExpLevel.STOPPED,
+            ExpLevel.LANDED,
             ExpLevel.PASSED,
             ExpLevel.UNVISITED,
           ].map((level) => {
@@ -103,7 +100,7 @@ export default function StatsPanel() {
                     <span className="text-sm font-medium text-gray-900">
                       {EXP_LEVEL_LABELS[level]}
                     </span>
-                    {level === ExpLevel.MASTER && <span>⭐</span>}
+                    {level === ExpLevel.RESIDED && <span>👑</span>}
                   </div>
                 </div>
 

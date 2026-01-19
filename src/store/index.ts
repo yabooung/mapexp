@@ -188,9 +188,7 @@ export const useMapExpStore = create<MapExpStore>()(
       // 총 경험치 계산
       getTotalExp: () => {
         return get().regions.reduce((sum, region) => {
-          if (region.level === ExpLevel.MASTER) {
-            return sum + 8;
-          }
+          // 경현도 기준: 레벨 = 점수 (거주는 5점, 숙박은 4점...)
           return sum + region.level;
         }, 0);
       },
@@ -222,10 +220,10 @@ export const useMapExpStore = create<MapExpStore>()(
         const counts: Record<ExpLevel, number> = {
           [ExpLevel.UNVISITED]: totalRegions,
           [ExpLevel.PASSED]: 0,
-          [ExpLevel.STOPPED]: 0,
+          [ExpLevel.LANDED]: 0,
           [ExpLevel.VISITED]: 0,
+          [ExpLevel.STAYED]: 0,
           [ExpLevel.RESIDED]: 0,
-          [ExpLevel.MASTER]: 0,
         };
 
         state.regions.forEach((region) => {

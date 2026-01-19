@@ -22,8 +22,8 @@ export default function RegionCard({
   const backgroundColor = EXP_COLORS[level]
   const levelLabel = EXP_LEVEL_LABELS[level]
 
-  // 레벨 5는 금색 별 표시
-  const isMaster = level === ExpLevel.MASTER
+  // 레벨 5는 왕관 표시
+  const isResided = level === ExpLevel.RESIDED
 
   // 텍스트 색상 (배경이 밝으면 검정, 어두우면 흰색)
   const textColor = level >= ExpLevel.VISITED ? 'text-white' : 'text-gray-900'
@@ -37,10 +37,10 @@ export default function RegionCard({
       className="relative overflow-hidden"
       style={{ backgroundColor }}
     >
-      {/* 마스터 뱃지 */}
-      {isMaster && (
+      {/* 거주(최고레벨) 뱃지 */}
+      {isResided && (
         <div className="absolute top-2 right-2">
-          <span className="text-2xl">⭐</span>
+          <span className="text-2xl">👑</span>
         </div>
       )}
 

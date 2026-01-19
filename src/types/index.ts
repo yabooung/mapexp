@@ -23,6 +23,7 @@ export interface UserSettings {
   showLegend: boolean // 범례 표시
   showStats: boolean // 통계 표시
   enableAnimation: boolean // 애니메이션 활성화
+  mapMode: 'standard' | 'simple' // 지도 모드
 }
 
 /**
