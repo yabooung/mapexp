@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useMapExpStore } from '@/store'
 import { getRegionsByCountry } from '@/data/regions'
+import { ExpLevel } from '@/types'
 import RegionCard from './RegionCard'
 
 interface RegionListProps {
@@ -52,6 +53,39 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
     return sorted
   }, [allRegions, searchText, sortBy, getRegionById])
 
+  // 클릭 핸들러 (레벨 순환)
+  const handleRegionClick = (e: React.MouseEvent, regionId: string) => {
+    // Shift 클릭 시 상세 모달
+    if (e.shiftKey) {
+      onRegionClick(regionId)
+      return
+    }
+
+    const regionExp = getRegionById(regionId)
+    const currentLevel = regionExp?.level ?? ExpLevel.UNVISITED
+    let nextLevel: ExpLevel
+
+    // 0 -> 1 -> 2 -> 3 -> 4 -> 0 (마스터는 제외, 마스터 -> 0)
+    if (currentLevel >= ExpLevel.RESIDED) {
+      nextLevel = ExpLevel.UNVISITED
+    } else {
+      nextLevel = (currentLevel + 1) as ExpLevel
+    }
+
+    // 레벨 업데이트 (단순 변경시는 날짜/메모 유지)
+    if (regionExp) {
+      const { updateRegion } = useMapExpStore.getState()
+      updateRegion(regionId, { level: nextLevel })
+    } else {
+      const { addRegion } = useMapExpStore.getState()
+      addRegion({
+        regionId,
+        level: nextLevel,
+        updatedAt: new Date().toISOString(),
+      })
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* 검색 및 정렬 */}
@@ -80,29 +114,35 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
           </svg>
         </div>
 
-        {/* 정렬 */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">정렬:</span>
-          <button
-            onClick={() => setSortBy('name')}
-            className={`px-3 py-1 text-sm rounded-md transition-colors ${
-              sortBy === 'name'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            이름순
-          </button>
-          <button
-            onClick={() => setSortBy('level')}
-            className={`px-3 py-1 text-sm rounded-md transition-colors ${
-              sortBy === 'level'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            레벨순
-          </button>
+        {/* 정렬 & 도움말 */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">정렬:</span>
+            <button
+              onClick={() => setSortBy('name')}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                sortBy === 'name'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              이름순
+            </button>
+            <button
+              onClick={() => setSortBy('level')}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                sortBy === 'level'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              레벨순
+            </button>
+          </div>
+          
+          <div className="text-xs text-gray-500 hidden sm:block">
+            클릭: 레벨변경 | Shift+클릭: 상세
+          </div>
         </div>
       </div>
 
@@ -114,7 +154,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
               key={region.id}
               regionInfo={region}
               regionExp={getRegionById(region.id)}
-              onClick={() => onRegionClick(region.id)}
+              onClick={(e) => handleRegionClick(e, region.id)}
             />
           ))}
         </div>

@@ -21,6 +21,8 @@ export default function CountrySelector() {
         <span className="mr-2">🇯🇵</span>
         일본
       </button>
+      {/* 한국 버전 비활성화 (추후 확장 시 주석 해제) */}
+      {/* 
       <button
         onClick={() => setCountry('korea')}
         className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -31,7 +33,8 @@ export default function CountrySelector() {
       >
         <span className="mr-2">🇰🇷</span>
         한국
-      </button>
+      </button> 
+      */}
     </div>
   )
 }

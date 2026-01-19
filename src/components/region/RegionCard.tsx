@@ -7,7 +7,7 @@ import Card from '@/components/common/Card'
 interface RegionCardProps {
   regionInfo: RegionMetadata
   regionExp?: RegionExp
-  onClick: () => void
+  onClick: (e: React.MouseEvent) => void
 }
 
 /**
@@ -32,7 +32,7 @@ export default function RegionCard({
     <Card
       padding="md"
       shadow="sm"
-      onClick={onClick}
+      onClick={(e) => onClick(e as unknown as React.MouseEvent)}
       hover={true}
       className="relative overflow-hidden"
       style={{ backgroundColor }}
