@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { ExpLevel, MapExpData, RegionExp, UserSettings } from "@/types";
+import { GyeongHyeonChi, MapExpData, RegionExp, UserSettings, ExperienceGrade } from "@/types";
 import { STORAGE_KEYS, DEFAULT_SETTINGS, DATA_VERSION } from "@/constants";
 import { TOTAL_REGIONS } from "@/constants/regions";
 
@@ -29,10 +29,11 @@ interface MapExpStore {
 
   // Computed getters
   getRegionById: (regionId: string) => RegionExp | undefined;
-  getTotalExp: () => number;
+  getTotalGyeonghyeonchi: () => number; // Renamed from getTotalExp
+  getSystemLevel: () => number; // New System Level
   getVisitedCount: () => number;
   getCompletionRate: () => number;
-  getLevelCounts: () => Record<ExpLevel, number>;
+  getGyeonghyeonchiCounts: () => Record<ExperienceGrade, number>; // Renamed
 }
 
 /**
@@ -185,18 +186,25 @@ export const useMapExpStore = create<MapExpStore>()(
         return get().regions.find((region) => region.regionId === regionId);
       },
 
-      // 총 경험치 계산
-      getTotalExp: () => {
+      // 총 경현치 계산 (구 getTotalExp)
+      getTotalGyeonghyeonchi: () => {
         return get().regions.reduce((sum, region) => {
-          // 경현도 기준: 레벨 = 점수 (거주는 5점, 숙박은 4점...)
-          return sum + region.level;
+          // region.level is deprecated, use gyeonghyeonchi if available, else level
+          const val = region.gyeonghyeonchi ?? region.level ?? 0;
+          return sum + val;
         }, 0);
+      },
+
+      // 시스템 레벨 계산 (New)
+      getSystemLevel: () => {
+        const total = get().getTotalGyeonghyeonchi();
+        return 1 + Math.floor(total / 10);
       },
 
       // 방문한 지역 수 (레벨 1 이상)
       getVisitedCount: () => {
         return get().regions.filter(
-          (region) => region.level > ExpLevel.UNVISITED,
+          (region) => (region.gyeonghyeonchi ?? region.level ?? 0) > GyeongHyeonChi.UNVISITED,
         ).length;
       },
 
@@ -205,7 +213,7 @@ export const useMapExpStore = create<MapExpStore>()(
         const state = get();
         const totalRegions = TOTAL_REGIONS[state.country];
         const visitedCount = state.regions.filter(
-          (region) => region.level > ExpLevel.UNVISITED,
+          (region) => (region.gyeonghyeonchi ?? region.level ?? 0) > GyeongHyeonChi.UNVISITED,
         ).length;
 
         return totalRegions > 0
@@ -213,22 +221,23 @@ export const useMapExpStore = create<MapExpStore>()(
           : 0;
       },
 
-      // 레벨별 카운트
-      getLevelCounts: () => {
+      // 경현치별 카운트
+      getGyeonghyeonchiCounts: () => {
         const state = get();
         const totalRegions = TOTAL_REGIONS[state.country];
-        const counts: Record<ExpLevel, number> = {
-          [ExpLevel.UNVISITED]: totalRegions,
-          [ExpLevel.PASSED]: 0,
-          [ExpLevel.LANDED]: 0,
-          [ExpLevel.VISITED]: 0,
-          [ExpLevel.STAYED]: 0,
-          [ExpLevel.RESIDED]: 0,
+        const counts: Record<ExperienceGrade, number> = {
+          [GyeongHyeonChi.UNVISITED]: totalRegions,
+          [GyeongHyeonChi.PASSED]: 0,
+          [GyeongHyeonChi.LANDED]: 0,
+          [GyeongHyeonChi.VISITED]: 0,
+          [GyeongHyeonChi.STAYED]: 0,
+          [GyeongHyeonChi.RESIDED]: 0,
         };
 
         state.regions.forEach((region) => {
-          counts[region.level]++;
-          counts[ExpLevel.UNVISITED]--;
+          const val = (region.gyeonghyeonchi ?? region.level ?? 0) as ExperienceGrade;
+          counts[val]++;
+          counts[GyeongHyeonChi.UNVISITED]--;
         });
 
         return counts;
@@ -241,6 +250,29 @@ export const useMapExpStore = create<MapExpStore>()(
         regions: state.regions,
         settings: state.settings,
       }),
+      // Migration logic: on rehydrate, if level exists but gyeonghyeonchi doesn't, copy it
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          let hasChanges = false;
+          const migratedRegions = state.regions.map(r => {
+             if (r.gyeonghyeonchi === undefined && r.level !== undefined) {
+               hasChanges = true;
+               return { ...r, gyeonghyeonchi: r.level as ExperienceGrade };
+             }
+             return r;
+          });
+          
+          if (hasChanges) {
+             state.regions = migratedRegions;
+             // We can't easily force an update here without a setter, but state mutation works in zustand rehydrate callback often or we'd need a migration action. 
+             // Actually zustand persist doesn't always support direct mutation here.
+             // Better: use 'migrate' option in persist, but that requires versioning.
+             // Simple fallback: The getters I wrote above handle `gyeonghyeonchi ?? level`. 
+             // So explicit migration isn't strictly necessary for READ, but good for WRITE.
+             // I will leave this empty and rely on dual-read for now to be safe, or just mutation.
+          }
+        }
+      }
     },
   ),
 );

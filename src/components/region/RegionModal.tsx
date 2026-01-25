@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useMapExpStore } from '@/store'
 import { getRegionMetadata } from '@/data/regions'
-import { ExpLevel, Visit } from '@/types'
+import { ExpLevel, Visit, GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_LEVEL_LABELS } from '@/types/region'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
@@ -29,8 +29,8 @@ export default function RegionModal({
   const regionInfo = getRegionMetadata(regionId)
   const existingRegion = getRegionById(regionId)
 
-  const [level, setLevel] = useState<ExpLevel>(
-    existingRegion?.level ?? ExpLevel.UNVISITED
+  const [level, setLevel] = useState<ExperienceGrade>(
+    existingRegion?.gyeonghyeonchi ?? (existingRegion?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
   )
   const [visitDate, setVisitDate] = useState(existingRegion?.visitDate ?? '')
   const [memo, setMemo] = useState(existingRegion?.memo ?? '')
@@ -46,7 +46,7 @@ export default function RegionModal({
   useEffect(() => {
     if (isOpen && regionId) {
       const existing = getRegionById(regionId)
-      setLevel(existing?.level ?? ExpLevel.UNVISITED)
+      setLevel(existing?.gyeonghyeonchi ?? (existing?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED)
       setVisitDate(existing?.visitDate ?? '')
       setMemo(existing?.memo ?? '')
       setVisitCount(existing?.visitCount?.toString() ?? '')
@@ -67,7 +67,8 @@ export default function RegionModal({
     // 저장
     const regionData = {
       regionId,
-      level,
+      gyeonghyeonchi: level,
+      level, // 호환성 유지
       memo: memo.trim() || undefined,
       visitDate: visitDate || undefined,
       visitCount: visitCount ? parseInt(visitCount) : undefined,
@@ -96,12 +97,12 @@ export default function RegionModal({
   }
 
   const levelDescriptions = {
-    [ExpLevel.UNVISITED]: '미경현 (스친 적도 없다) - 0점',
-    [ExpLevel.PASSED]: '통과했다 (철도/차 통과, 배 기항. 항공기 제외) - 1점',
-    [ExpLevel.LANDED]: '내렸다 (환승이나 휴게소 휴식 등) - 2점',
-    [ExpLevel.VISITED]: '걸었다 (묵었던 적은 없다) - 3점',
-    [ExpLevel.STAYED]: '묵었다 (야간 통과는 제외) - 4점',
-    [ExpLevel.RESIDED]: '살았다 (3개월 정도의 장기 체류 포함) - 5점',
+    [GyeongHyeonChi.UNVISITED]: '미경현 (스친 적도 없다) - 0점',
+    [GyeongHyeonChi.PASSED]: '통과했다 (철도/차 통과, 배 기항. 항공기 제외) - 1점',
+    [GyeongHyeonChi.LANDED]: '내렸다 (환승이나 휴게소 휴식 등) - 2점',
+    [GyeongHyeonChi.VISITED]: '걸었다 (묵었던 적은 없다) - 3점',
+    [GyeongHyeonChi.STAYED]: '묵었다 (야간 통과는 제외) - 4점',
+    [GyeongHyeonChi.RESIDED]: '살았다 (3개월 정도의 장기 체류 포함) - 5점',
   }
 
   return (
@@ -113,7 +114,7 @@ export default function RegionModal({
       footer={
         <div className="flex justify-between">
           <div>
-            {existingRegion && level > ExpLevel.UNVISITED && (
+            {existingRegion && level > GyeongHyeonChi.UNVISITED && (
               <Button variant="danger" onClick={handleDelete}>
                 삭제
               </Button>
@@ -140,7 +141,7 @@ export default function RegionModal({
             {Object.values(ExpLevel)
               .filter((v) => typeof v === 'number')
               .map((lv) => {
-                const lvNum = lv as ExpLevel
+                const lvNum = lv as ExperienceGrade
                 return (
                   <label
                     key={lvNum}
@@ -163,7 +164,7 @@ export default function RegionModal({
                         <span className="font-medium">
                           Lv.{lvNum} - {EXP_LEVEL_LABELS[lvNum]}
                         </span>
-                        {lvNum === ExpLevel.RESIDED && <span>👑</span>}
+                        {lvNum === GyeongHyeonChi.RESIDED && <span>👑</span>}
                       </div>
                       <p className="text-sm text-gray-600 mt-1">
                         {levelDescriptions[lvNum]}
@@ -176,7 +177,7 @@ export default function RegionModal({
         </div>
 
         {/* 레벨 5 설명 */}
-        {level === ExpLevel.RESIDED && (
+        {level === GyeongHyeonChi.RESIDED && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-sm font-medium text-yellow-800 mb-1">
               거주 (居住) - 5점 최고 등급

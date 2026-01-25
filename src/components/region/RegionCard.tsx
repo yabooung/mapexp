@@ -1,6 +1,6 @@
 'use client'
 
-import { RegionExp, RegionMetadata, ExpLevel, EXP_LEVEL_LABELS } from '@/types'
+import { RegionExp, RegionMetadata, GyeongHyeonChi, EXP_LEVEL_LABELS, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
 import Card from '@/components/common/Card'
 
@@ -18,15 +18,15 @@ export default function RegionCard({
   regionExp,
   onClick,
 }: RegionCardProps) {
-  const level = regionExp?.level ?? ExpLevel.UNVISITED
-  const backgroundColor = EXP_COLORS[level]
-  const levelLabel = EXP_LEVEL_LABELS[level]
+  const gyeonghyeonchi = (regionExp?.gyeonghyeonchi ?? regionExp?.level ?? GyeongHyeonChi.UNVISITED) as ExperienceGrade
+  const backgroundColor = EXP_COLORS[gyeonghyeonchi]
+  const levelLabel = EXP_LEVEL_LABELS[gyeonghyeonchi]
 
   // 레벨 5는 왕관 표시
-  const isResided = level === ExpLevel.RESIDED
+  const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
 
   // 텍스트 색상 (배경이 밝으면 검정, 어두우면 흰색)
-  const textColor = level >= ExpLevel.VISITED ? 'text-white' : 'text-gray-900'
+  const textColor = gyeonghyeonchi >= GyeongHyeonChi.VISITED ? 'text-white' : 'text-gray-900'
 
   return (
     <Card
@@ -62,9 +62,9 @@ export default function RegionCard({
         <span className={`text-xs font-medium ${textColor} opacity-90`}>
           {levelLabel}
         </span>
-        {level > ExpLevel.UNVISITED && (
+        {gyeonghyeonchi > GyeongHyeonChi.UNVISITED && (
           <span className={`text-xs ${textColor} opacity-75`}>
-            Lv.{level}
+            경현치: {gyeonghyeonchi}
           </span>
         )}
       </div>
