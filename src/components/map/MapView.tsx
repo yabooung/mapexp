@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet'
+import { MapContainer, TileLayer, GeoJSON, Marker } from 'react-leaflet'
 import { feature } from 'topojson-client'
+import { geoCentroid } from 'd3-geo'
+import L from 'leaflet'
 import { useMapExpStore } from '@/store'
-import { ExpLevel } from '@/types'
+import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
-import type { GeoJsonObject, Feature } from 'geojson'
+import type { GeoJsonObject, Feature, FeatureCollection } from 'geojson'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import type { Topology } from 'topojson-specification'
 
@@ -14,7 +16,13 @@ interface MapViewProps {
   onRegionClick: (regionId: string) => void
 }
 
-// 지역 ID 매핑 (TopoJSON 속성 → regions.ts ID)
+interface RegionLabel {
+  id: string
+  name: string
+  position: [number, number] // [lat, lng]
+}
+
+// 지역 ID 매핑
 const REGION_ID_MAP: Record<string, Record<string, string>> = {
   japan: {
     '北海道': 'hokkaido',
@@ -88,13 +96,12 @@ const REGION_ID_MAP: Record<string, Record<string, string>> = {
   },
 }
 
-/**
- * Leaflet 지도 뷰 컴포넌트 (TopoJSON 사용)
- */
 export default function MapView({ onRegionClick }: MapViewProps) {
   const { country, getRegionById, addRegion, updateRegion, settings, updateSettings } = useMapExpStore()
   const [geoData, setGeoData] = useState<GeoJsonObject | null>(null)
+  const [regionLabels, setRegionLabels] = useState<RegionLabel[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showTiles, setShowTiles] = useState(true) // 기본값: 타일 표시
 
   // GeoJSON/TopoJSON 데이터 로드
   useEffect(() => {
@@ -105,11 +112,9 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         let isTopoJSON: boolean
 
         if (country === 'japan') {
-          // 로컬 GeoJSON (dataofjapan/land)
           url = '/geojson/japan-prefectures.json'
           isTopoJSON = false
         } else {
-          // 로컬 TopoJSON (southkorea-maps)
           url = '/geojson/korea-provinces.json'
           isTopoJSON = true
         }
@@ -117,34 +122,27 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         const response = await fetch(url)
         if (!response.ok) throw new Error('Failed to load map data')
 
-        let geoJson: GeoJsonObject
+        let geoJson: any
 
         if (isTopoJSON) {
-          // TopoJSON → GeoJSON 변환 (한국)
           const topoData = (await response.json()) as Topology
           const objectName = 'skorea-provinces-2018-topo'
           const objects = topoData.objects[objectName]
-
-          if (!objects) {
-            console.error('Available objects:', Object.keys(topoData.objects))
-            throw new Error(`Object '${objectName}' not found in TopoJSON`)
-          }
-
+          if (!objects) throw new Error(`Object '${objectName}' not found`)
           geoJson = feature(topoData, objects) as GeoJsonObject
         } else {
-          // 이미 GeoJSON (일본)
           geoJson = await response.json()
         }
 
-        // 지역 ID 매핑
+        // 라벨 생성
+        const labels: RegionLabel[] = []
         if (geoJson.type === 'FeatureCollection') {
-          geoJson.features.forEach((feat) => {
-            // 일본: nam_ja, 한국: NAME_1 또는 name_ko
+          const collection = geoJson as FeatureCollection
+          collection.features.forEach((feat: any) => {
             const nameJa = feat.properties?.nam_ja || feat.properties?.name_ja
             const nameKo = feat.properties?.name_ko || feat.properties?.NAME_1 || feat.properties?.name
             const originalName = country === 'japan' ? nameJa : nameKo
 
-            // ID 매핑
             const mappedId = REGION_ID_MAP[country][originalName]
             if (mappedId) {
               feat.properties = {
@@ -153,12 +151,18 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                 name_ko: country === 'japan' ? feat.properties?.nam_ja : nameKo,
                 name: originalName,
               }
-            } else {
-              console.warn(`No mapping for: ${originalName}`)
+              
+              const centroid = geoCentroid(feat)
+              labels.push({
+                id: mappedId,
+                name: country === 'japan' ? feat.properties?.nam_ja : nameKo,
+                position: [centroid[1], centroid[0]],
+              })
             }
           })
         }
 
+        setRegionLabels(labels)
         setGeoData(geoJson)
       } catch (error) {
         console.error('Error loading TopoJSON:', error)
@@ -171,91 +175,74 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     loadGeoData()
   }, [country])
 
-  // 지역 스타일 결정 (개선된 시각화)
+  // 지역 스타일
   const getRegionStyle = (feature?: Feature): PathOptions => {
-    if (!feature?.properties?.id) {
-      return {
-        fillColor: EXP_COLORS[ExpLevel.UNVISITED],
-        fillOpacity: 0.6,
-        color: '#999',
-        weight: 0.5,
-      }
-    }
+    if (!feature?.properties?.id) return { fillOpacity: 0, opacity: 0 }
 
     const regionId = feature.properties.id as string
     const regionExp = getRegionById(regionId)
-    const level = regionExp?.level ?? ExpLevel.UNVISITED
-    const isResided = level === ExpLevel.RESIDED
+    const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+    const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
+
+    if (gyeonghyeonchi === GyeongHyeonChi.UNVISITED) {
+        return {
+            fillColor: showTiles ? 'transparent' : '#ffffff', 
+            fillOpacity: showTiles ? 0 : 1.0,
+            color: '#999',
+            weight: 0.5,
+            dashArray: '3',
+        }
+    }
 
     return {
-      fillColor: EXP_COLORS[level],
-      fillOpacity: level === ExpLevel.UNVISITED ? 0.3 : 0.7,
-      color: isResided ? '#FFD700' : level === ExpLevel.UNVISITED ? '#ccc' : '#fff',
-      weight: isResided ? 2.5 : level === ExpLevel.UNVISITED ? 0.5 : 1.5,
+      fillColor: EXP_COLORS[gyeonghyeonchi],
+      fillOpacity: gyeonghyeonchi === GyeongHyeonChi.UNVISITED ? 0.3 : 0.7,
+      color: isResided ? '#FFD700' : '#fff',
+      weight: isResided ? 2.5 : 1,
     }
   }
 
-  // 각 지역 레이어에 이벤트 추가
   const onEachFeature = (feature: Feature, layer: Layer) => {
     if (!feature.properties?.id) return
 
     const regionId = feature.properties.id as string
     const regionName = feature.properties.name_ko || feature.properties.name
     const regionExp = getRegionById(regionId)
-    const level = regionExp?.level ?? ExpLevel.UNVISITED
+    const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
 
-    // 툴팁 내용 (레벨 정보 포함)
-    const levelLabels = ['미답', '통과', '접지', '방문', '숙박', '거주 👑']
+    const levelLabels = ['미답 (0)', '통과 (1)', '접지 (2)', '방문 (3)', '숙박 (4)', '거주 (5)']
     const tooltipContent = `
       <div style="text-align: center;">
         <div style="font-weight: bold; font-size: 14px;">${regionName}</div>
         <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">
-          ${levelLabels[level]} (Lv.${level})
+          경현치: ${levelLabels[gyeonghyeonchi]}
         </div>
       </div>
     `
 
-    // 호버 시 툴팁
     layer.bindTooltip(tooltipContent, {
       permanent: false,
       direction: 'top',
       className: 'region-tooltip',
     })
 
-    // 클릭 이벤트 핸들러
     const handleClick = (e: LeafletMouseEvent) => {
       e.originalEvent.preventDefault()
-
-      // Shift 키를 누르고 클릭하면 모달 열기 (세부 설정)
       if (e.originalEvent.shiftKey) {
         onRegionClick(regionId)
         return
       }
 
-      // 최신 상태 가져오기 (Closure 문제 해결)
       const currentExp = useMapExpStore.getState().getRegionById(regionId)
-      const currentLevel = currentExp?.level ?? ExpLevel.UNVISITED
-      let nextLevel: ExpLevel
+      const currentVal = currentExp?.gyeonghyeonchi ?? (currentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+      let nextVal = (currentVal >= GyeongHyeonChi.RESIDED ? GyeongHyeonChi.UNVISITED : currentVal + 1) as ExperienceGrade
 
-      // 0-5 순환 (거주가 최고 레벨)
-      if (currentLevel >= ExpLevel.RESIDED) {
-        nextLevel = ExpLevel.UNVISITED
-      } else {
-        nextLevel = (currentLevel + 1) as ExpLevel
-      }
-
-      // 레벨 업데이트
       if (currentExp) {
-        updateRegion(regionId, { level: nextLevel })
+        updateRegion(regionId, { gyeonghyeonchi: nextVal })
       } else {
-        addRegion({
-          regionId,
-          level: nextLevel,
-          updatedAt: new Date().toISOString(),
-        })
+        addRegion({ regionId, gyeonghyeonchi: nextVal, updatedAt: new Date().toISOString() })
       }
 
-      // 스타일 즉시 업데이트를 위해 강제 리렌더링
       setTimeout(() => {
         const target = e.target
         const newStyle = getRegionStyle(feature)
@@ -263,16 +250,11 @@ export default function MapView({ onRegionClick }: MapViewProps) {
       }, 50)
     }
 
-    // 클릭 이벤트
     layer.on({
       click: handleClick,
       mouseover: (e: LeafletMouseEvent) => {
         const target = e.target
-        target.setStyle({
-          weight: 3,
-          color: '#000',
-          fillOpacity: 0.9,
-        })
+        target.setStyle({ weight: 3, color: '#000', fillOpacity: 0.9 })
         target.bringToFront()
       },
       mouseout: (e: LeafletMouseEvent) => {
@@ -283,134 +265,106 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     })
   }
 
-  // 지도 중심, 줌, 경계 설정
   const mapCenter = country === 'japan' ? [36.5, 138.0] : [36.5, 127.5]
   const mapZoom = country === 'japan' ? 5 : 7
-
-  // 지도 이동 범위 제한 (maxBounds)
   const mapBounds = country === 'japan'
-    ? [
-        [24.0, 122.0],  // 남서쪽 (오키나와 남쪽)
-        [46.0, 148.0],  // 북동쪽 (홋카이도 북동쪽)
-      ]
-    : [
-        [33.0, 124.0],  // 남서쪽 (제주 남쪽)
-        [39.0, 132.0],  // 북동쪽 (강원도 북동쪽)
-      ]
+    ? [[24.0, 122.0], [46.0, 148.0]]
+    : [[33.0, 124.0], [39.0, 132.0]]
 
-  if (isLoading) {
+  if (isLoading || !geoData) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">지도 로딩 중...</p>
-          <p className="text-xs text-gray-500 mt-2">
-            {country === 'japan' ? '47개 도도부현' : '17개 시도'} 경계 데이터 불러오는 중
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!geoData) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-        <div className="text-center">
-          <p className="text-red-600 font-medium">지도 데이터를 불러올 수 없습니다</p>
-          <p className="text-sm text-gray-600 mt-2">네트워크 연결을 확인해주세요</p>
-        </div>
+        <div className="text-center">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="w-full h-full rounded-lg overflow-hidden shadow-lg">
+    <div className="w-full h-full rounded-lg overflow-hidden shadow-lg relative bg-white">
       <MapContainer
-        key={settings.mapMode} // 모드 변경 시 맵 인스턴스 재생성 (옵션 적용을 위해)
+        key={`${country}-${settings.mapMode}`}
         center={mapCenter as [number, number]}
         zoom={mapZoom}
         minZoom={country === 'japan' ? 4 : 6}
         maxZoom={18}
         maxBounds={mapBounds as [[number, number], [number, number]]}
         maxBoundsViscosity={1.0}
-        style={{ width: '100%', height: '100%', minHeight: '600px' }}
+        style={{ 
+            width: '100%', 
+            height: '100%', 
+            minHeight: '600px',
+            backgroundColor: '#aad3df'
+        }}
         className="z-0"
-        scrollWheelZoom={settings.mapMode === 'standard'}
-        dragging={settings.mapMode === 'standard'}
-        doubleClickZoom={settings.mapMode === 'standard'}
-        touchZoom={settings.mapMode === 'standard'}
-        zoomControl={settings.mapMode === 'standard'}
+        scrollWheelZoom={true}
+        dragging={true}
+        doubleClickZoom={true}
+        touchZoom={true}
       >
-        {settings.mapMode === 'standard' && (
+        {showTiles && (
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
           />
         )}
-
-        {geoData && (
-          <GeoJSON
-            key={country}
-            data={geoData}
-            style={getRegionStyle}
-            onEachFeature={onEachFeature}
+        
+        <GeoJSON
+          key={`${country}-${showTiles}`} // force styling update
+          data={geoData}
+          style={getRegionStyle}
+          onEachFeature={onEachFeature}
+        />
+        
+        {regionLabels.map((label) => (
+          <Marker
+            key={label.id}
+            position={label.position}
+            icon={L.divIcon({
+              className: 'custom-map-label',
+              html: `<div style="
+                text-align: center; 
+                font-size: 10px; 
+                font-weight: 600; 
+                color: #333; 
+                text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+                white-space: nowrap;
+                transform: translate(-50%, -50%);
+                pointer-events: none;
+              ">${label.name}</div>`,
+              iconSize: [0, 0],
+              iconAnchor: [0, 0]
+            })}
           />
-        )}
+        ))}
       </MapContainer>
 
-      {/* 범례 & 조작 가이드 & 모드 전환 */}
-      <div className={`absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs z-1000 max-w-[200px] transition-opacity duration-300 ${settings.mapMode === 'simple' ? 'opacity-80 hover:opacity-100' : 'opacity-100'}`}>
-        {/* 모드 전환 버튼 */}
-        <button
-          onClick={() =>
-            updateSettings({
-              mapMode: settings.mapMode === 'standard' ? 'simple' : 'standard',
-            })
-          }
-          className="w-full mb-3 py-1.5 px-2 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 text-gray-700 font-medium flex items-center justify-center gap-2 transition-colors"
-        >
-          {settings.mapMode === 'standard' ? (
-            <>
-              <span>⬜</span> 심플 모드
-            </>
-          ) : (
-            <>
-              <span>🗺️</span> 상세 모드
-            </>
-          )}
-        </button>
+      {/* Controls */}
+      <div className={`absolute bottom-4 right-4 bg-white/90 backdrop-blur rounded-lg shadow-lg p-3 text-xs z-[1000] max-w-[200px]`}>
+        <div className="flex flex-col gap-2 mb-3">
+            <button
+              onClick={() => setShowTiles(!showTiles)}
+              className={`w-full py-1.5 px-2 rounded border font-medium flex items-center justify-center gap-2 transition-colors ${
+                  showTiles 
+                  ? 'bg-blue-50 border-blue-300 text-blue-700' 
+                  : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+               <span>{showTiles ? '🗺️' : '🚫'}</span> 
+               {showTiles ? 'Hide Geography' : 'Show Geography'}
+            </button>
+        </div>
 
-        <div className="font-semibold mb-2">경험치 레벨 (경현도)</div>
-        {[
-          { level: 0, label: '미답 (0)', color: EXP_COLORS[0] },
-          { level: 1, label: '통과 (1)', color: EXP_COLORS[1] },
-          { level: 2, label: '접지 (2)', color: EXP_COLORS[2] },
-          { level: 3, label: '방문 (3)', color: EXP_COLORS[3] },
-          { level: 4, label: '숙박 (4)', color: EXP_COLORS[4] },
-          { level: 5, label: '거주/마스터 (5)', color: EXP_COLORS[5] },
-        ].map((item) => (
-          <div key={item.level} className="flex items-center gap-2 mt-1">
-            <div
-              className="w-4 h-4 rounded border border-gray-300 shrink-0"
-              style={{ backgroundColor: item.color }}
-            />
-            <span className="text-[11px]">{item.label}</span>
+        <div className="font-semibold mb-2">경현치 (경험치 등급)</div>
+        {[0, 1, 2, 3, 4, 5].map((lvl) => (
+          <div key={lvl} className="flex items-center gap-2 mt-1">
+             <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: EXP_COLORS[lvl as ExperienceGrade] }} />
+             <span>{lvl}</span>
           </div>
         ))}
-
-        {/* 구분선 */}
+        
         <div className="border-t border-gray-200 my-2"></div>
-
-        {/* 조작 가이드 */}
-        <div className="text-[10px] text-gray-600 space-y-1">
-          <div className="flex items-start gap-1">
-            <span className="font-medium text-blue-600">클릭:</span>
-            <span>레벨 순환 (0-4)</span>
-          </div>
-          <div className="flex items-start gap-1">
-            <span className="font-medium text-purple-600">Shift+클릭:</span>
-            <span>상세 설정</span>
-          </div>
+        <div className="text-[10px] text-gray-600">
+            {showTiles ? 'Standard View' : 'Isolated View (Background)'}
         </div>
       </div>
     </div>

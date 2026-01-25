@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useMapExpStore } from '@/store'
 import { getRegionsByCountry } from '@/data/regions'
-import { ExpLevel } from '@/types'
+import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import RegionCard from './RegionCard'
 
 interface RegionListProps {
@@ -44,9 +44,9 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
         // 레벨순 (높은 순)
         const aExp = getRegionById(a.id)
         const bExp = getRegionById(b.id)
-        const aLevel = aExp?.level ?? 0
-        const bLevel = bExp?.level ?? 0
-        return bLevel - aLevel
+        const aVal = aExp?.gyeonghyeonchi ?? aExp?.level ?? 0
+        const bVal = bExp?.gyeonghyeonchi ?? bExp?.level ?? 0
+        return bVal - aVal
       }
     })
 
@@ -62,25 +62,25 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
     }
 
     const regionExp = getRegionById(regionId)
-    const currentLevel = regionExp?.level ?? ExpLevel.UNVISITED
-    let nextLevel: ExpLevel
+    const currentVal = regionExp?.gyeonghyeonchi ?? regionExp?.level ?? GyeongHyeonChi.UNVISITED
+    let nextVal: ExperienceGrade
 
     // 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 0
-    if (currentLevel >= ExpLevel.RESIDED) {
-      nextLevel = ExpLevel.UNVISITED
+    if (currentVal >= GyeongHyeonChi.RESIDED) {
+      nextVal = GyeongHyeonChi.UNVISITED
     } else {
-      nextLevel = (currentLevel + 1) as ExpLevel
+      nextVal = (currentVal + 1) as ExperienceGrade
     }
 
     // 레벨 업데이트 (단순 변경시는 날짜/메모 유지)
     if (regionExp) {
       const { updateRegion } = useMapExpStore.getState()
-      updateRegion(regionId, { level: nextLevel })
+      updateRegion(regionId, { gyeonghyeonchi: nextVal })
     } else {
       const { addRegion } = useMapExpStore.getState()
       addRegion({
         regionId,
-        level: nextLevel,
+        gyeonghyeonchi: nextVal,
         updatedAt: new Date().toISOString(),
       })
     }

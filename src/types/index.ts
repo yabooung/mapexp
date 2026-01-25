@@ -1,4 +1,4 @@
-import { ExpLevel, RegionExp, RegionMetadata } from './region'
+import { GyeongHyeonChi, RegionExp, RegionMetadata, ExperienceGrade } from './region'
 
 export * from './region'
 
@@ -48,8 +48,8 @@ export interface StatsData {
   totalRegions: number // 전체 지역 수
   visitedCount: number // 방문한 지역 수 (레벨 1 이상)
   completionRate: number // 완성률 (%)
-  totalExp: number // 총 경험치
-  levelCounts: Record<ExpLevel, number> // 레벨별 카운트
+  totalGyeonghyeonchi: number // 총 경험치 (구 totalExp)
+  gyeonghyeonchiCounts: Record<ExperienceGrade, number> // 경현치별 카운트
   lastUpdated: string // 마지막 업데이트
 }
 
@@ -58,8 +58,8 @@ export interface StatsData {
  */
 export interface RegionFilter {
   country?: 'japan' | 'korea'
-  minLevel?: ExpLevel
-  maxLevel?: ExpLevel
+  minGyeonghyeonchi?: ExperienceGrade
+  maxGyeonghyeonchi?: ExperienceGrade
   searchText?: string
   hasVisitDate?: boolean
 }

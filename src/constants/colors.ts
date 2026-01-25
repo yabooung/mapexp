@@ -6,11 +6,11 @@ import { ExpLevel } from '@/types/region'
  */
 export const EXP_COLORS: Record<ExpLevel, string> = {
   [ExpLevel.UNVISITED]: '#E5E5E5', // 회색
-  [ExpLevel.PASSED]: '#FEF3C7', // 연노랑
-  [ExpLevel.LANDED]: '#FCD34D', // 노랑
-  [ExpLevel.VISITED]: '#F59E0B', // 주황
-  [ExpLevel.STAYED]: '#DC2626', // 빨강
-  [ExpLevel.RESIDED]: '#FFD700', // 금색
+  [ExpLevel.PASSED]: '#00FFFF', // 씨얀
+  [ExpLevel.LANDED]: '#00FF00', // 초록
+  [ExpLevel.VISITED]: '#FFFF00', // 노랑
+  [ExpLevel.STAYED]: '#FF0000', // 빨강
+  [ExpLevel.RESIDED]: '#FF00FF', // 금색
 }
 
 /**
