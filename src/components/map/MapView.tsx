@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, GeoJSON, Marker } from 'react-leaflet'
+import { useEffect, useState, useRef } from 'react'
+import { MapContainer, TileLayer, GeoJSON, Marker, useMap } from 'react-leaflet'
 import { feature } from 'topojson-client'
 import { geoCentroid } from 'd3-geo'
 import L from 'leaflet'
@@ -21,6 +21,8 @@ interface RegionLabel {
   name: string
   position: [number, number] // [lat, lng]
 }
+
+type LabelMode = 'custom' | 'native' | 'none'
 
 // 지역 ID 매핑
 const REGION_ID_MAP: Record<string, Record<string, string>> = {
@@ -94,14 +96,54 @@ const REGION_ID_MAP: Record<string, Record<string, string>> = {
     '경상남도': 'gyeongnam',
     '제주특별자치도': 'jeju',
   },
+
+}
+
+const BoundaryTileLayer = ({ url, boundary, attribution }: { url: string, boundary: GeoJsonObject, attribution?: string }) => {
+  const map = useMap()
+  const layerRef = useRef<L.Layer | null>(null)
+
+  useEffect(() => {
+    if (!boundary) return
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('leaflet-boundary-canvas')
+    } catch (e) {
+      console.error("Failed to load leaflet-boundary-canvas", e)
+      return
+    }
+    
+    const TileLayerAny = L.TileLayer as any
+    if (TileLayerAny.BoundaryCanvas) {
+        const layer = TileLayerAny.BoundaryCanvas.createFromLayer(
+            L.tileLayer(url, { attribution }),
+            { boundary, trackAttribution: true }
+        )
+        
+        layer.addTo(map)
+        layerRef.current = layer
+    }
+    
+    return () => {
+      if (layerRef.current) {
+        map.removeLayer(layerRef.current)
+        layerRef.current = null
+      }
+    }
+  }, [map, url, boundary, attribution])
+  
+  return null
 }
 
 export default function MapView({ onRegionClick }: MapViewProps) {
-  const { country, getRegionById, addRegion, updateRegion, settings, updateSettings } = useMapExpStore()
+  const { country, getRegionById, addRegion, updateRegion, settings } = useMapExpStore()
   const [geoData, setGeoData] = useState<GeoJsonObject | null>(null)
+  const [boundary, setBoundary] = useState<GeoJsonObject | null>(null)
   const [regionLabels, setRegionLabels] = useState<RegionLabel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showTiles, setShowTiles] = useState(true) // 기본값: 타일 표시
+  const [labelMode, setLabelMode] = useState<LabelMode>('custom') // 기본값: 커스텀 라벨
 
   // GeoJSON/TopoJSON 데이터 로드
   useEffect(() => {
@@ -134,10 +176,23 @@ export default function MapView({ onRegionClick }: MapViewProps) {
           geoJson = await response.json()
         }
 
-        // 라벨 생성
+        // 라벨 생성 & 지역 필터링
         const labels: RegionLabel[] = []
         if (geoJson.type === 'FeatureCollection') {
           const collection = geoJson as FeatureCollection
+          /* [영토 범위 수정 방법] collection.features.filter(...) */
+
+
+          // 일본일 경우 전체 경계 생성 (BoundaryCanvas용)
+          if (country === 'japan') {
+              // turf.dissolve might be failing or slow. 
+              // leaflet-boundary-canvas supports FeatureCollection directly.
+              console.log("Setting boundary from collection directly...")
+              setBoundary(collection)
+          } else {
+              setBoundary(null)
+          }
+          
           collection.features.forEach((feat: any) => {
             const nameJa = feat.properties?.nam_ja || feat.properties?.name_ja
             const nameKo = feat.properties?.name_ko || feat.properties?.NAME_1 || feat.properties?.name
@@ -235,7 +290,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
 
       const currentExp = useMapExpStore.getState().getRegionById(regionId)
       const currentVal = currentExp?.gyeonghyeonchi ?? (currentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
-      let nextVal = (currentVal >= GyeongHyeonChi.RESIDED ? GyeongHyeonChi.UNVISITED : currentVal + 1) as ExperienceGrade
+      const nextVal = (currentVal >= GyeongHyeonChi.RESIDED ? GyeongHyeonChi.UNVISITED : currentVal + 1) as ExperienceGrade
 
       if (currentExp) {
         updateRegion(regionId, { gyeonghyeonchi: nextVal })
@@ -265,11 +320,24 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     })
   }
 
+  // 라벨 모드 전환 핸들러
+  const cycleLabelMode = () => {
+      if (labelMode === 'custom') {
+          setLabelMode('native')
+          setShowTiles(true) // Native 라벨은 타일에 있으므로 타일 강제 활성화
+      } else if (labelMode === 'native') {
+          setLabelMode('none')
+      } else {
+          setLabelMode('custom')
+      }
+  }
+
   const mapCenter = country === 'japan' ? [36.5, 138.0] : [36.5, 127.5]
   const mapZoom = country === 'japan' ? 5 : 7
+  
   const mapBounds = country === 'japan'
-    ? [[24.0, 122.0], [46.0, 148.0]]
-    : [[33.0, 124.0], [39.0, 132.0]]
+    ? [[15.0, 110.0], [55.0, 160.0]]
+    : [[30.0, 120.0], [43.0, 135.0]]
 
   if (isLoading || !geoData) {
     return (
@@ -285,10 +353,10 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         key={`${country}-${settings.mapMode}`}
         center={mapCenter as [number, number]}
         zoom={mapZoom}
-        minZoom={country === 'japan' ? 4 : 6}
+        minZoom={country === 'japan' ? 3 : 5}
         maxZoom={18}
         maxBounds={mapBounds as [[number, number], [number, number]]}
-        maxBoundsViscosity={1.0}
+        maxBoundsViscosity={0.5} 
         style={{ 
             width: '100%', 
             height: '100%', 
@@ -302,20 +370,38 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         touchZoom={true}
       >
         {showTiles && (
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
-          />
+          country === 'japan' && boundary ? (
+              <BoundaryTileLayer
+                boundary={boundary}
+                attribution='&copy; CARTO'
+                url={
+                    labelMode === 'native'
+                    ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
+                }
+              />
+          ) : (
+              <TileLayer
+                attribution='&copy; CARTO'
+                // 'native' 모드일 때는 라벨 있는 버전(voyager), 그 외는 라벨 없는 버전(voyager_nolabels)
+                url={
+                    labelMode === 'native'
+                    ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
+                }
+              />
+          )
         )}
         
         <GeoJSON
-          key={`${country}-${showTiles}`} // force styling update
+          key={`${country}-${showTiles}-${labelMode}`} 
           data={geoData}
           style={getRegionStyle}
           onEachFeature={onEachFeature}
         />
         
-        {regionLabels.map((label) => (
+        {/* Custom Labels: Only show if mode is 'custom' */}
+        {labelMode === 'custom' && regionLabels.map((label) => (
           <Marker
             key={label.id}
             position={label.position}
@@ -342,14 +428,40 @@ export default function MapView({ onRegionClick }: MapViewProps) {
       <div className={`absolute bottom-4 right-4 bg-white/90 backdrop-blur rounded-lg shadow-lg p-3 text-xs z-[1000] max-w-[200px]`}>
         <div className="flex flex-col gap-2 mb-3">
             <button
-              onClick={() => setShowTiles(!showTiles)}
+              onClick={cycleLabelMode}
+              className={`w-full py-1.5 px-2 rounded border font-medium flex items-center justify-center gap-2 transition-colors ${
+                  labelMode !== 'none'
+                  ? 'bg-blue-50 border-blue-300 text-blue-700' 
+                  : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+               <span>
+                 {labelMode === 'custom' ? '🏷️' : labelMode === 'native' ? '🗺️' : '🚫'}
+               </span> 
+               {labelMode === 'custom' ? 'Label: Custom' : labelMode === 'native' ? 'Label: Native' : 'Label: None'}
+            </button>
+
+            <button
+              onClick={() => {
+                  if (!showTiles && labelMode === 'native') {
+                      // 타일을 켰는데 네이티브 모드라면 유지
+                      setShowTiles(true)
+                  } else if (showTiles && labelMode === 'native') {
+                      // 타일을 끄면 네이티브 라벨도 안보이므로 커스텀이나 non으로 바꿔야 좋겠지만, 일단 타일만 끔
+                      // 사용자 경험상 "Isolate"시에는 Custom을 보여주는게 나을수도.
+                      // 여기서는 단순 타일 토글만 함.
+                      setShowTiles(false)
+                  } else {
+                      setShowTiles(!showTiles)
+                  }
+              }}
               className={`w-full py-1.5 px-2 rounded border font-medium flex items-center justify-center gap-2 transition-colors ${
                   showTiles 
                   ? 'bg-blue-50 border-blue-300 text-blue-700' 
                   : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
             >
-               <span>{showTiles ? '🗺️' : '🚫'}</span> 
+               <span>{showTiles ? '🌏' : '🚫'}</span> 
                {showTiles ? 'Hide Geography' : 'Show Geography'}
             </button>
         </div>
