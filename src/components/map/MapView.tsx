@@ -65,44 +65,76 @@ const BoundaryTileLayer = ({ url, boundary, attribution }: { url: string, bounda
 import { geoContains } from 'd3-geo'
 
 const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLevel: (level: 'prefecture' | 'municipality') => void, setViewPrefecture: (id: string | null) => void, baseGeoData: GeoJsonObject | null }) => {
+  const baseGeoDataRef = useRef(baseGeoData)
+  
+  useEffect(() => {
+      baseGeoDataRef.current = baseGeoData
+  }, [baseGeoData])
+
   const map = useMapEvents({
       zoomend: () => {
-          const z = map.getZoom()
-          if (z >= 9) {
-              setMapLevel('municipality')
-              
-              // Dynamic Detection: Find which prefecture is in the center
-              const center = map.getCenter()
-              const centerPoint = [center.lng, center.lat] // GeoJSON is [lng, lat]
-              
-              if (baseGeoData && (baseGeoData as any).features) {
-                  const features = (baseGeoData as any).features as Feature[]
-                  const found = features.find(f => {
-                       // Simple check or robust point-in-polygon
-                       // For performance, let's trust d3-geo's geoContains
-                       // Note: geoContains takes [lng, lat]
-                       try {
-                           return geoContains(f, centerPoint)
-                       } catch (e) {
-                           return false 
-                       }
-                  })
-                  
-                  if (found && found.properties?.id) {
-                      setViewPrefecture(found.properties.id)
-                  } else {
-                      // Fallback to Tokyo if center is unclear or off-map (e.g. ocean)
-                      // But maybe don't force it if we are far away?
-                      // For now, keep user behavior consistent.
-                      setViewPrefecture('tokyo') 
-                  }
-              }
-          } else {
-              setMapLevel('prefecture')
-              setViewPrefecture(null)
-          }
+          updateMapState()
+      },
+      moveend: () => {
+          updateMapState()
       }
   })
+
+  const updateMapState = () => {
+      const z = map.getZoom()
+      if (z >= 9) {
+          setMapLevel('municipality')
+          
+          // Dynamic Detection: Find which prefecture is in the center
+          const center = map.getCenter()
+          const centerPoint = [center.lng, center.lat] // GeoJSON is [lng, lat]
+          
+          const currentData = baseGeoDataRef.current
+          if (currentData && (currentData as any).features) {
+              const features = (currentData as any).features as Feature[]
+              const found = features.find(f => {
+                   // Simple check or robust point-in-polygon
+                   // For performance, let's trust d3-geo's geoContains
+                   // Note: geoContains takes [lng, lat]
+                   try {
+                       return geoContains(f, centerPoint)
+                   } catch (e) {
+                       return false 
+                   }
+              })
+              
+              if (found && found.properties?.id) {
+                  setViewPrefecture(found.properties.id)
+              } else {
+                  // Fallback: Find Closest Centroid
+                  // useful for bays, oceans, or complex borders where center is technically "outside"
+                  let minDist = Infinity
+                  let closestId = 'tokyo' // Default
+                  
+                  features.forEach(f => {
+                      if (f.properties?.id) {
+                         const centerLng = center.lng
+                         const centerLat = center.lat
+                         
+                         // Approx Centroid
+                         const centroid = geoCentroid(f) // [lng, lat]
+                         const dist = Math.sqrt(Math.pow(centroid[0] - centerLng, 2) + Math.pow(centroid[1] - centerLat, 2))
+                         
+                         if (dist < minDist) {
+                             minDist = dist
+                             closestId = f.properties.id
+                         }
+                      }
+                  })
+                  
+                  setViewPrefecture(closestId)
+              }
+          }
+      } else {
+          setMapLevel('prefecture')
+          setViewPrefecture(null)
+      }
+  }
   return null
 }
 
@@ -180,11 +212,31 @@ export default function MapView({ onRegionClick }: MapViewProps) {
              const url = '/geojson/japan-prefectures.json'
              const response = await fetch(url)
              const json = await response.json()
-             setBaseGeoData(json)
              
-             // Initialization for boundary
+             // Initialization for boundary & ID Injection (CRITICAL FOR ZOOM HANDLER)
              if (json.type === 'FeatureCollection') {
+                 const collection = json as FeatureCollection
+                 collection.features.forEach((feat: any) => {
+                    // Pre-calculate ID for robust detection
+                    const nameJa = feat.properties?.nam_ja || feat.properties?.name_ja
+                    const nameKo = feat.properties?.name_ko || feat.properties?.NAME_1 || feat.properties?.name
+                    const originalName = country === 'japan' ? nameJa : nameKo
+                    const mappedId = REGION_ID_MAP[country][originalName]
+                    
+                    if (mappedId) {
+                         feat.properties = { 
+                             ...feat.properties, 
+                             id: mappedId, 
+                             name_ko: country === 'japan' ? feat.properties?.nam_ja : nameKo, 
+                             name: originalName 
+                         }
+                    }
+                 })
+                 
+                 setBaseGeoData(json)
                  setBoundary(json as FeatureCollection)
+             } else {
+                 setBaseGeoData(json)
              }
         }
 
@@ -203,61 +255,57 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                     const json = await response.json()
                     setOverlayGeoData(json)
                     
-                    const labels: RegionLabel[] = []
-                    if (json.type === 'FeatureCollection') {
-                        const collection = json as FeatureCollection
-                        collection.features.forEach((feat: any) => {
-                            const muniName = feat.properties?.N03_004 || feat.properties?.name || feat.properties?.nam || 'Unknown'
-                            const prefName = feat.properties?.N03_001
-                            
-                            // Map Kanji Pref Name to English ID (e.g. 東京都 -> tokyo) to match Store IDs
-                            let parentId = prefName
-                            if (prefName && REGION_ID_MAP['japan'][prefName]) {
-                                parentId = REGION_ID_MAP['japan'][prefName]
-                            }
-                            const genId = `${parentId}_${muniName}`
-                            
-                            feat.properties = { ...feat.properties, id: genId, name: muniName, name_ko: muniName }
-                            
-                            let position: [number, number]
-                            if (LABEL_OVERRIDES[genId]) position = LABEL_OVERRIDES[genId]
-                            else {
-                                const centroid = geoCentroid(feat)
-                                position = [centroid[1], centroid[0]]
-                            }
-                            labels.push({ id: genId, name: muniName, position })
-                        })
-                    }
-                    setRegionLabels(labels)
-                 }
+                     const labels: RegionLabel[] = []
+                     if (json.type === 'FeatureCollection') {
+                         const collection = json as FeatureCollection
+                         collection.features.forEach((feat: any) => {
+                             const muniName = feat.properties?.N03_004 || feat.properties?.name || feat.properties?.nam || 'Unknown'
+                             const prefName = feat.properties?.N03_001
+                             
+                             // Map Kanji Pref Name to English ID (e.g. 東京都 -> tokyo) to match Store IDs
+                             let parentId = prefName
+                             if (prefName && REGION_ID_MAP['japan'][prefName]) {
+                                 parentId = REGION_ID_MAP['japan'][prefName]
+                             }
+                             const genId = `${parentId}_${muniName}`
+                             
+                             feat.properties = { ...feat.properties, id: genId, name: muniName, name_ko: muniName }
+                             
+                             let position: [number, number]
+                             if (LABEL_OVERRIDES[genId]) position = LABEL_OVERRIDES[genId]
+                             else {
+                                 const centroid = geoCentroid(feat)
+                                 position = [centroid[1], centroid[0]]
+                             }
+                             labels.push({ id: genId, name: muniName, position })
+                         })
+                     }
+                     setRegionLabels(labels)
+                  }
+              }
+         } else {
+             // Restore Base Labels (Prefectures)
+             // Data is ALREADY processed in Step 1, so we just build labels
+             if (baseGeoData && (baseGeoData as any).type === 'FeatureCollection') {
+                 setOverlayGeoData(null) // Clear overlay
+                 
+                 const labels: RegionLabel[] = []
+                 const collection = baseGeoData as FeatureCollection
+                 collection.features.forEach((feat: any) => {
+                     if (feat.properties?.id) {
+                          const id = feat.properties.id
+                          let position: [number, number]
+                          if (LABEL_OVERRIDES[id]) position = LABEL_OVERRIDES[id]
+                          else {
+                              const centroid = geoCentroid(feat)
+                              position = [centroid[1], centroid[0]]
+                          }
+                          labels.push({ id, name: feat.properties.name, position })
+                     }
+                 })
+                 setRegionLabels(labels)
              }
-        } else {
-            // Restore Base Labels (Prefectures)
-            if (baseGeoData && (baseGeoData as any).type === 'FeatureCollection') {
-                setOverlayGeoData(null) // Clear overlay
-                
-                const labels: RegionLabel[] = []
-                const collection = baseGeoData as FeatureCollection
-                collection.features.forEach((feat: any) => {
-                    const nameJa = feat.properties?.nam_ja || feat.properties?.name_ja
-                    const nameKo = feat.properties?.name_ko || feat.properties?.NAME_1 || feat.properties?.name
-                    const originalName = country === 'japan' ? nameJa : nameKo
-                    const mappedId = REGION_ID_MAP[country][originalName]
-                    
-                    if (mappedId) {
-                         feat.properties = { ...feat.properties, id: mappedId, name_ko: country === 'japan' ? feat.properties?.nam_ja : nameKo, name: originalName }
-                         let position: [number, number]
-                         if (LABEL_OVERRIDES[mappedId]) position = LABEL_OVERRIDES[mappedId]
-                         else {
-                             const centroid = geoCentroid(feat)
-                             position = [centroid[1], centroid[0]]
-                         }
-                         labels.push({ id: mappedId, name: country === 'japan' ? feat.properties?.nam_ja : nameKo, position })
-                    }
-                })
-                setRegionLabels(labels)
-            }
-        }
+         }
 
       } catch (error) {
         console.error('Error loading map data:', error)
@@ -301,7 +349,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
 
     return {
       fillColor: EXP_COLORS[gyeonghyeonchi],
-      fillOpacity: gyeonghyeonchi === GyeongHyeonChi.UNVISITED ? 0.3 : 0.7,
+      fillOpacity: 0.7,
       color: EXP_COLORS[gyeonghyeonchi], // 모든 레벨에 해당 색상 보더라인 적용
       weight: isResided ? 2.5 : 1.5, // 거주는 조금 더 두껍게
     }
@@ -367,6 +415,137 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         const style = getRegionStyle(feature)
         target.setStyle(style)
       },
+    })
+  }
+
+  const getMunicipalityStyle = (feature?: Feature): PathOptions => {
+        // Filter: Only show style if VISITED. Otherwise transparent.
+        if (!feature?.properties?.id) return { fillOpacity: 0, opacity: 0 }
+        const regionId = feature.properties.id as string
+        const regionExp = getRegionById(regionId)
+        const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+        
+        if (gyeonghyeonchi === GyeongHyeonChi.UNVISITED) {
+            // Unvisited: Check Parent Prefecture Level for Inheritance
+            const prefName = feature.properties?.N03_001
+            let parentLevel = GyeongHyeonChi.UNVISITED
+            
+            // Robust Parent Detection
+            let parentId = ''
+            
+            // 1. Try Property Mapping (General & Most Accurate)
+            if (prefName && REGION_ID_MAP['japan'][prefName]) {
+                parentId = REGION_ID_MAP['japan'][prefName]
+            }
+            // 2. Try viewPrefectureId (Contextual Fallback)
+            else if (viewPrefectureId === 'tokyo' || viewPrefectureId === '13') {
+                parentId = 'tokyo'
+            }
+            
+            // Determine Parent Level
+            if (parentId) {
+                // CRITICAL: Check for "Detailed Mode"
+                // If this parent has ANY child recorded in store, we disable blanket inheritance.
+                // User wants explicit control in that case.
+                if (!parentsWithDetails.has(parentId)) {
+                    const parentExp = getRegionById(parentId)
+                    parentLevel = parentExp?.gyeonghyeonchi ?? (parentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+                }
+            }
+            
+            if (parentLevel > GyeongHyeonChi.UNVISITED) {
+                // Inherit Parent Color!
+                return {
+                    fillColor: EXP_COLORS[parentLevel],
+                    fillOpacity: 0.7, // Same opacity as visited to blend in
+                    color: '#fff', // White border to distinguish boundaries
+                    weight: 0.5,
+                    interactive: true 
+                }
+            } else {
+               // Fallthrough
+            }
+
+            // Totally Unvisited (Parent is also unvisited)
+            return { 
+                fillOpacity: 0, 
+                color: '#666', 
+                weight: 0.5, 
+                dashArray: '2',
+                interactive: true 
+            }
+        }
+        
+        // Visited: Show Color
+        const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
+        return {
+            fillColor: EXP_COLORS[gyeonghyeonchi],
+            fillOpacity: 0.7,
+            color: EXP_COLORS[gyeonghyeonchi], // Border matches 
+            weight: isResided ? 2.5 : 1.5,
+        }
+  }
+
+  const onEachMunicipalityFeature = (feature: Feature, layer: Layer) => {
+    if (!feature.properties?.id) return
+
+    const regionId = feature.properties.id as string
+    const regionName = feature.properties.name_ko || feature.properties.name
+    const regionExp = getRegionById(regionId)
+    const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+
+    const levelLabels = ['미답 (0)', '통과 (1)', '접지 (2)', '방문 (3)', '숙박 (4)', '거주 (5)']
+    const tooltipContent = `
+      <div style="text-align: center;">
+        <div style="font-weight: bold; font-size: 14px;">${regionName}</div>
+        <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">
+          경현치: ${levelLabels[gyeonghyeonchi]}
+        </div>
+      </div>
+    `
+
+    layer.bindTooltip(tooltipContent, {
+      permanent: false,
+      direction: 'top',
+      className: 'region-tooltip',
+    })
+
+    const handleClick = (e: LeafletMouseEvent) => {
+        e.originalEvent.preventDefault()
+        if (e.originalEvent.shiftKey) {
+            onRegionClick(regionId)
+            return
+        }
+
+        const currentExp = useMapExpStore.getState().getRegionById(regionId)
+        const currentVal = currentExp?.gyeonghyeonchi ?? (currentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+        const nextVal = (currentVal >= GyeongHyeonChi.RESIDED ? GyeongHyeonChi.UNVISITED : currentVal + 1) as ExperienceGrade
+
+        if (currentExp) {
+            updateRegion(regionId, { gyeonghyeonchi: nextVal })
+        } else {
+            addRegion({ regionId, gyeonghyeonchi: nextVal, updatedAt: new Date().toISOString() })
+        }
+
+        setTimeout(() => {
+            const target = e.target
+            const newStyle = getMunicipalityStyle(feature)
+            target.setStyle(newStyle)
+        }, 50)
+    }
+
+    layer.on({
+        click: handleClick,
+        mouseover: (e: LeafletMouseEvent) => {
+            const target = e.target
+            target.setStyle({ weight: 2, color: '#666', fillOpacity: 0.2 })
+            target.bringToFront()
+        },
+        mouseout: (e: LeafletMouseEvent) => {
+            const target = e.target
+            const style = getMunicipalityStyle(feature)
+            target.setStyle(style)
+        },
     })
   }
 
@@ -450,8 +629,20 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         
         {/* Base Layer (Prefectures) - Always Visible */}
         <GeoJSON
-          key={`base-${country}-${dataKey}-${mapLevel}`} 
-          data={baseGeoData!}
+          key={`base-${country}-${dataKey}-${mapLevel}-${viewPrefectureId}`} 
+          data={{
+              ...baseGeoData!,
+              features: (baseGeoData! as FeatureCollection).features.filter(f => {
+                   const fid = f.properties?.id
+                   // Hide if this is the active view prefecture
+                   if (viewPrefectureId && fid) {
+                       if (fid === viewPrefectureId) return false
+                       if (viewPrefectureId === '13' && fid === 'tokyo') return false
+                       if (viewPrefectureId === 'tokyo' && fid === '13') return false
+                   }
+                   return true
+              })
+          } as FeatureCollection}
           style={getRegionStyle}
           // Only enable interactions if NO overlay is present, OR if overlay treats unvisited as transparent
           // Actually, we want clicks on unvisited areas to fall through? 
@@ -466,74 +657,8 @@ export default function MapView({ onRegionClick }: MapViewProps) {
              <GeoJSON
                 key={`overlay-${viewPrefectureId}-${dataKey}`}
                 data={overlayGeoData}
-                style={(feature) => {
-                     // Filter: Only show style if VISITED. Otherwise transparent.
-                     if (!feature?.properties?.id) return { fillOpacity: 0, opacity: 0 }
-                     const regionId = feature.properties.id as string
-                     const regionExp = getRegionById(regionId)
-                     const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
-                     
-                     if (gyeonghyeonchi === GyeongHyeonChi.UNVISITED) {
-                         // Unvisited: Check Parent Prefecture Level for Inheritance
-                         const prefName = feature.properties?.N03_001
-                         let parentLevel = GyeongHyeonChi.UNVISITED
-                         
-                         // Robust Parent Detection
-                         let parentId = ''
-                         
-                         // 1. Try viewPrefectureId (Contextual)
-                         if (viewPrefectureId === 'tokyo' || viewPrefectureId === '13') {
-                             parentId = 'tokyo'
-                         } 
-                         // 2. Try Property Mapping (General)
-                         else if (prefName && REGION_ID_MAP['japan'][prefName]) {
-                             parentId = REGION_ID_MAP['japan'][prefName]
-                         }
-                         
-                         // Determine Parent Level
-                         if (parentId) {
-                             // CRITICAL: Check for "Detailed Mode"
-                             // If this parent has ANY child recorded in store, we disable blanket inheritance.
-                             // User wants explicit control in that case.
-                             if (!parentsWithDetails.has(parentId)) {
-                                 const parentExp = getRegionById(parentId)
-                                 parentLevel = parentExp?.gyeonghyeonchi ?? (parentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
-                             }
-                         }
-                         
-                         if (parentLevel > GyeongHyeonChi.UNVISITED) {
-                             // Inherit Parent Color!
-                             return {
-                                fillColor: EXP_COLORS[parentLevel],
-                                fillOpacity: 0.7, // Same opacity as visited to blend in
-                                color: '#fff', // White border to distinguish boundaries
-                                weight: 0.5,
-                                interactive: true 
-                             }
-                         } else {
-                             if (Math.random() < 0.001) console.log("Inheritance Fail:", { prefName, regionId, parentId: REGION_ID_MAP['japan'][prefName], parentExp: getRegionById('tokyo') })
-                         }
-
-                         // Totally Unvisited (Parent is also unvisited)
-                         return { 
-                            fillOpacity: 0, 
-                            color: '#666', 
-                            weight: 0.5, 
-                            dashArray: '2',
-                            interactive: true 
-                         }
-                     }
-                     
-                     // Visited: Show Color
-                     const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
-                     return {
-                        fillColor: EXP_COLORS[gyeonghyeonchi],
-                        fillOpacity: 0.7,
-                        color: EXP_COLORS[gyeonghyeonchi], // Border matches 
-                        weight: isResided ? 2.5 : 1.5,
-                     }
-                }}
-                onEachFeature={onEachFeature}
+                style={getMunicipalityStyle}
+                onEachFeature={onEachMunicipalityFeature}
              />
         )}
         <ZoomHandler setMapLevel={setMapLevel} setViewPrefecture={setViewPrefectureId} baseGeoData={baseGeoData} />
