@@ -8,9 +8,19 @@ import Card from '@/components/common/Card'
 /**
  * 통계 패널 컴포넌트
  */
+import { useState, useEffect } from 'react'
+
+/**
+ * 통계 패널 컴포넌트
+ */
 export default function StatsPanel() {
+  const [mounted, setMounted] = useState(false)
   const { country, getTotalGyeonghyeonchi, getSystemLevel, getVisitedCount, getCompletionRate, getGyeonghyeonchiCounts } =
     useMapExpStore()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const totalGyeonghyeonchi = getTotalGyeonghyeonchi()
   const systemLevel = getSystemLevel()
@@ -23,6 +33,8 @@ export default function StatsPanel() {
   const getLevelPoints = (level: ExperienceGrade, count: number) => {
     return count * level
   }
+
+  if (!mounted) return null // Prevent hydration mismatch
 
   return (
     <div className="space-y-4">

@@ -5,12 +5,12 @@ import { ExpLevel } from '@/types/region'
  * Tailwind config의 exp 색상과 동일
  */
 export const EXP_COLORS: Record<ExpLevel, string> = {
-  [ExpLevel.UNVISITED]: '#E5E5E5', // 회색
-  [ExpLevel.PASSED]: '#00FFFF', // 씨얀
-  [ExpLevel.LANDED]: '#00FF00', // 초록
-  [ExpLevel.VISITED]: '#FFFF00', // 노랑
-  [ExpLevel.STAYED]: '#FF0000', // 빨강
-  [ExpLevel.RESIDED]: '#FF00FF', // 금색
+  [ExpLevel.UNVISITED]: '#D9D9D9', // 부드러운 그레이
+  [ExpLevel.PASSED]: '#8EE7E3',    // 파스텔 씨얀  
+  [ExpLevel.LANDED]: '#9BE79B',    // 파스텔 민트그린
+  [ExpLevel.VISITED]: '#FFE88C',   // 파스텔 옐로우
+  [ExpLevel.STAYED]: '#FF9A8C',    // 소프트 레드(코랄 느낌)
+  [ExpLevel.RESIDED]: '#E58CFF',   // 파스텔 퍼플
 }
 
 /**
@@ -38,23 +38,22 @@ export const EXP_TEXT_CLASSES: Record<ExpLevel, string> = {
 }
 
 /**
- * Hover 상태 색상
+ * Hover 상태 색상 (파스텔 블루)
  */
-export const HOVER_COLOR = '#3B82F6' // blue-500
+export const HOVER_COLOR = '#60A5FA' // blue-400
 
 /**
- * 선택된 지역 색상
+ * 선택된 지역 색상 (파스텔 바이올렛)
  */
-export const SELECTED_COLOR = '#8B5CF6' // violet-500
+export const SELECTED_COLOR = '#A78BFA' // violet-400
 
 /**
- * 테두리 색상
+ * 테두리 색상 (소프트 그레이)
  */
-export const BORDER_COLOR = '#9CA3AF' // gray-400
+export const BORDER_COLOR = '#D1D5DB' // gray-300
 
 /**
- * 배경 색상
+ * 배경 색상 (맵용 파스텔 그레이)
  */
-export const MAP_BACKGROUND_COLOR = '#F3F4F6' // gray-100
-
+export const MAP_BACKGROUND_COLOR = '#F9FAFB' // gray-50
 

@@ -1,16 +1,14 @@
-'use client'
-
-import { useEffect, useState, useRef } from 'react'
-import { MapContainer, TileLayer, GeoJSON, Marker, useMap } from 'react-leaflet'
-import { feature } from 'topojson-client'
+import { useEffect, useState, useRef, useMemo } from 'react'
+import { MapContainer, TileLayer, GeoJSON, Marker, useMap, useMapEvents } from 'react-leaflet'
 import { geoCentroid } from 'd3-geo'
 import L from 'leaflet'
 import { useMapExpStore } from '@/store'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
+import { REGION_ID_MAP } from '@/constants/regions'
+import { LABEL_OVERRIDES } from '@/constants/label_overrides'
 import type { GeoJsonObject, Feature, FeatureCollection } from 'geojson'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
-import type { Topology } from 'topojson-specification'
 
 interface MapViewProps {
   onRegionClick: (regionId: string) => void
@@ -23,81 +21,9 @@ interface RegionLabel {
 }
 
 type LabelMode = 'custom' | 'native' | 'none'
+type TileLanguage = 'local' | 'ko' | 'ja'
 
-// 지역 ID 매핑
-const REGION_ID_MAP: Record<string, Record<string, string>> = {
-  japan: {
-    '北海道': 'hokkaido',
-    '青森県': 'aomori',
-    '岩手県': 'iwate',
-    '宮城県': 'miyagi',
-    '秋田県': 'akita',
-    '山形県': 'yamagata',
-    '福島県': 'fukushima',
-    '茨城県': 'ibaraki',
-    '栃木県': 'tochigi',
-    '群馬県': 'gunma',
-    '埼玉県': 'saitama',
-    '千葉県': 'chiba',
-    '東京都': 'tokyo',
-    '神奈川県': 'kanagawa',
-    '新潟県': 'niigata',
-    '富山県': 'toyama',
-    '石川県': 'ishikawa',
-    '福井県': 'fukui',
-    '山梨県': 'yamanashi',
-    '長野県': 'nagano',
-    '岐阜県': 'gifu',
-    '静岡県': 'shizuoka',
-    '愛知県': 'aichi',
-    '三重県': 'mie',
-    '滋賀県': 'shiga',
-    '京都府': 'kyoto',
-    '大阪府': 'osaka',
-    '兵庫県': 'hyogo',
-    '奈良県': 'nara',
-    '和歌山県': 'wakayama',
-    '鳥取県': 'tottori',
-    '島根県': 'shimane',
-    '岡山県': 'okayama',
-    '広島県': 'hiroshima',
-    '山口県': 'yamaguchi',
-    '徳島県': 'tokushima',
-    '香川県': 'kagawa',
-    '愛媛県': 'ehime',
-    '高知県': 'kochi',
-    '福岡県': 'fukuoka',
-    '佐賀県': 'saga',
-    '長崎県': 'nagasaki',
-    '熊本県': 'kumamoto',
-    '大分県': 'oita',
-    '宮崎県': 'miyazaki',
-    '鹿児島県': 'kagoshima',
-    '沖縄県': 'okinawa',
-  },
-  korea: {
-    '서울특별시': 'seoul',
-    '부산광역시': 'busan',
-    '대구광역시': 'daegu',
-    '인천광역시': 'incheon',
-    '광주광역시': 'gwangju',
-    '대전광역시': 'daejeon',
-    '울산광역시': 'ulsan',
-    '세종특별자치시': 'sejong',
-    '경기도': 'gyeonggi',
-    '강원특별자치도': 'gangwon',
-    '강원도': 'gangwon',
-    '충청북도': 'chungbuk',
-    '충청남도': 'chungnam',
-    '전라북도': 'jeonbuk',
-    '전북특별자치도': 'jeonbuk',
-    '전라남도': 'jeonnam',
-    '경상북도': 'gyeongbuk',
-    '경상남도': 'gyeongnam',
-    '제주특별자치도': 'jeju',
-  },
-
-}
+// REGION_ID_MAP imported from constants
 
 const BoundaryTileLayer = ({ url, boundary, attribution }: { url: string, boundary: GeoJsonObject, attribution?: string }) => {
   const map = useMap()
@@ -136,105 +62,229 @@ const BoundaryTileLayer = ({ url, boundary, attribution }: { url: string, bounda
   return null
 }
 
+import { geoContains } from 'd3-geo'
+
+const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLevel: (level: 'prefecture' | 'municipality') => void, setViewPrefecture: (id: string | null) => void, baseGeoData: GeoJsonObject | null }) => {
+  const map = useMapEvents({
+      zoomend: () => {
+          const z = map.getZoom()
+          if (z >= 9) {
+              setMapLevel('municipality')
+              
+              // Dynamic Detection: Find which prefecture is in the center
+              const center = map.getCenter()
+              const centerPoint = [center.lng, center.lat] // GeoJSON is [lng, lat]
+              
+              if (baseGeoData && (baseGeoData as any).features) {
+                  const features = (baseGeoData as any).features as Feature[]
+                  const found = features.find(f => {
+                       // Simple check or robust point-in-polygon
+                       // For performance, let's trust d3-geo's geoContains
+                       // Note: geoContains takes [lng, lat]
+                       try {
+                           return geoContains(f, centerPoint)
+                       } catch (e) {
+                           return false 
+                       }
+                  })
+                  
+                  if (found && found.properties?.id) {
+                      setViewPrefecture(found.properties.id)
+                  } else {
+                      // Fallback to Tokyo if center is unclear or off-map (e.g. ocean)
+                      // But maybe don't force it if we are far away?
+                      // For now, keep user behavior consistent.
+                      setViewPrefecture('tokyo') 
+                  }
+              }
+          } else {
+              setMapLevel('prefecture')
+              setViewPrefecture(null)
+          }
+      }
+  })
+  return null
+}
+
 export default function MapView({ onRegionClick }: MapViewProps) {
-  const { country, getRegionById, addRegion, updateRegion, settings } = useMapExpStore()
-  const [geoData, setGeoData] = useState<GeoJsonObject | null>(null)
+  const { country: storeCountry, getRegionById, addRegion, updateRegion, settings, regions } = useMapExpStore()
+  const country = 'japan' // Force Japan mode (Korea archived)
+  const [baseGeoData, setBaseGeoData] = useState<GeoJsonObject | null>(null)
+  
+  // Data Version Key to force re-render of GeoJSON when data changes
+  // Data Version Key to force re-render of GeoJSON when data changes
+  // We include length and max updatedAt.
+  // Also adding a random element or sum of levels to be absolutely sure?
+  // Let's stick to standard practice but ensure it's robust.
+  const latestUpdate = regions.length > 0 ? regions.reduce((max, r) => r.updatedAt > max ? r.updatedAt : max, '') : 'init'
+  const totalLevels = regions.reduce((sum, r) => sum + (r.gyeonghyeonchi ?? r.level ?? 0), 0)
+  const dataKey = `${latestUpdate}-${regions.length}-${totalLevels}`
+
+  const [overlayGeoData, setOverlayGeoData] = useState<GeoJsonObject | null>(null)
   const [boundary, setBoundary] = useState<GeoJsonObject | null>(null)
   const [regionLabels, setRegionLabels] = useState<RegionLabel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showTiles, setShowTiles] = useState(true) // 기본값: 타일 표시
-  const [labelMode, setLabelMode] = useState<LabelMode>('custom') // 기본값: 커스텀 라벨
+  const [labelMode, setLabelMode] = useState<LabelMode>('native') // Default to native for Japan focus
+  const [tileLanguage, setTileLanguage] = useState<TileLanguage>('local') // 기본값: 현지어(영어/현지어)
+  const [mapLevel, setMapLevel] = useState<'prefecture' | 'municipality'>('prefecture')
+  const [viewPrefectureId, setViewPrefectureId] = useState<string | null>(null) // ID of the prefecture to show details for
+
+  // Smart Inheritance Logic:
+  // Identify which prefectures have "Detailed" data (at least one child municipality is tracked).
+  // If a prefecture has detailed data, we DISABLE top-down inheritance (Blanket Mode) for that prefecture.
+  const parentsWithDetails = useMemo(() => {
+      const parents = new Set<string>()
+      regions.forEach(r => {
+          if (r.regionId.includes('_')) {
+              const [parentId] = r.regionId.split('_')
+              parents.add(parentId)
+          }
+      })
+      return parents
+  }, [regions])
+
+
+
+  // 타일 URL 생성 함수
+  const getTileUrl = (lang: TileLanguage, mode: LabelMode) => {
+    if (lang === 'local') {
+        // CARTO Voyager (기존)
+        return mode === 'native'
+          ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
+    } else {
+        // Google Maps (언어 설정)
+        // hl=ko, hl=ja
+        // lyrs=m (roadmap), r (roadmap/alter), s (satellite), h (hybrid), p (terrain)
+        // 여기서는 표준 로드맵(m) 사용
+        return `https://mt0.google.com/vt/lyrs=m&hl=${lang}&x={x}&y={y}&z={z}`
+    }
+  }
+
+  // 타일 Attribution 생성 함수
+  const getAttribution = (lang: TileLanguage) => {
+      return lang === 'local' ? '&copy; CARTO' : '&copy; Google Maps'
+  }
 
   // GeoJSON/TopoJSON 데이터 로드
   useEffect(() => {
     const loadGeoData = async () => {
       setIsLoading(true)
       try {
-        let url: string
-        let isTopoJSON: boolean
-
-        if (country === 'japan') {
-          url = '/geojson/japan-prefectures.json'
-          isTopoJSON = false
-        } else {
-          url = '/geojson/korea-provinces.json'
-          isTopoJSON = true
+        // 1. Load Base Data (Prefectures) - Always Japan for now
+        // Cached or refetched? For simplicity, fetch if not present or country changed.
+        // We actually want to keep base data stable.
+        
+        if (!baseGeoData || country !== 'japan') { // Simplified check
+             const url = '/geojson/japan-prefectures.json'
+             const response = await fetch(url)
+             const json = await response.json()
+             setBaseGeoData(json)
+             
+             // Initialization for boundary
+             if (json.type === 'FeatureCollection') {
+                 setBoundary(json as FeatureCollection)
+             }
         }
 
-        const response = await fetch(url)
-        if (!response.ok) throw new Error('Failed to load map data')
-
-        let geoJson: any
-
-        if (isTopoJSON) {
-          const topoData = (await response.json()) as Topology
-          const objectName = 'skorea-provinces-2018-topo'
-          const objects = topoData.objects[objectName]
-          if (!objects) throw new Error(`Object '${objectName}' not found`)
-          geoJson = feature(topoData, objects) as GeoJsonObject
+        // 2. Load Overlay Data (Municipalities) - On Demand
+        if (mapLevel === 'municipality' && viewPrefectureId) {
+             let url = '/geojson/japan-municipalities.json' // Fallback
+             
+             // Tokyo (Use detailed separate file)
+             if (viewPrefectureId === 'tokyo' || viewPrefectureId === '13') {
+                 url = '/geojson/japan-detail/N03-21_13_210101.json' 
+             }
+             
+             if (url) {
+                 const response = await fetch(url)
+                 if (response.ok) {
+                    const json = await response.json()
+                    setOverlayGeoData(json)
+                    
+                    const labels: RegionLabel[] = []
+                    if (json.type === 'FeatureCollection') {
+                        const collection = json as FeatureCollection
+                        collection.features.forEach((feat: any) => {
+                            const muniName = feat.properties?.N03_004 || feat.properties?.name || feat.properties?.nam || 'Unknown'
+                            const prefName = feat.properties?.N03_001
+                            
+                            // Map Kanji Pref Name to English ID (e.g. 東京都 -> tokyo) to match Store IDs
+                            let parentId = prefName
+                            if (prefName && REGION_ID_MAP['japan'][prefName]) {
+                                parentId = REGION_ID_MAP['japan'][prefName]
+                            }
+                            const genId = `${parentId}_${muniName}`
+                            
+                            feat.properties = { ...feat.properties, id: genId, name: muniName, name_ko: muniName }
+                            
+                            let position: [number, number]
+                            if (LABEL_OVERRIDES[genId]) position = LABEL_OVERRIDES[genId]
+                            else {
+                                const centroid = geoCentroid(feat)
+                                position = [centroid[1], centroid[0]]
+                            }
+                            labels.push({ id: genId, name: muniName, position })
+                        })
+                    }
+                    setRegionLabels(labels)
+                 }
+             }
         } else {
-          geoJson = await response.json()
-        }
-
-        // 라벨 생성 & 지역 필터링
-        const labels: RegionLabel[] = []
-        if (geoJson.type === 'FeatureCollection') {
-          const collection = geoJson as FeatureCollection
-          /* [영토 범위 수정 방법] collection.features.filter(...) */
-
-
-          // 일본일 경우 전체 경계 생성 (BoundaryCanvas용)
-          if (country === 'japan') {
-              // turf.dissolve might be failing or slow. 
-              // leaflet-boundary-canvas supports FeatureCollection directly.
-              console.log("Setting boundary from collection directly...")
-              setBoundary(collection)
-          } else {
-              setBoundary(null)
-          }
-          
-          collection.features.forEach((feat: any) => {
-            const nameJa = feat.properties?.nam_ja || feat.properties?.name_ja
-            const nameKo = feat.properties?.name_ko || feat.properties?.NAME_1 || feat.properties?.name
-            const originalName = country === 'japan' ? nameJa : nameKo
-
-            const mappedId = REGION_ID_MAP[country][originalName]
-            if (mappedId) {
-              feat.properties = {
-                ...feat.properties,
-                id: mappedId,
-                name_ko: country === 'japan' ? feat.properties?.nam_ja : nameKo,
-                name: originalName,
-              }
-              
-              const centroid = geoCentroid(feat)
-              labels.push({
-                id: mappedId,
-                name: country === 'japan' ? feat.properties?.nam_ja : nameKo,
-                position: [centroid[1], centroid[0]],
-              })
+            // Restore Base Labels (Prefectures)
+            if (baseGeoData && (baseGeoData as any).type === 'FeatureCollection') {
+                setOverlayGeoData(null) // Clear overlay
+                
+                const labels: RegionLabel[] = []
+                const collection = baseGeoData as FeatureCollection
+                collection.features.forEach((feat: any) => {
+                    const nameJa = feat.properties?.nam_ja || feat.properties?.name_ja
+                    const nameKo = feat.properties?.name_ko || feat.properties?.NAME_1 || feat.properties?.name
+                    const originalName = country === 'japan' ? nameJa : nameKo
+                    const mappedId = REGION_ID_MAP[country][originalName]
+                    
+                    if (mappedId) {
+                         feat.properties = { ...feat.properties, id: mappedId, name_ko: country === 'japan' ? feat.properties?.nam_ja : nameKo, name: originalName }
+                         let position: [number, number]
+                         if (LABEL_OVERRIDES[mappedId]) position = LABEL_OVERRIDES[mappedId]
+                         else {
+                             const centroid = geoCentroid(feat)
+                             position = [centroid[1], centroid[0]]
+                         }
+                         labels.push({ id: mappedId, name: country === 'japan' ? feat.properties?.nam_ja : nameKo, position })
+                    }
+                })
+                setRegionLabels(labels)
             }
-          })
         }
 
-        setRegionLabels(labels)
-        setGeoData(geoJson)
       } catch (error) {
-        console.error('Error loading TopoJSON:', error)
-        setGeoData(null)
+        console.error('Error loading map data:', error)
       } finally {
         setIsLoading(false)
       }
     }
 
     loadGeoData()
-  }, [country])
+  }, [country, mapLevel, viewPrefectureId, baseGeoData])
 
   // 지역 스타일
   const getRegionStyle = (feature?: Feature): PathOptions => {
     if (!feature?.properties?.id) return { fillOpacity: 0, opacity: 0 }
 
     const regionId = feature.properties.id as string
+    
+    // Visual Polish: Prevent Overlap
+    // If we are showing the Municipality Overlay for this prefecture, hide the Base Layer prefecture
+    // to avoid double-opacity artifacts.
+    const isOverlayActive = mapLevel === 'municipality' && viewPrefectureId
+    const isTargetPrefecture = regionId === viewPrefectureId || (viewPrefectureId === '13' && regionId === 'tokyo') // Handle ID mismatch
+    
+    if (isOverlayActive && isTargetPrefecture) {
+        return { fillOpacity: 0, opacity: 0, interactive: false } // Hide completely
+    }
+
     const regionExp = getRegionById(regionId)
     const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
     const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
@@ -252,8 +302,8 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     return {
       fillColor: EXP_COLORS[gyeonghyeonchi],
       fillOpacity: gyeonghyeonchi === GyeongHyeonChi.UNVISITED ? 0.3 : 0.7,
-      color: isResided ? '#FFD700' : '#fff',
-      weight: isResided ? 2.5 : 1,
+      color: EXP_COLORS[gyeonghyeonchi], // 모든 레벨에 해당 색상 보더라인 적용
+      weight: isResided ? 2.5 : 1.5, // 거주는 조금 더 두껍게
     }
   }
 
@@ -324,12 +374,26 @@ export default function MapView({ onRegionClick }: MapViewProps) {
   const cycleLabelMode = () => {
       if (labelMode === 'custom') {
           setLabelMode('native')
-          setShowTiles(true) // Native 라벨은 타일에 있으므로 타일 강제 활성화
+          setShowTiles(true)
       } else if (labelMode === 'native') {
           setLabelMode('none')
       } else {
           setLabelMode('custom')
+          // Custom 모드일 때는 굳이 지도를 바꿀 필요는 없지만, 사용자가 라벨을 보고 싶어 모드를 바꿨을 수 있음.
       }
+  }
+
+  // 언어 모드 전환 핸들러
+  const cycleTileLanguage = () => {
+    if (tileLanguage === 'local') setTileLanguage('ko')
+    else if (tileLanguage === 'ko') setTileLanguage('ja')
+    else setTileLanguage('local')
+    
+    // 언어를 바꾼다는 것은 지도의 라벨을 보고 싶다는 뜻이므로, Native 모드 및 타일 활성화
+    if (labelMode !== 'native') {
+        setLabelMode('native')
+        setShowTiles(true)
+    }
   }
 
   const mapCenter = country === 'japan' ? [36.5, 138.0] : [36.5, 127.5]
@@ -339,7 +403,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     ? [[15.0, 110.0], [55.0, 160.0]]
     : [[30.0, 120.0], [43.0, 135.0]]
 
-  if (isLoading || !geoData) {
+  if (isLoading && !baseGeoData) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
         <div className="text-center">Loading...</div>
@@ -366,39 +430,113 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         className="z-0"
         scrollWheelZoom={true}
         dragging={true}
-        doubleClickZoom={true}
+        doubleClickZoom={false}
         touchZoom={true}
       >
         {showTiles && (
           country === 'japan' && boundary ? (
               <BoundaryTileLayer
                 boundary={boundary}
-                attribution='&copy; CARTO'
-                url={
-                    labelMode === 'native'
-                    ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
-                }
+                attribution={getAttribution(tileLanguage)}
+                url={getTileUrl(tileLanguage, labelMode)}
               />
           ) : (
               <TileLayer
-                attribution='&copy; CARTO'
-                // 'native' 모드일 때는 라벨 있는 버전(voyager), 그 외는 라벨 없는 버전(voyager_nolabels)
-                url={
-                    labelMode === 'native'
-                    ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
-                }
+                attribution={getAttribution(tileLanguage)}
+                url={getTileUrl(tileLanguage, labelMode)}
               />
           )
         )}
         
+        {/* Base Layer (Prefectures) - Always Visible */}
         <GeoJSON
-          key={`${country}-${showTiles}-${labelMode}`} 
-          data={geoData}
+          key={`base-${country}-${dataKey}-${mapLevel}`} 
+          data={baseGeoData!}
           style={getRegionStyle}
+          // Only enable interactions if NO overlay is present, OR if overlay treats unvisited as transparent
+          // Actually, we want clicks on unvisited areas to fall through? 
+          // Leaflet doesn't easily support "click-through" for specific polygons in a single layer unless we use pointer-events: none.
+          // BUT, we want base layer to handle clicks for unvisited areas.
+          // Strategy: Base Layer always handles clicks. Overlay Layer ONLY handles clicks for Visited features.
           onEachFeature={onEachFeature}
         />
+
+        {/* Overlay Layer (Municipalities) - Only if zoomed in */}
+        {overlayGeoData && (
+             <GeoJSON
+                key={`overlay-${viewPrefectureId}-${dataKey}`}
+                data={overlayGeoData}
+                style={(feature) => {
+                     // Filter: Only show style if VISITED. Otherwise transparent.
+                     if (!feature?.properties?.id) return { fillOpacity: 0, opacity: 0 }
+                     const regionId = feature.properties.id as string
+                     const regionExp = getRegionById(regionId)
+                     const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+                     
+                     if (gyeonghyeonchi === GyeongHyeonChi.UNVISITED) {
+                         // Unvisited: Check Parent Prefecture Level for Inheritance
+                         const prefName = feature.properties?.N03_001
+                         let parentLevel = GyeongHyeonChi.UNVISITED
+                         
+                         // Robust Parent Detection
+                         let parentId = ''
+                         
+                         // 1. Try viewPrefectureId (Contextual)
+                         if (viewPrefectureId === 'tokyo' || viewPrefectureId === '13') {
+                             parentId = 'tokyo'
+                         } 
+                         // 2. Try Property Mapping (General)
+                         else if (prefName && REGION_ID_MAP['japan'][prefName]) {
+                             parentId = REGION_ID_MAP['japan'][prefName]
+                         }
+                         
+                         // Determine Parent Level
+                         if (parentId) {
+                             // CRITICAL: Check for "Detailed Mode"
+                             // If this parent has ANY child recorded in store, we disable blanket inheritance.
+                             // User wants explicit control in that case.
+                             if (!parentsWithDetails.has(parentId)) {
+                                 const parentExp = getRegionById(parentId)
+                                 parentLevel = parentExp?.gyeonghyeonchi ?? (parentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+                             }
+                         }
+                         
+                         if (parentLevel > GyeongHyeonChi.UNVISITED) {
+                             // Inherit Parent Color!
+                             return {
+                                fillColor: EXP_COLORS[parentLevel],
+                                fillOpacity: 0.7, // Same opacity as visited to blend in
+                                color: '#fff', // White border to distinguish boundaries
+                                weight: 0.5,
+                                interactive: true 
+                             }
+                         } else {
+                             if (Math.random() < 0.001) console.log("Inheritance Fail:", { prefName, regionId, parentId: REGION_ID_MAP['japan'][prefName], parentExp: getRegionById('tokyo') })
+                         }
+
+                         // Totally Unvisited (Parent is also unvisited)
+                         return { 
+                            fillOpacity: 0, 
+                            color: '#666', 
+                            weight: 0.5, 
+                            dashArray: '2',
+                            interactive: true 
+                         }
+                     }
+                     
+                     // Visited: Show Color
+                     const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
+                     return {
+                        fillColor: EXP_COLORS[gyeonghyeonchi],
+                        fillOpacity: 0.7,
+                        color: EXP_COLORS[gyeonghyeonchi], // Border matches 
+                        weight: isResided ? 2.5 : 1.5,
+                     }
+                }}
+                onEachFeature={onEachFeature}
+             />
+        )}
+        <ZoomHandler setMapLevel={setMapLevel} setViewPrefecture={setViewPrefectureId} baseGeoData={baseGeoData} />
         
         {/* Custom Labels: Only show if mode is 'custom' */}
         {labelMode === 'custom' && regionLabels.map((label) => (
@@ -440,6 +578,37 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                </span> 
                {labelMode === 'custom' ? 'Label: Custom' : labelMode === 'native' ? 'Label: Native' : 'Label: None'}
             </button>
+
+            {/* Language Toggle (Only visible if not using 'none' labels, or just always visible for ease) */}
+            <button
+                onClick={cycleTileLanguage}
+                className={`w-full py-1.5 px-2 rounded border font-medium flex items-center justify-center gap-2 transition-colors ${
+                    tileLanguage !== 'local'
+                    ? 'bg-green-50 border-green-300 text-green-700'
+                    : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+                title="Change Map Language (Native Labels)"
+            >
+                <span>
+                    {tileLanguage === 'local' ? '🌐' : tileLanguage === 'ko' ? '🇰🇷' : '🇯🇵'}
+                </span>
+                {tileLanguage === 'local' ? 'Lang: Local' : tileLanguage === 'ko' ? 'Lang: Korean' : 'Lang: Japan'}
+            </button>
+
+            {/* Map Level Toggle - Removed as requested in favor of Zoom LOD */ }
+            {/* 
+            <button
+                onClick={() => setMapLevel(prev => prev === 'prefecture' ? 'municipality' : 'prefecture')}
+                className={`w-full py-1.5 px-2 rounded border font-medium flex items-center justify-center gap-2 transition-colors ${
+                    mapLevel === 'municipality'
+                    ? 'bg-purple-50 border-purple-300 text-purple-700'
+                    : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+                <span>{mapLevel === 'prefecture' ? '🗾' : '🏙️'}</span>
+                {mapLevel === 'prefecture' ? 'View: Prefectures' : 'View: Cities'}
+            </button> 
+            */}
 
             <button
               onClick={() => {

@@ -10,6 +10,7 @@ import CountrySelector from '@/components/common/CountrySelector'
 import RegionList from '@/components/region/RegionList'
 import RegionModal from '@/components/region/RegionModal'
 import StatsPanel from '@/components/stats/StatsPanel'
+import TokyoMunicipalityModal from '@/components/region/TokyoMunicipalityModal'
 
 // Leaflet을 dynamic import (SSR 비활성화)
 const MapView = dynamic(() => import('@/components/map/MapView'), {
@@ -32,6 +33,7 @@ export default function Home() {
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
   const [showStats, setShowStats] = useState(true)
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
+  const [showTokyoModal, setShowTokyoModal] = useState(false)
 
   // 공유 URL 처리
   useEffect(() => {
@@ -104,6 +106,15 @@ export default function Home() {
           >
             📋 리스트 보기
           </button>
+
+          
+          {/* New: Manage Tokyo */}
+          <button
+            onClick={() => setShowTokyoModal(true)}
+            className="px-4 py-2 rounded-lg font-medium transition-colors bg-purple-600 text-white hover:bg-purple-700 ml-2"
+          >
+            🏙️ 도쿄 시정촌 관리
+          </button>
         </div>
 
         {/* 사용 가이드 */}
@@ -155,6 +166,12 @@ export default function Home() {
           regionId={selectedRegionId}
         />
       )}
+      
+      {/* Tokyo Municipality Modal */}
+      <TokyoMunicipalityModal 
+        isOpen={showTokyoModal}
+        onClose={() => setShowTokyoModal(false)}
+      />
     </div>
   )
 }

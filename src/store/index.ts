@@ -102,6 +102,35 @@ export const useMapExpStore = create<MapExpStore>()(
             ],
           };
         });
+        
+        // Roll-up Logic for New Region
+        const regionId = region.regionId
+        if (regionId.includes('_')) {
+             const [parentId] = regionId.split('_')
+             const currentStore = get()
+             const childRegion = currentStore.getRegionById(regionId) // The one we just added
+             const parentRegion = currentStore.getRegionById(parentId)
+             
+             if (childRegion) {
+                 const childLevel = childRegion.gyeonghyeonchi ?? childRegion.level ?? 0
+                 
+                 if (parentRegion) {
+                     const parentLevel = parentRegion.gyeonghyeonchi ?? parentRegion.level ?? 0
+                     if (childLevel > parentLevel) {
+                         get().updateRegion(parentId, { gyeonghyeonchi: childLevel as ExperienceGrade })
+                     }
+                 } else {
+                     // Parent doesn't exist yet, add it if child has level
+                     if (childLevel > 0) {
+                         get().addRegion({
+                             regionId: parentId,
+                             gyeonghyeonchi: childLevel as ExperienceGrade,
+                             updatedAt: new Date().toISOString()
+                         })
+                     }
+                 }
+             }
+        }
       },
 
       // 지역 업데이트
@@ -130,6 +159,38 @@ export const useMapExpStore = create<MapExpStore>()(
             }
           }),
         }));
+        
+        // Roll-up Logic: If child level > parent level, update parent
+        // We do this in a separate set() to ensure state consistency or chain it?
+        // Better to check current state after update or compute derived updates.
+        // Let's do a second pass if needed.
+        if (regionId.includes('_')) {
+             const [parentId] = regionId.split('_')
+             const currentStore = get()
+             const childRegion = currentStore.getRegionById(regionId)
+             const parentRegion = currentStore.getRegionById(parentId)
+             
+             if (childRegion && parentRegion) {
+                 const childLevel = childRegion.gyeonghyeonchi ?? childRegion.level ?? 0
+                 const parentLevel = parentRegion.gyeonghyeonchi ?? parentRegion.level ?? 0
+                 
+                 if (childLevel > parentLevel) {
+                     // Upgrade Parent!
+                     get().updateRegion(parentId, { gyeonghyeonchi: childLevel as ExperienceGrade })
+                 }
+             } else if (childRegion && !parentRegion) {
+                 // Parent doesn't exist in store yet (Unvisited)
+                 // We should create it if child is visited
+                 const childLevel = childRegion.gyeonghyeonchi ?? childRegion.level ?? 0
+                 if (childLevel > 0) {
+                     get().addRegion({
+                         regionId: parentId,
+                         gyeonghyeonchi: childLevel as ExperienceGrade,
+                         updatedAt: new Date().toISOString()
+                     })
+                 }
+             }
+        }
       },
 
       // 지역 삭제
