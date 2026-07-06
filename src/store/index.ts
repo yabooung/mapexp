@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { GyeongHyeonChi, MapExpData, RegionExp, UserSettings, ExperienceGrade, Visit } from "@/types";
 import { STORAGE_KEYS, DEFAULT_SETTINGS, DATA_VERSION } from "@/constants";
-import { TOTAL_REGIONS } from "@/constants/regions";
+import { TOTAL_REGIONS, isRegionOfCountry } from "@/constants/regions";
 
 /**
  * GPS 인증 방문 기록 불변성 보장 병합
@@ -333,10 +333,12 @@ export const useMapExpStore = create<MapExpStore>()(
         return get().regions.find((region) => region.regionId === regionId);
       },
 
-      // 총 경현치 계산 (구 getTotalExp)
+      // 총 경현치 계산 (현재 국가의 광역 지역만 - 시정촌/시군구는 부모에 롤업되므로 제외)
       getTotalGyeonghyeonchi: () => {
-        return get().regions.reduce((sum, region) => {
-          // region.level is deprecated, use gyeonghyeonchi if available, else level
+        const state = get();
+        return state.regions.reduce((sum, region) => {
+          if (region.regionId.includes("_")) return sum;
+          if (!isRegionOfCountry(region.regionId, state.country)) return sum;
           const val = region.gyeonghyeonchi ?? region.level ?? 0;
           return sum + val;
         }, 0);
@@ -348,10 +350,14 @@ export const useMapExpStore = create<MapExpStore>()(
         return 1 + Math.floor(total / 10);
       },
 
-      // 방문한 지역 수 (레벨 1 이상)
+      // 방문한 지역 수 (레벨 1 이상, 현재 국가의 광역 지역만)
       getVisitedCount: () => {
-        return get().regions.filter(
-          (region) => (region.gyeonghyeonchi ?? region.level ?? 0) > GyeongHyeonChi.UNVISITED,
+        const state = get();
+        return state.regions.filter(
+          (region) =>
+            !region.regionId.includes("_") &&
+            isRegionOfCountry(region.regionId, state.country) &&
+            (region.gyeonghyeonchi ?? region.level ?? 0) > GyeongHyeonChi.UNVISITED,
         ).length;
       },
 
@@ -359,9 +365,7 @@ export const useMapExpStore = create<MapExpStore>()(
       getCompletionRate: () => {
         const state = get();
         const totalRegions = TOTAL_REGIONS[state.country];
-        const visitedCount = state.regions.filter(
-          (region) => (region.gyeonghyeonchi ?? region.level ?? 0) > GyeongHyeonChi.UNVISITED,
-        ).length;
+        const visitedCount = state.getVisitedCount();
 
         return totalRegions > 0
           ? Math.round((visitedCount / totalRegions) * 100)
@@ -382,6 +386,8 @@ export const useMapExpStore = create<MapExpStore>()(
         };
 
         state.regions.forEach((region) => {
+          if (region.regionId.includes("_")) return;
+          if (!isRegionOfCountry(region.regionId, state.country)) return;
           const val = (region.gyeonghyeonchi ?? region.level ?? 0) as ExperienceGrade;
           counts[val]++;
           counts[GyeongHyeonChi.UNVISITED]--;

@@ -1,4 +1,5 @@
 import { RegionExp, GyeongHyeonChi, ExperienceGrade } from '@/types'
+import { isRegionOfCountry } from '@/constants/regions'
 
 /**
  * 뱃지(업적) 시스템
@@ -34,9 +35,16 @@ const visitedIn = (regions: RegionExp[], ids: string[]) =>
  * @param totalRegions 전체 지역 수 (달성률용)
  * @param trackKm 누적 이동 거리 (km)
  */
-export function computeBadges(regions: RegionExp[], totalRegions: number, trackKm: number): Badge[] {
-  // 도도부현 레벨 기록만 집계 (시정촌 기록 제외)
-  const prefRegions = regions.filter((r) => !r.regionId.includes('_'))
+export function computeBadges(
+  regions: RegionExp[],
+  totalRegions: number,
+  trackKm: number,
+  country: 'japan' | 'korea' = 'japan',
+): Badge[] {
+  // 현재 국가의 광역 지역 기록만 집계 (시정촌/시군구 기록 제외)
+  const prefRegions = regions.filter(
+    (r) => !r.regionId.includes('_') && isRegionOfCountry(r.regionId, country),
+  )
   const visitedCount = prefRegions.filter((r) => levelOf(r) > GyeongHyeonChi.UNVISITED).length
   const masterCount = prefRegions.filter((r) => levelOf(r) === GyeongHyeonChi.RESIDED).length
   const stayedCount = prefRegions.filter((r) => levelOf(r) >= GyeongHyeonChi.STAYED).length
