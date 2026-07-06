@@ -114,76 +114,70 @@ export default function TokyoMunicipalityModal({ isOpen, onClose }: TokyoMunicip
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="p-4 border-b bg-gray-50">
+        <div className="p-4 border-b border-line bg-paper">
            <div className="flex items-center justify-between mb-4">
                <div>
-                   <h2 className="text-2xl font-bold text-gray-800">🏙️ Tokyo Manager</h2>
-                   <p className="text-sm text-gray-500">Manage all {total} municipalities</p>
+                   <h2 className="text-xl font-bold text-ink tracking-tight">도쿄 시정촌 관리</h2>
+                   <p className="text-sm text-muted">{total}개 시정촌을 한 번에 관리합니다</p>
                </div>
-               <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full">✕</button>
+               <button onClick={onClose} className="p-2 text-muted hover:text-ink hover:bg-line/50 rounded-full" aria-label="닫기">✕</button>
            </div>
-           
+
            {/* Stats & Bulk Actions */}
-           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-3 rounded-lg border border-line">
                <div className="flex items-center gap-4 w-full sm:w-auto">
                    <div className="flex flex-col">
-                       <span className="text-xs text-gray-500 font-semibold uppercase">Progress</span>
-                       <div className="text-xl font-bold text-blue-600">{visitedCount} <span className="text-gray-400 text-sm">/ {total}</span></div>
+                       <span className="text-xs text-muted font-semibold uppercase tracking-wider">진행</span>
+                       <div className="text-xl font-bold text-ink tabular-nums">{visitedCount} <span className="text-faint text-sm">/ {total}</span></div>
                    </div>
-                   <div className="h-8 w-px bg-gray-200"></div>
+                   <div className="h-8 w-px bg-line"></div>
                    <div className="flex flex-col flex-1 sm:w-48">
-                       <div className="flex justify-between text-xs mb-1">
-                           <span>Completion</span>
-                           <span>{progress}%</span>
+                       <div className="flex justify-between text-xs mb-1 text-muted">
+                           <span>달성률</span>
+                           <span className="tabular-nums">{progress}%</span>
                        </div>
-                       <div className="w-full bg-gray-100 rounded-full h-2">
-                           <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                       <div className="w-full bg-paper rounded-full h-1.5">
+                           <div className="bg-seal h-full rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
                        </div>
                    </div>
                </div>
-               
+
                <div className="flex gap-2 w-full sm:w-auto">
-                   <button 
+                   <button
                      onClick={() => handleBulkUpdate(GyeongHyeonChi.VISITED)}
-                     className="flex-1 sm:flex-none px-3 py-1.5 bg-green-100 text-green-700 rounded hover:bg-green-200 text-sm font-medium transition-colors"
+                     className="flex-1 sm:flex-none px-3 py-1.5 bg-ink text-paper rounded-md hover:opacity-90 text-sm font-medium transition-opacity"
                    >
-                     ✅ All Visited
+                     전체 방문 처리
                    </button>
-                   <button 
+                   <button
                      onClick={() => handleBulkUpdate(GyeongHyeonChi.UNVISITED)}
-                     className="flex-1 sm:flex-none px-3 py-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100 text-sm font-medium transition-colors"
+                     className="flex-1 sm:flex-none px-3 py-1.5 border border-seal/40 text-seal rounded-md hover:bg-seal-soft text-sm font-medium transition-colors"
                    >
-                     🗑️ Reset
+                     초기화
                    </button>
                </div>
            </div>
-           
+
            {/* Tabs */}
-           <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
-               <button 
-                 onClick={() => setActiveTab('all')}
-                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeTab === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
-               >
-                 All ({total})
-               </button>
-               <button 
-                 onClick={() => setActiveTab('ward')}
-                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeTab === 'ward' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
-               >
-                 23 Wards ({wards.length})
-               </button>
-               <button 
-                 onClick={() => setActiveTab('city')}
-                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeTab === 'city' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-               >
-                 Cities ({cities.length})
-               </button>
-               <button 
-                 onClick={() => setActiveTab('town')}
-                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeTab === 'town' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
-               >
-                 Towns/Villages ({towns.length})
-               </button>
+           <div className="flex gap-1.5 mt-4 overflow-x-auto pb-1">
+               {([
+                 ['all', `전체 (${total})`],
+                 ['ward', `23구 (${wards.length})`],
+                 ['city', `시 (${cities.length})`],
+                 ['town', `정·촌 (${towns.length})`],
+               ] as const).map(([tabId, label]) => (
+                 <button
+                   key={tabId}
+                   onClick={() => setActiveTab(tabId)}
+                   className={`px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                     activeTab === tabId
+                       ? 'bg-ink text-paper border-ink'
+                       : 'bg-card text-muted border-line hover:text-ink'
+                   }`}
+                 >
+                   {label}
+                 </button>
+               ))}
            </div>
         </div>
 

@@ -89,7 +89,7 @@ export default function GpsManager() {
                 if (level === GyeongHyeonChi.UNVISITED) {
                   mapStore.addGpsRecord(targetId, GyeongHyeonChi.PASSED)
                   lastAutoRecordRegionRef.current = targetId
-                  toast(`🚗 ${targetName} 통과 기록! (GPS 인증)`, { icon: '📍' })
+                  toast(`${targetName} — 통과 도장이 찍혔습니다`)
                 }
               }
             }

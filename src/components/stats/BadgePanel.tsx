@@ -9,7 +9,8 @@ import { trackDistanceMeters } from '@/lib/geo'
 import Card from '@/components/common/Card'
 
 /**
- * 뱃지(업적) 패널
+ * 뱃지 패널 — 낙관(落款) 도장 스타일.
+ * 달성한 업적은 인주 도장이 찍히고, 미달성은 빈 원과 진행 바로 표시된다.
  */
 export default function BadgePanel() {
   const [mounted, setMounted] = useState(false)
@@ -28,33 +29,41 @@ export default function BadgePanel() {
 
   return (
     <Card>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-md font-semibold text-gray-900">🎖️ 뱃지</h3>
-        <span className="text-xs font-medium text-gray-500">
-          {achievedCount}/{badges.length}
+      <div className="flex items-baseline justify-between mb-4">
+        <h3 className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">도장첩</h3>
+        <span className="text-xs text-muted tabular-nums">
+          {achievedCount} / {badges.length}
         </span>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
-        {badges.map((badge) => (
+      <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+        {badges.map((badge, i) => (
           <div
             key={badge.id}
-            className={`relative flex flex-col items-center p-2 rounded-lg text-center transition-all ${
-              badge.achieved ? 'bg-amber-50 ring-1 ring-amber-200' : 'bg-gray-50 opacity-60'
-            }`}
+            className="flex flex-col items-center text-center"
             title={`${badge.name}: ${badge.description}`}
           >
-            <span className={`text-2xl ${badge.achieved ? '' : 'grayscale'}`}>{badge.icon}</span>
-            <span className="text-[10px] font-medium text-gray-700 mt-1 leading-tight break-keep">
+            {/* 도장 */}
+            <span
+              className={`w-11 h-11 rounded-full flex items-center justify-center font-bold select-none leading-none ${
+                badge.achieved
+                  ? 'bg-seal text-white'
+                  : 'border-[1.5px] border-dashed border-line text-faint bg-transparent'
+              } ${badge.icon.length > 1 ? 'text-[13px]' : 'text-lg'}`}
+              style={badge.achieved ? { transform: `rotate(${((i % 5) - 2) * 4}deg)` } : undefined}
+            >
+              {badge.icon}
+            </span>
+            <span className={`mt-1.5 text-[10px] leading-tight break-keep ${badge.achieved ? 'text-ink font-medium' : 'text-muted'}`}>
               {badge.name}
             </span>
             {!badge.achieved && badge.progress > 0 && (
-              <div className="w-full bg-gray-200 rounded-full h-1 mt-1 overflow-hidden">
-                <div
-                  className="bg-amber-400 h-full transition-all"
+              <span className="mt-1 w-9 bg-paper rounded-full h-0.5 overflow-hidden">
+                <span
+                  className="block bg-faint h-full"
                   style={{ width: `${Math.round(badge.progress * 100)}%` }}
                 />
-              </div>
+              </span>
             )}
           </div>
         ))}

@@ -51,9 +51,14 @@ export default function LevelUpWatcher() {
     const badges = computeBadges(regions, TOTAL_REGIONS[country], trackKm)
     for (const badge of badges) {
       if (badge.achieved && !prevBadgesRef.current.has(badge.id)) {
-        toast(`${badge.icon} 뱃지 획득: ${badge.name}!`, {
+        toast(`도장 획득 — ${badge.name}`, {
           duration: 4000,
-          style: { background: '#FEF3C7', color: '#92400E', fontWeight: 600 },
+          style: {
+            background: 'var(--seal)',
+            color: '#fff',
+            border: 'none',
+            fontWeight: 600,
+          },
         })
       }
     }
@@ -64,10 +69,11 @@ export default function LevelUpWatcher() {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
-      <div className="animate-levelup bg-white/95 backdrop-blur rounded-2xl shadow-2xl px-10 py-8 text-center border-2 border-indigo-200">
-        <div className="text-5xl mb-2">🎉</div>
-        <div className="text-2xl font-bold text-indigo-600">LEVEL UP!</div>
-        <div className="text-4xl font-black text-gray-900 mt-1">Lv.{celebration}</div>
+      {/* 레벨업: 인주 도장이 쿵 찍히는 연출 */}
+      <div className="animate-levelup w-44 h-44 rounded-full border-[5px] border-seal bg-seal-soft/95 flex flex-col items-center justify-center text-seal shadow-[0_8px_32px_rgba(190,58,43,0.35)]">
+        <span className="text-[11px] font-bold tracking-[0.3em] uppercase">Level Up</span>
+        <span className="text-6xl font-bold leading-none mt-1 tabular-nums">{celebration}</span>
+        <span className="text-xs font-medium mt-1.5">여행자 레벨</span>
       </div>
     </div>
   )
