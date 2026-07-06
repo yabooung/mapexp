@@ -1,28 +1,37 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## [v1.2.0] - 2026-07-07
+
+첫 공개 릴리스.
+
+### 기능
+
+- **경현치 기록**: 일본 47 도도부현 + 1,897 시정촌, 한국 16 시도 + 250 시군구.
+  클릭 순환(0→5→0), 상세 모달, 시·군·구 일괄 관리(광역 이동·검색)
+- **GPS**: 광역+기초 동시 감지, 빠른 접지 기록, 이동 경로 트랙(Wake Lock),
+  자동 방문 감지. GPS 인증 기록은 수정·삭제 불가(수동 기록은 과거 날짜 자유)
+- **게임화**: 여행자 레벨, 한자 낙관 도장첩(12종), 레벨업 도장 연출
+- **공유**: 읽기 전용 공유 링크(받는 사람 데이터 자동 백업·복원),
+  색칠 지도가 담긴 SNS 이미지 카드, 모바일 네이티브 공유
+- **다국어**: 한국어 / English / 日本語 (지역명 포함)
+- **PWA**: 홈 화면 설치, 지도 데이터 오프라인 캐싱
+- **디자인**: "페이퍼 & 인주" 시스템 (와시 뉴트럴 + 인장 레드, Pretendard)
+
+### 데이터
+
+- 2026-07 행정구역 반영: 전남광주통합특별시 출범, 군위군 대구 편입
+  (구버전 기록 자동 마이그레이션)
+- 일본 도도부현 GeoJSON 13.4MB → 181KB 간소화
+
+### 주요 수정
+
+- 지도 레이어 재마운트로 인한 연속 클릭 유실 및 줌 복귀 후 클릭 불능 해결
+- 폴리곤 감김 방향(winding order)으로 인한 지역 감지·렌더링 오류 해결
+- 공유 링크가 받는 사람의 지도를 덮어쓰던 문제 → 뷰어 모드로 재설계
+
+---
 
 ## [v1.1.0] - 2026-01-20
 
-### Added
-
-- **Map Display Modes**:
-  - Added toggle button (Map/Simple) to switch between detailed OpenStreetMap view and a clean, whitespace-only view.
-  - **Simple Mode**: Fixed interaction (no zoom/pan) for creating consistent "badge-style" screenshots.
-- **Kyung-Hyeon-Do Level Standard**:
-  - Implemented new 6-tier level system (0-5).
-  - 0: 미답 (Unvisited)
-  - 1: 통과 (Passed)
-  - 2: 접지 (Landed)
-  - 3: 방문 (Visited)
-  - 4: 숙박 (Stayed)
-  - 5: 거주 (Resided) - Replaced "Master"
-- **UI Enhancements**:
-  - Updated legends and tooltips to reflect new levels.
-  - Added "Crown" icon for Resided level.
-  - Made map control UI semi-transparent in Simple Mode.
-
-### Changed
-
-- **Scoring Logic**: Removed complex 8-point rule for Master. Now score equals level (0-5 points).
-- **Map Interaction**: clicking a region now cycles through 0-5.
+- 경현도 6단계 레벨 체계(0~5), 지도 표시 모드(Standard/Simple),
+  도쿄 시정촌 지원, URL 공유, 통계 패널 등 MVP 기능
