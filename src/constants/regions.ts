@@ -56,7 +56,7 @@ export const JAPAN_REGION_IDS = [
  */
 export const TOTAL_REGIONS = {
   japan: JAPAN_REGION_IDS.length, // 47
-  korea: 17, // 17개 시도
+  korea: 16, // 2026-07 전남광주통합특별시 출범으로 17 → 16개 시도
 } as const
 
 /**
@@ -120,13 +120,12 @@ export const REGION_ID_MAP: Record<string, Record<string, string>> = {
     '沖縄県': 'okinawa',
   },
   korea: {
-    // 2018 통계청 데이터 명칭 + 현행 명칭 모두 매핑
+    // 2026-07 행정구역 기준 (전남광주통합특별시 출범, 군위군 대구 편입 반영)
     '서울특별시': 'seoul',
     '인천광역시': 'incheon',
     '경기도': 'gyeonggi',
     '부산광역시': 'busan',
     '대구광역시': 'daegu',
-    '광주광역시': 'gwangju',
     '대전광역시': 'daejeon',
     '울산광역시': 'ulsan',
     '세종특별자치시': 'sejong',
@@ -136,11 +135,24 @@ export const REGION_ID_MAP: Record<string, Record<string, string>> = {
     '충청남도': 'chungnam',
     '전라북도': 'jeonbuk',
     '전북특별자치도': 'jeonbuk',
-    '전라남도': 'jeonnam',
     '경상북도': 'gyeongbuk',
     '경상남도': 'gyeongnam',
     '제주특별자치도': 'jeju',
+    '전남광주통합특별시': 'jeonnamgwangju',
+    // 구 명칭 → 통합시로 흡수 (구버전 데이터/공유 링크 호환)
+    '광주광역시': 'jeonnamgwangju',
+    '전라남도': 'jeonnamgwangju',
   },
+}
+
+/**
+ * 행정구역 개편으로 폐지된 지역 ID → 승계 지역 ID
+ * (localStorage 구버전 기록 마이그레이션용)
+ */
+export const LEGACY_REGION_ID_MAP: Record<string, string> = {
+  gwangju: 'jeonnamgwangju',
+  jeonnam: 'jeonnamgwangju',
+  'gyeongbuk_군위군': 'daegu_군위군',
 }
 
 /**
@@ -151,7 +163,6 @@ export const KOREA_PROV_CODE_BY_ID: Record<string, string> = {
   busan: '21',
   daegu: '22',
   incheon: '23',
-  gwangju: '24',
   daejeon: '25',
   ulsan: '26',
   sejong: '29',
@@ -160,7 +171,7 @@ export const KOREA_PROV_CODE_BY_ID: Record<string, string> = {
   chungbuk: '33',
   chungnam: '34',
   jeonbuk: '35',
-  jeonnam: '36',
+  jeonnamgwangju: '36', // 전남광주통합특별시 (구 광주 24 + 전남 36)
   gyeongbuk: '37',
   gyeongnam: '38',
   jeju: '39',
@@ -175,6 +186,30 @@ const JAPAN_ID_SET = new Set<string>(JAPAN_REGION_IDS)
 export function isRegionOfCountry(regionId: string, country: 'japan' | 'korea'): boolean {
   const parentId = regionId.includes('_') ? regionId.split('_')[0] : regionId
   return country === 'japan' ? JAPAN_ID_SET.has(parentId) : KOREA_ID_SET.has(parentId)
+}
+
+/**
+ * 리스트 그룹핑용 지방/권역 구분
+ */
+export const REGION_GROUPS: Record<'japan' | 'korea', Array<{ name: string; ids: string[] }>> = {
+  japan: [
+    { name: '홋카이도', ids: ['hokkaido'] },
+    { name: '도호쿠', ids: ['aomori', 'iwate', 'miyagi', 'akita', 'yamagata', 'fukushima'] },
+    { name: '간토', ids: ['ibaraki', 'tochigi', 'gunma', 'saitama', 'chiba', 'tokyo', 'kanagawa'] },
+    { name: '주부', ids: ['niigata', 'toyama', 'ishikawa', 'fukui', 'yamanashi', 'nagano', 'gifu', 'shizuoka', 'aichi'] },
+    { name: '간사이', ids: ['mie', 'shiga', 'kyoto', 'osaka', 'hyogo', 'nara', 'wakayama'] },
+    { name: '주고쿠', ids: ['tottori', 'shimane', 'okayama', 'hiroshima', 'yamaguchi'] },
+    { name: '시코쿠', ids: ['tokushima', 'kagawa', 'ehime', 'kochi'] },
+    { name: '규슈·오키나와', ids: ['fukuoka', 'saga', 'nagasaki', 'kumamoto', 'oita', 'miyazaki', 'kagoshima', 'okinawa'] },
+  ],
+  korea: [
+    { name: '수도권', ids: ['seoul', 'incheon', 'gyeonggi'] },
+    { name: '강원', ids: ['gangwon'] },
+    { name: '충청', ids: ['daejeon', 'sejong', 'chungbuk', 'chungnam'] },
+    { name: '전라', ids: ['jeonbuk', 'jeonnamgwangju'] },
+    { name: '경상', ids: ['busan', 'daegu', 'ulsan', 'gyeongbuk', 'gyeongnam'] },
+    { name: '제주', ids: ['jeju'] },
+  ],
 }
 
 

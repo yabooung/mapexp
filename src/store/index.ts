@@ -2,7 +2,62 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { GyeongHyeonChi, MapExpData, RegionExp, UserSettings, ExperienceGrade, Visit } from "@/types";
 import { STORAGE_KEYS, DEFAULT_SETTINGS, DATA_VERSION } from "@/constants";
-import { TOTAL_REGIONS, isRegionOfCountry } from "@/constants/regions";
+import { TOTAL_REGIONS, isRegionOfCountry, LEGACY_REGION_ID_MAP } from "@/constants/regions";
+
+/**
+ * 저장 데이터 마이그레이션
+ * - level → gyeonghyeonchi 필드 이관
+ * - 행정구역 개편 반영: 폐지 지역 ID를 승계 지역으로 이관 후 중복 병합
+ *   (광주/전남 → 전남광주통합특별시, 경북 군위군 → 대구 군위군)
+ */
+function migrateRegions(regions: RegionExp[]): RegionExp[] {
+  const renamed = regions.map((r) => {
+    const region = { ...r };
+    if (region.gyeonghyeonchi === undefined && region.level !== undefined) {
+      region.gyeonghyeonchi = region.level as ExperienceGrade;
+    }
+
+    // ID 이관: 정확 일치 우선, 아니면 부모 접두사 교체 (예: gwangju_동구 → jeonnamgwangju_동구)
+    if (LEGACY_REGION_ID_MAP[region.regionId]) {
+      region.regionId = LEGACY_REGION_ID_MAP[region.regionId];
+    } else if (region.regionId.includes("_")) {
+      const [parent, ...rest] = region.regionId.split("_");
+      if (LEGACY_REGION_ID_MAP[parent]) {
+        region.regionId = `${LEGACY_REGION_ID_MAP[parent]}_${rest.join("_")}`;
+      }
+    }
+    return region;
+  });
+
+  // 이관 후 같은 ID로 합쳐진 기록 병합 (최고 레벨 + 방문 기록 합집합)
+  const merged = new Map<string, RegionExp>();
+  for (const region of renamed) {
+    const existing = merged.get(region.regionId);
+    if (!existing) {
+      merged.set(region.regionId, region);
+      continue;
+    }
+    const levelA = existing.gyeonghyeonchi ?? (existing.level as ExperienceGrade) ?? 0;
+    const levelB = region.gyeonghyeonchi ?? (region.level as ExperienceGrade) ?? 0;
+    const visitIds = new Set((existing.visits ?? []).map((v) => v.id));
+    const visits = [
+      ...(existing.visits ?? []),
+      ...(region.visits ?? []).filter((v) => !visitIds.has(v.id)),
+    ].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+    const stats = computeVisitStats(visits);
+    merged.set(region.regionId, {
+      ...existing,
+      ...region,
+      gyeonghyeonchi: Math.max(levelA, levelB) as ExperienceGrade,
+      visits,
+      visitCount: stats.visitCount,
+      totalNights: stats.totalNights,
+      memo: existing.memo && region.memo ? `${existing.memo}\n${region.memo}` : existing.memo || region.memo,
+      updatedAt: existing.updatedAt > region.updatedAt ? existing.updatedAt : region.updatedAt,
+    });
+  }
+  return [...merged.values()];
+}
 
 /**
  * GPS 인증 방문 기록 불변성 보장 병합
@@ -398,34 +453,20 @@ export const useMapExpStore = create<MapExpStore>()(
     }),
     {
       name: STORAGE_KEYS.MAP_DATA,
+      version: 2,
       partialize: (state) => ({
         country: state.country,
         regions: state.regions,
         settings: state.settings,
       }),
-      // Migration logic: on rehydrate, if level exists but gyeonghyeonchi doesn't, copy it
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          let hasChanges = false;
-          const migratedRegions = state.regions.map(r => {
-             if (r.gyeonghyeonchi === undefined && r.level !== undefined) {
-               hasChanges = true;
-               return { ...r, gyeonghyeonchi: r.level as ExperienceGrade };
-             }
-             return r;
-          });
-          
-          if (hasChanges) {
-             state.regions = migratedRegions;
-             // We can't easily force an update here without a setter, but state mutation works in zustand rehydrate callback often or we'd need a migration action. 
-             // Actually zustand persist doesn't always support direct mutation here.
-             // Better: use 'migrate' option in persist, but that requires versioning.
-             // Simple fallback: The getters I wrote above handle `gyeonghyeonchi ?? level`. 
-             // So explicit migration isn't strictly necessary for READ, but good for WRITE.
-             // I will leave this empty and rely on dual-read for now to be safe, or just mutation.
-          }
+      // 구버전 저장 데이터 마이그레이션 (level 필드, 행정구역 개편)
+      migrate: (persisted, _version) => {
+        const state = persisted as { regions?: RegionExp[] } | undefined;
+        if (state?.regions) {
+          state.regions = migrateRegions(state.regions);
         }
-      }
+        return persisted;
+      },
     },
   ),
 );
