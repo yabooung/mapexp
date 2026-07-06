@@ -16,7 +16,7 @@ import GpsManager from '@/components/gps/GpsManager'
 import LevelUpWatcher from '@/components/common/LevelUpWatcher'
 import BottomNav, { MobileTab } from '@/components/layout/BottomNav'
 import Icon from '@/components/common/Icon'
-import { useT } from '@/lib/i18n'
+import { useT, useLang, muniTerm } from '@/lib/i18n'
 
 // Leaflet을 dynamic import (SSR 비활성화)
 const MapView = dynamic(() => import('@/components/map/MapView'), {
@@ -34,12 +34,15 @@ const MapView = dynamic(() => import('@/components/map/MapView'), {
 function HomeContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { importData } = useMapExpStore()
+  const { importData, country } = useMapExpStore()
 
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
   const [view, setView] = useState<MobileTab>('map')
   const [showTokyoModal, setShowTokyoModal] = useState(false)
   const t = useT()
+  const lang = useLang()
+  // 기초 지역 용어는 보고 있는 국가를 따름 (일본=시정촌, 한국=시군구)
+  const term = muniTerm(country, lang)
 
   // 공유 URL 처리
   useEffect(() => {
@@ -119,7 +122,7 @@ function HomeContent() {
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-md text-sm font-medium text-muted border border-line bg-card hover:text-ink hover:bg-paper transition-colors"
             >
               <Icon name="building" size={15} />
-              {t('page.manageMunis')}
+              {t('page.manageMunis', { term })}
             </button>
           </div>
 
@@ -147,7 +150,7 @@ function HomeContent() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-medium text-ink border border-line bg-card active:bg-paper"
                 >
                   <Icon name="building" size={16} />
-                  {t('page.manageMunisLong')}
+                  {t('page.manageMunisLong', { term })}
                 </button>
               </div>
             </div>
