@@ -5,6 +5,7 @@ import { useGpsStore } from '@/store/gps'
 import { useMapExpStore } from '@/store'
 import { GyeongHyeonChi, ExperienceGrade, EXP_LEVEL_LABELS } from '@/types'
 import { trackDistanceMeters, formatDistance } from '@/lib/geo'
+import Icon from '@/components/common/Icon'
 
 interface GpsControlsProps {
   onRegionClick: (regionId: string) => void
@@ -14,7 +15,7 @@ interface GpsControlsProps {
  * 지도 위 GPS 컨트롤 오버레이
  * - 내 위치 버튼 (위치 추적 켜기/팔로우)
  * - 트랙 로그 기록 시작/정지 + 거리 표시 + 삭제
- * - 현재 지역 배너 + 빠른 방문 기록
+ * - 현재 지역 배너 (현 · 시정촌) + 빠른 방문 기록
  */
 export default function GpsControls({ onRegionClick }: GpsControlsProps) {
   const status = useGpsStore((s) => s.status)
@@ -48,7 +49,7 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
     if (!watchEnabled) {
       setWatchEnabled(true)
       setFollowMode(true)
-      toast('내 위치를 찾는 중...', { icon: '📡', duration: 2000 })
+      toast('내 위치를 찾는 중입니다', { duration: 2000 })
     } else if (!followMode) {
       setFollowMode(true)
     } else {
@@ -61,18 +62,18 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
   const handleTrackToggle = () => {
     if (isTracking) {
       stopTracking()
-      toast('이동 경로 기록을 정지했습니다.', { icon: '⏸️' })
+      toast('이동 경로 기록을 정지했습니다')
     } else {
       startTracking()
       if (!watchEnabled) setWatchEnabled(true)
-      toast('이동 경로 기록을 시작합니다!', { icon: '🛰️' })
+      toast('이동 경로 기록을 시작합니다')
     }
   }
 
   const handleClearTrack = () => {
     if (confirm('기록된 이동 경로를 모두 삭제하시겠습니까?')) {
       clearTrack()
-      toast.success('이동 경로가 삭제되었습니다.')
+      toast.success('이동 경로가 삭제되었습니다')
     }
   }
 
@@ -84,33 +85,38 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
       return
     }
     addGpsRecord(targetId, GyeongHyeonChi.LANDED)
-    toast.success(`👣 ${targetLabel} 접지 기록! (GPS 인증)`)
+    toast.success(`${targetLabel} — 접지 도장을 찍었습니다`)
   }
+
+  const circleBtn =
+    'w-11 h-11 rounded-full border flex items-center justify-center transition-all active:scale-90 shadow-[0_2px_8px_rgba(38,35,28,0.14)]'
 
   return (
     <>
       {/* 현재 지역 배너 (상단 중앙) - 현 · 시정촌 표시 */}
       {gpsActive && targetId && targetLabel && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2 bg-white/95 backdrop-blur rounded-full shadow-lg pl-4 pr-2 py-2 text-sm max-w-[calc(100%-24px)]">
-          <span className="flex items-center gap-1.5 font-semibold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
-            📍 {targetLabel}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2.5 bg-card border border-line rounded-full shadow-[0_2px_10px_rgba(38,35,28,0.12)] pl-3.5 pr-1.5 py-1.5 text-sm max-w-[calc(100%-24px)]">
+          <span className="flex items-center gap-1.5 font-semibold text-ink whitespace-nowrap overflow-hidden text-ellipsis">
+            <Icon name="pin" size={14} className="text-seal shrink-0" />
+            {targetLabel}
           </span>
-          <span className="text-xs text-gray-500 whitespace-nowrap hidden sm:inline">
+          <span className="text-xs text-muted whitespace-nowrap hidden sm:inline">
             {EXP_LEVEL_LABELS[currentLevel]}
           </span>
           {currentLevel < GyeongHyeonChi.LANDED ? (
             <button
               onClick={handleQuickRecord}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded-full text-xs font-semibold hover:bg-blue-700 active:scale-95 transition-all whitespace-nowrap"
+              className="px-3 py-1.5 bg-seal text-white rounded-full text-xs font-semibold hover:bg-seal-hover active:scale-95 transition-all whitespace-nowrap"
             >
-              👣 접지 기록
+              접지 기록
             </button>
           ) : (
             <button
               onClick={() => onRegionClick(targetId)}
-              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold hover:bg-gray-200 active:scale-95 transition-all whitespace-nowrap"
+              className="flex items-center gap-1 px-3 py-1.5 bg-paper text-ink rounded-full text-xs font-semibold hover:bg-line/60 active:scale-95 transition-all whitespace-nowrap"
             >
-              ✏️ 상세
+              <Icon name="pen" size={12} />
+              상세
             </button>
           )}
         </div>
@@ -120,15 +126,16 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
       <div className="absolute bottom-20 lg:bottom-4 left-4 z-[1000] flex flex-col gap-2">
         {/* 트랙 거리/삭제 (기록이 있을 때) */}
         {trackPoints.length >= 2 && (
-          <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur rounded-full shadow-lg px-3 py-1.5 text-xs font-semibold text-indigo-700">
-            🛤️ {formatDistance(distance)}
+          <div className="flex items-center gap-1.5 bg-card border border-line rounded-full shadow-[0_2px_8px_rgba(38,35,28,0.12)] px-3 py-1.5 text-xs font-semibold text-ink tabular-nums">
+            <Icon name="route" size={13} className="text-seal" />
+            {formatDistance(distance)}
             <button
               onClick={handleClearTrack}
-              className="ml-1 text-gray-400 hover:text-red-500 transition-colors"
+              className="ml-0.5 text-faint hover:text-seal transition-colors"
               aria-label="경로 삭제"
               title="경로 삭제"
             >
-              ✕
+              <Icon name="x" size={12} />
             </button>
           </div>
         )}
@@ -136,26 +143,26 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
         {/* 트랙 기록 버튼 */}
         <button
           onClick={handleTrackToggle}
-          className={`w-11 h-11 rounded-full shadow-lg flex items-center justify-center text-lg transition-all active:scale-90 ${
+          className={`${circleBtn} ${
             isTracking
-              ? 'bg-red-500 text-white animate-pulse'
-              : 'bg-white/95 backdrop-blur text-gray-700 hover:bg-gray-50'
+              ? 'bg-seal border-seal text-white'
+              : 'bg-card border-line text-muted hover:text-ink'
           }`}
           aria-label={isTracking ? '경로 기록 정지' : '경로 기록 시작'}
           title={isTracking ? '경로 기록 정지' : '경로 기록 시작'}
         >
-          {isTracking ? '⏸' : '🛰️'}
+          {isTracking ? <Icon name="pause" size={16} /> : <Icon name="route" size={18} />}
         </button>
 
         {/* 내 위치 버튼 */}
         <button
           onClick={handleLocateClick}
-          className={`w-11 h-11 rounded-full shadow-lg flex items-center justify-center text-lg transition-all active:scale-90 ${
+          className={`${circleBtn} ${
             followMode && gpsActive
-              ? 'bg-blue-600 text-white'
+              ? 'bg-ink border-ink text-paper'
               : gpsActive
-                ? 'bg-blue-50 text-blue-600'
-                : 'bg-white/95 backdrop-blur text-gray-700 hover:bg-gray-50'
+                ? 'bg-card border-ink text-ink'
+                : 'bg-card border-line text-muted hover:text-ink'
           }`}
           aria-label="내 위치"
           title={!watchEnabled ? '내 위치 켜기' : followMode ? '위치 추적 끄기' : '내 위치로 이동'}
@@ -163,7 +170,7 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
           {status === 'locating' ? (
             <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
           ) : (
-            '🎯'
+            <Icon name="locate" size={18} />
           )}
         </button>
       </div>

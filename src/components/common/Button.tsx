@@ -17,17 +17,17 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
+    'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ink disabled:opacity-50 disabled:cursor-not-allowed'
 
   const variantClasses = {
     primary:
-      'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
+      'bg-ink text-paper hover:opacity-90',
     secondary:
-      'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500',
+      'bg-card text-ink border border-line hover:bg-paper',
     danger:
-      'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+      'bg-seal text-white hover:bg-seal-hover',
     ghost:
-      'bg-transparent hover:bg-gray-100 text-gray-700 focus:ring-gray-500',
+      'bg-transparent hover:bg-paper text-muted hover:text-ink',
   }
 
   const sizeClasses = {

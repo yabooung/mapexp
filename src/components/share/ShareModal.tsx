@@ -66,8 +66,8 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
           />
         </div>
         
-        <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-700">
-          💡 공유 링크를 통해 들어오면 '보기 모드'로 열리며, '내 지도로 가져오기'를 통해 데이터를 저장할 수 있습니다.
+        <div className="bg-paper border border-line p-3 rounded-lg text-sm text-muted">
+          공유 링크를 통해 들어오면 '보기 모드'로 열리며, '내 지도로 가져오기'를 통해 데이터를 저장할 수 있습니다.
         </div>
       </div>
     </Modal>

@@ -97,7 +97,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
             placeholder="지역 검색..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 pl-10 bg-card border border-line rounded-md focus:outline-none focus:border-ink text-ink placeholder:text-faint"
           />
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -116,32 +116,27 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
 
         {/* 정렬 & 도움말 */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">정렬:</span>
+          <div className="inline-flex rounded-md border border-line bg-card p-0.5">
             <button
               onClick={() => setSortBy('name')}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                sortBy === 'name'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              className={`px-3 py-1 text-sm rounded-[5px] transition-colors ${
+                sortBy === 'name' ? 'bg-ink text-paper font-medium' : 'text-muted hover:text-ink'
               }`}
             >
               이름순
             </button>
             <button
               onClick={() => setSortBy('level')}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                sortBy === 'level'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              className={`px-3 py-1 text-sm rounded-[5px] transition-colors ${
+                sortBy === 'level' ? 'bg-ink text-paper font-medium' : 'text-muted hover:text-ink'
               }`}
             >
               레벨순
             </button>
           </div>
-          
-          <div className="text-xs text-gray-500 hidden sm:block">
-            클릭: 레벨변경 | Shift+클릭: 상세
+
+          <div className="text-xs text-muted hidden sm:block">
+            클릭: 레벨 변경 · Shift+클릭: 상세
           </div>
         </div>
       </div>

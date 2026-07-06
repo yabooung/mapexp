@@ -15,6 +15,7 @@ import TokyoMunicipalityModal from '@/components/region/TokyoMunicipalityModal'
 import GpsManager from '@/components/gps/GpsManager'
 import LevelUpWatcher from '@/components/common/LevelUpWatcher'
 import BottomNav, { MobileTab } from '@/components/layout/BottomNav'
+import Icon from '@/components/common/Icon'
 
 // Leaflet을 dynamic import (SSR 비활성화)
 const MapView = dynamic(() => import('@/components/map/MapView'), {
@@ -77,10 +78,14 @@ function HomeContent() {
 
       <div className="flex flex-col h-full lg:h-auto lg:block lg:container lg:mx-auto lg:px-4 lg:py-6 lg:max-w-7xl">
         {/* 데스크톱 타이틀 섹션 */}
-        <div className="hidden lg:flex mb-6 flex-row items-center justify-between gap-4">
+        <div className="hidden lg:flex mb-6 flex-row items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">지역 경험치 맵</h1>
-            <p className="text-gray-600">방문한 지역을 기록하고 경현치를 쌓아보세요</p>
+            <h1 className="text-[28px] font-bold tracking-tight text-ink leading-tight">
+              나의 경현치 지도
+            </h1>
+            <p className="text-muted mt-1 text-[15px]">
+              지나가고, 내리고, 걷고, 묵은 자리마다 도장이 쌓입니다
+            </p>
           </div>
           <CountrySelector />
         </div>
@@ -88,42 +93,40 @@ function HomeContent() {
         {/* 데스크톱 뷰 모드 전환 */}
         <div className="hidden lg:block mb-4">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setView('map')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                view !== 'list'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              🗺️ 지도 보기
-            </button>
-            <button
-              onClick={() => setView('list')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                view === 'list'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              📋 리스트 보기
-            </button>
+            <div className="inline-flex rounded-md border border-line bg-card p-0.5">
+              <button
+                onClick={() => setView('map')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[5px] text-sm font-medium transition-colors ${
+                  view !== 'list' ? 'bg-ink text-paper' : 'text-muted hover:text-ink'
+                }`}
+              >
+                <Icon name="map" size={15} />
+                지도
+              </button>
+              <button
+                onClick={() => setView('list')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[5px] text-sm font-medium transition-colors ${
+                  view === 'list' ? 'bg-ink text-paper' : 'text-muted hover:text-ink'
+                }`}
+              >
+                <Icon name="list" size={15} />
+                리스트
+              </button>
+            </div>
 
             <button
               onClick={() => setShowTokyoModal(true)}
-              className="px-4 py-2 rounded-lg font-medium transition-colors bg-purple-600 text-white hover:bg-purple-700 ml-2"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-md text-sm font-medium text-muted border border-line bg-card hover:text-ink hover:bg-paper transition-colors"
             >
-              🏙️ 도쿄 시정촌 관리
+              <Icon name="building" size={15} />
+              도쿄 시정촌 관리
             </button>
           </div>
 
           {view !== 'list' && (
-            <div className="mt-2 text-xs text-gray-600 bg-blue-50 px-3 py-2 rounded-md">
-              💡 <span className="font-medium">지도 클릭</span>으로 빠르게 레벨 변경 (0→1→2→3→4→5→0)
-              | <span className="font-medium">Shift+클릭</span> 또는{' '}
-              <span className="font-medium">리스트 클릭</span>으로 상세 설정
-              | <span className="font-medium">🎯 버튼</span>으로 GPS 위치 추적
-            </div>
+            <p className="mt-2.5 text-xs text-muted">
+              지도 클릭으로 레벨 변경 (0→5→0) · Shift+클릭으로 상세 설정 · 좌하단 조준 버튼으로 GPS 추적
+            </p>
           )}
         </div>
 
@@ -143,9 +146,10 @@ function HomeContent() {
                 <CountrySelector />
                 <button
                   onClick={() => setShowTokyoModal(true)}
-                  className="w-full px-4 py-2.5 rounded-lg font-medium bg-purple-600 text-white active:bg-purple-700"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-medium text-ink border border-line bg-card active:bg-paper"
                 >
-                  🏙️ 도쿄 시정촌 관리
+                  <Icon name="building" size={16} />
+                  도쿄 시정촌 관리
                 </button>
               </div>
             </div>
@@ -157,14 +161,14 @@ function HomeContent() {
               view === 'stats' ? 'hidden lg:block' : 'flex flex-col'
             } flex-1 min-h-0 lg:col-span-3 h-full`}
           >
-            <div className="bg-white lg:rounded-lg lg:shadow-sm overflow-hidden relative flex-1 min-h-0 lg:h-[calc(100vh-270px)] lg:min-h-[600px]">
+            <div className="bg-card lg:rounded-[10px] lg:border lg:border-line overflow-hidden relative flex-1 min-h-0 lg:h-[calc(100vh-270px)] lg:min-h-[600px]">
               {/* 지도는 항상 마운트 유지 (탭 전환 시 상태 보존) */}
               <div className={`${view === 'list' ? 'hidden' : 'block'} h-full`}>
                 <MapView onRegionClick={handleRegionClick} />
               </div>
 
               {view === 'list' && (
-                <div className="absolute inset-0 overflow-y-auto p-4 lg:p-6 pb-24 lg:pb-6 bg-white">
+                <div className="absolute inset-0 overflow-y-auto p-4 lg:p-6 pb-24 lg:pb-6 bg-card">
                   <RegionList onRegionClick={handleRegionClick} />
                 </div>
               )}

@@ -6,6 +6,7 @@ import { RegionExp, GyeongHyeonChi, ExperienceGrade } from '@/types'
 
 export interface Badge {
   id: string
+  /** 낙관 도장에 새길 글자 (1~2자) */
   icon: string
   name: string
   description: string
@@ -62,17 +63,17 @@ export function computeBadges(regions: RegionExp[], totalRegions: number, trackK
   })
 
   return [
-    make('first-step', '👣', '첫 발자국', '첫 지역 기록하기', visitedCount, 1),
-    make('explorer', '🧭', '탐험가', '10개 지역 방문하기', visitedCount, 10),
-    make('adventurer', '🗺️', '모험가', '25개 지역 방문하기', visitedCount, 25),
-    make('half-japan', '🗾', '절반 정복', '달성률 50% 달성하기', completionRate, 0.5),
-    make('complete', '🏆', '전국 제패', '47개 도도부현 모두 방문하기', visitedCount, totalRegions),
-    make('first-stay', '🏨', '첫 숙박', '숙박(4) 지역 만들기', stayedCount, 1),
-    make('first-master', '⭐', '첫 마스터', '거주(5) 지역 만들기', masterCount, 1),
-    make('triple-master', '🌟', '트리플 마스터', '거주(5) 지역 3개 만들기', masterCount, 3),
-    make('kansai-king', '👑', '간사이 킹', '간사이 6개 지역 모두 방문하기', kansaiVisited, KANSAI_IDS.length),
-    make('kanto-master', '🗼', '간토 마스터', '간토 7개 지역 모두 방문하기', kantoVisited, KANTO_IDS.length),
-    make('kyushu-explorer', '🌋', '규슈 탐험가', '규슈·오키나와 8개 지역 모두 방문하기', kyushuVisited, KYUSHU_IDS.length),
-    make('on-the-road', '🛤️', '길 위에서', 'GPS 트랙 10km 기록하기', trackKm, 10),
+    make('first-step', '足', '첫 발자국', '첫 지역 기록하기', visitedCount, 1),
+    make('explorer', '探', '탐험가', '10개 지역 방문하기', visitedCount, 10),
+    make('adventurer', '冒', '모험가', '25개 지역 방문하기', visitedCount, 25),
+    make('half-japan', '半', '절반 정복', '달성률 50% 달성하기', completionRate, 0.5),
+    make('complete', '制覇', '전국 제패', '47개 도도부현 모두 방문하기', visitedCount, totalRegions),
+    make('first-stay', '泊', '첫 숙박', '숙박(4) 지역 만들기', stayedCount, 1),
+    make('first-master', '住', '첫 마스터', '거주(5) 지역 만들기', masterCount, 1),
+    make('triple-master', '三住', '트리플 마스터', '거주(5) 지역 3개 만들기', masterCount, 3),
+    make('kansai-king', '関西', '간사이 킹', '간사이 6개 지역 모두 방문하기', kansaiVisited, KANSAI_IDS.length),
+    make('kanto-master', '関東', '간토 마스터', '간토 7개 지역 모두 방문하기', kantoVisited, KANTO_IDS.length),
+    make('kyushu-explorer', '九州', '규슈 탐험가', '규슈·오키나와 8개 지역 모두 방문하기', kyushuVisited, KYUSHU_IDS.length),
+    make('on-the-road', '道', '길 위에서', 'GPS 트랙 10km 기록하기', trackKm, 10),
   ]
 }

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Sans_KR, Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
@@ -7,8 +7,9 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const plexSansKr = IBM_Plex_Sans_KR({
+  variable: "--font-plex",
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
 });
 
@@ -48,11 +49,11 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${plexSansKr.variable} ${geistMono.variable} antialiased`}
       >
         <div className="flex flex-col h-dvh lg:h-auto lg:min-h-screen">
           <Header />
-          <main className="flex-1 min-h-0 overflow-hidden lg:overflow-visible bg-gray-50">
+          <main className="flex-1 min-h-0 overflow-hidden lg:overflow-visible bg-paper">
             {children}
           </main>
           <div className="hidden lg:block">
@@ -60,7 +61,20 @@ export default function RootLayout({
           </div>
         </div>
         {/* GPS 현재 지역 배너(지도 상단)와 겹치지 않도록 조금 아래에 표시 */}
-        <Toaster position="top-center" containerStyle={{ top: 120 }} />
+        <Toaster
+          position="top-center"
+          containerStyle={{ top: 120 }}
+          toastOptions={{
+            style: {
+              background: "var(--card)",
+              color: "var(--ink)",
+              border: "1px solid var(--line)",
+              borderRadius: "8px",
+              boxShadow: "0 4px 16px rgba(38, 35, 28, 0.12)",
+              fontSize: "14px",
+            },
+          }}
+        />
         <ServiceWorkerRegister />
       </body>
     </html>

@@ -5,6 +5,7 @@ import { useMapExpStore } from '@/store'
 import { useGpsStore } from '@/store/gps'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
+import Icon from '@/components/common/Icon'
 import toast from 'react-hot-toast'
 
 interface SettingsModalProps {
@@ -24,7 +25,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (next) {
       toast.success('자동 방문 감지가 켜졌습니다. 새 지역 진입 시 자동으로 기록됩니다.')
     } else {
-      toast('자동 방문 감지가 꺼졌습니다.', { icon: '📴' })
+      toast('자동 방문 감지가 꺼졌습니다.')
     }
   }
 
@@ -110,10 +111,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <h3 className="text-sm font-semibold text-gray-900 mb-3">
             GPS 위치 서비스
           </h3>
-          <label className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer">
+          <label className="flex items-center justify-between gap-3 p-3 bg-paper rounded-lg cursor-pointer border border-line">
             <div>
-              <p className="text-sm font-medium text-gray-900">🛰️ 자동 방문 감지</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-sm font-medium text-ink">자동 방문 감지</p>
+              <p className="text-xs text-muted mt-0.5">
                 새 지역에 진입하면 자동으로 &lsquo;통과(1)&rsquo; 기록을 남깁니다. (앱이 열려 있는 동안)
               </p>
             </div>
@@ -125,7 +126,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 handleAutoDetectToggle()
               }}
               className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${
-                autoDetectVisit ? 'bg-blue-600' : 'bg-gray-300'
+                autoDetectVisit ? 'bg-seal' : 'bg-line'
               }`}
             >
               <span
@@ -137,19 +138,21 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </label>
         </div>
 
-        <div className="border-t border-gray-200"></div>
+        <div className="border-t border-line"></div>
 
         {/* 데이터 백업/복원 */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">
+          <h3 className="text-sm font-semibold text-ink mb-3">
             데이터 백업/복원
           </h3>
           <div className="flex gap-3">
-            <Button variant="primary" onClick={handleExport} className="flex-1">
-              📥 JSON 내보내기
+            <Button variant="primary" onClick={handleExport} className="flex-1 gap-1.5">
+              <Icon name="download" size={15} />
+              JSON 내보내기
             </Button>
-            <Button variant="secondary" onClick={handleImportClick} className="flex-1">
-              📤 JSON 가져오기
+            <Button variant="secondary" onClick={handleImportClick} className="flex-1 gap-1.5">
+              <Icon name="upload" size={15} />
+              JSON 가져오기
             </Button>
             <input
               type="file"
@@ -159,22 +162,23 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               className="hidden"
             />
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-muted mt-2">
             데이터를 JSON 파일로 저장하거나 불러올 수 있습니다.
           </p>
         </div>
 
-        <div className="border-t border-gray-200"></div>
+        <div className="border-t border-line"></div>
 
         {/* 위험 구역 */}
         <div>
-          <h3 className="text-sm font-semibold text-red-600 mb-3">
+          <h3 className="text-sm font-semibold text-seal mb-3">
             위험 구역
           </h3>
-          <Button variant="danger" onClick={handleReset} className="w-full">
-            🗑️ 데이터 전체 초기화
+          <Button variant="danger" onClick={handleReset} className="w-full gap-1.5">
+            <Icon name="trash" size={15} />
+            데이터 전체 초기화
           </Button>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-muted mt-2">
             모든 지역 기록과 설정이 삭제됩니다.
           </p>
         </div>

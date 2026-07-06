@@ -37,11 +37,15 @@ export default function RegionCard({
       className="relative overflow-hidden"
       style={{ backgroundColor }}
     >
-      {/* 거주(최고레벨) 뱃지 */}
+      {/* 거주(최고 등급) 낙관 도장 */}
       {isResided && (
-        <div className="absolute top-2 right-2">
-          <span className="text-2xl">👑</span>
-        </div>
+        <span
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-seal text-white flex items-center justify-center text-[13px] font-bold select-none"
+          style={{ transform: 'rotate(-4deg)' }}
+          title="거주 (최고 등급)"
+        >
+          住
+        </span>
       )}
 
       {/* 지역명 */}

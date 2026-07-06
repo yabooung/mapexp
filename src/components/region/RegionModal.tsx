@@ -164,8 +164,8 @@ export default function RegionModal({
                     key={lvNum}
                     className={`flex items-start p-3 border rounded-lg cursor-pointer transition-colors ${
                       level === lvNum
-                        ? 'bg-blue-50 border-blue-500'
-                        : 'border-gray-300 hover:bg-gray-50'
+                        ? 'bg-seal-soft border-seal'
+                        : 'border-line hover:bg-paper'
                     }`}
                   >
                     <input
@@ -181,7 +181,11 @@ export default function RegionModal({
                         <span className="font-medium">
                           Lv.{lvNum} - {EXP_LEVEL_LABELS[lvNum]}
                         </span>
-                        {lvNum === GyeongHyeonChi.RESIDED && <span>👑</span>}
+                        {lvNum === GyeongHyeonChi.RESIDED && (
+                          <span className="w-5 h-5 rounded-full bg-seal text-white flex items-center justify-center text-[10px] font-bold select-none">
+                            住
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-gray-600 mt-1">
                         {levelDescriptions[lvNum]}
@@ -195,16 +199,16 @@ export default function RegionModal({
 
         {/* 레벨 5 설명 */}
         {level === GyeongHyeonChi.RESIDED && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm font-medium text-yellow-800 mb-1">
-              거주 (居住) - 5점 최고 등급
+          <div className="bg-seal-soft border border-seal/30 rounded-lg p-4">
+            <p className="text-sm font-medium text-seal mb-1">
+              거주 (居住) — 5점 최고 등급
             </p>
-            <p className="text-xs text-yellow-700">
+            <p className="text-xs text-ink/70">
               해당 지역에서 생활한 경험이 있거나, 3개월 이상 장기 체류한 경우에 해당합니다.
             </p>
             {/* 자동 계산된 통계 표시 */}
-            <div className="mt-3 flex gap-4 text-xs font-medium text-yellow-800">
-              <div className="bg-white/50 px-2 py-1 rounded">
+            <div className="mt-3 flex gap-4 text-xs font-medium text-ink">
+              <div className="bg-card px-2 py-1 rounded border border-line tabular-nums">
                 총 방문: {visits.length}회
               </div>
             </div>
@@ -219,7 +223,7 @@ export default function RegionModal({
         {/* 기존 메모/날짜 입력 (레거시 - 필요하다면 유지하지만, 방문 기록으로 대체 권장) */}
         {(visits.length === 0) && (
           <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-gray-500">
-            <p>💡 방문 기록을 추가하면 방문 횟수와 숙박일이 자동 계산됩니다.</p>
+            <p>방문 기록을 추가하면 방문 횟수와 숙박일이 자동 계산됩니다.</p>
           </div>
         )}
 

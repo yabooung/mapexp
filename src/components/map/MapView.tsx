@@ -11,6 +11,7 @@ import type { GeoJsonObject, Feature, FeatureCollection } from 'geojson'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import GpsLayer from './GpsLayer'
 import GpsControls from './GpsControls'
+import Icon from '@/components/common/Icon'
 import { municipalityName, PREF_KANJI_BY_ID } from '@/lib/geo'
 
 interface MapViewProps {
@@ -730,45 +731,36 @@ export default function MapView({ onRegionClick }: MapViewProps) {
       {/* 모바일: 패널 토글 버튼 */}
       <button
         onClick={() => setPanelOpen(!panelOpen)}
-        className={`sm:hidden absolute bottom-20 right-4 z-[1001] w-11 h-11 rounded-full shadow-lg flex items-center justify-center text-lg transition-all active:scale-90 ${
-          panelOpen ? 'bg-blue-600 text-white' : 'bg-white/95 backdrop-blur text-gray-700'
+        className={`sm:hidden absolute bottom-20 right-4 z-[1001] w-11 h-11 rounded-full border flex items-center justify-center transition-all active:scale-90 shadow-[0_2px_8px_rgba(38,35,28,0.14)] ${
+          panelOpen ? 'bg-ink border-ink text-paper' : 'bg-card border-line text-muted'
         }`}
         aria-label="지도 설정"
       >
-        {panelOpen ? '✕' : '🎛️'}
+        <Icon name={panelOpen ? 'x' : 'layers'} size={18} />
       </button>
 
       {/* Controls */}
-      <div className={`${panelOpen ? 'block' : 'hidden'} sm:block absolute bottom-[8.5rem] right-4 sm:bottom-4 bg-white/90 backdrop-blur rounded-lg shadow-lg p-3 text-xs z-[1000] max-w-[200px] max-h-[55%] overflow-y-auto`}>
-        <div className="flex flex-col gap-2 mb-3">
+      <div className={`${panelOpen ? 'block' : 'hidden'} sm:block absolute bottom-[8.5rem] right-4 sm:bottom-4 bg-card border border-line rounded-[10px] shadow-[0_2px_10px_rgba(38,35,28,0.12)] p-3 text-xs z-[1000] w-[172px] max-h-[55%] overflow-y-auto`}>
+        <div className="flex flex-col gap-1.5 mb-3">
             <button
               onClick={cycleLabelMode}
-              className={`w-full py-1.5 px-2 rounded border font-medium flex items-center justify-center gap-2 transition-colors ${
-                  labelMode !== 'none'
-                  ? 'bg-blue-50 border-blue-300 text-blue-700' 
-                  : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
-              }`}
+              className="w-full py-1.5 px-2.5 rounded-md border border-line font-medium flex items-center justify-between text-ink hover:bg-paper transition-colors"
             >
-               <span>
-                 {labelMode === 'custom' ? '🏷️' : labelMode === 'native' ? '🗺️' : '🚫'}
-               </span> 
-               {labelMode === 'custom' ? 'Label: Custom' : labelMode === 'native' ? 'Label: Native' : 'Label: None'}
+               <span className="text-muted">라벨</span>
+               <span className="font-semibold">
+                 {labelMode === 'custom' ? '직접 표시' : labelMode === 'native' ? '지도 원본' : '끔'}
+               </span>
             </button>
 
-            {/* Language Toggle (Only visible if not using 'none' labels, or just always visible for ease) */}
             <button
                 onClick={cycleTileLanguage}
-                className={`w-full py-1.5 px-2 rounded border font-medium flex items-center justify-center gap-2 transition-colors ${
-                    tileLanguage !== 'local'
-                    ? 'bg-green-50 border-green-300 text-green-700'
-                    : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
-                }`}
-                title="Change Map Language (Native Labels)"
+                className="w-full py-1.5 px-2.5 rounded-md border border-line font-medium flex items-center justify-between text-ink hover:bg-paper transition-colors"
+                title="지도 라벨 언어 변경"
             >
-                <span>
-                    {tileLanguage === 'local' ? '🌐' : tileLanguage === 'ko' ? '🇰🇷' : '🇯🇵'}
+                <span className="text-muted">언어</span>
+                <span className="font-semibold">
+                  {tileLanguage === 'local' ? '현지' : tileLanguage === 'ko' ? '한국어' : '일본어'}
                 </span>
-                {tileLanguage === 'local' ? 'Lang: Local' : tileLanguage === 'ko' ? 'Lang: Korean' : 'Lang: Japan'}
             </button>
 
             {/* Map Level Toggle - Removed as requested in favor of Zoom LOD */ }
@@ -792,36 +784,27 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                       // 타일을 켰는데 네이티브 모드라면 유지
                       setShowTiles(true)
                   } else if (showTiles && labelMode === 'native') {
-                      // 타일을 끄면 네이티브 라벨도 안보이므로 커스텀이나 non으로 바꿔야 좋겠지만, 일단 타일만 끔
-                      // 사용자 경험상 "Isolate"시에는 Custom을 보여주는게 나을수도.
-                      // 여기서는 단순 타일 토글만 함.
                       setShowTiles(false)
                   } else {
                       setShowTiles(!showTiles)
                   }
               }}
-              className={`w-full py-1.5 px-2 rounded border font-medium flex items-center justify-center gap-2 transition-colors ${
-                  showTiles 
-                  ? 'bg-blue-50 border-blue-300 text-blue-700' 
-                  : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
-              }`}
+              className="w-full py-1.5 px-2.5 rounded-md border border-line font-medium flex items-center justify-between text-ink hover:bg-paper transition-colors"
             >
-               <span>{showTiles ? '🌏' : '🚫'}</span> 
-               {showTiles ? 'Hide Geography' : 'Show Geography'}
+               <span className="text-muted">배경 지도</span>
+               <span className="font-semibold">{showTiles ? '켬' : '끔'}</span>
             </button>
         </div>
 
-        <div className="font-semibold mb-2">경현치 (경험치 등급)</div>
-        {[0, 1, 2, 3, 4, 5].map((lvl) => (
-          <div key={lvl} className="flex items-center gap-2 mt-1">
-             <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: EXP_COLORS[lvl as ExperienceGrade] }} />
-             <span>{lvl}</span>
-          </div>
-        ))}
-        
-        <div className="border-t border-gray-200 my-2"></div>
-        <div className="text-[10px] text-gray-600">
-            {showTiles ? 'Standard View' : 'Isolated View (Background)'}
+        <div className="text-[10px] font-semibold tracking-[0.08em] text-muted uppercase mb-2">경현치</div>
+        <div className="space-y-1">
+          {([5, 4, 3, 2, 1, 0] as ExperienceGrade[]).map((lvl) => (
+            <div key={lvl} className="flex items-center gap-2">
+               <span className="w-3 h-3 rounded-[3px] border border-black/10" style={{ backgroundColor: EXP_COLORS[lvl] }} />
+               <span className="text-ink">{['미답', '통과', '접지', '방문', '숙박', '거주'][lvl]}</span>
+               <span className="ml-auto text-faint tabular-nums">{lvl}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

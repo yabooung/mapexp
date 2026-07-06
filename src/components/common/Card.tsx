@@ -29,17 +29,17 @@ export default function Card({
   }
 
   const shadowClasses = {
-    sm: 'shadow-sm',
-    md: 'shadow-md',
-    lg: 'shadow-lg',
+    sm: '',
+    md: '',
+    lg: 'shadow-[0_4px_16px_rgba(38,35,28,0.08)]',
   }
 
-  const hoverClass = hover ? 'hover:shadow-lg hover:scale-105 transition-all duration-200' : ''
+  const hoverClass = hover ? 'hover:border-faint transition-colors duration-150' : ''
   const cursorClass = onClick ? 'cursor-pointer' : ''
 
   return (
     <div
-      className={`bg-white rounded-lg ${paddingClasses[padding]} ${shadowClasses[shadow]} ${hoverClass} ${cursorClass} ${className}`}
+      className={`bg-card border border-line rounded-[10px] ${paddingClasses[padding]} ${shadowClasses[shadow]} ${hoverClass} ${cursorClass} ${className}`}
       onClick={onClick}
       style={style}
     >

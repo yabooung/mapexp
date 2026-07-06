@@ -1,28 +1,46 @@
 @import "tailwindcss";
 
+/*
+ * 디자인 토큰 — "종이 지도와 인주 도장"
+ * 와시(和紙) 톤 뉴트럴 + 인주(印朱) 레드 단일 악센트.
+ * 지도 레벨 색상(EXP_COLORS)은 데이터 인코딩이므로 여기 규칙과 무관하게 유지.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f3ec; /* 와시 페이퍼 */
+  --foreground: #26231c; /* 잉크 */
+
+  --paper: #f5f3ec;
+  --card: #ffffff;
+  --ink: #26231c;
+  --muted: #7c766a;
+  --faint: #a8a294;
+  --line: #e3dfd3;
+  --seal: #be3a2b; /* 인주 레드 */
+  --seal-hover: #a93325;
+  --seal-soft: #f8eae4;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-seal: var(--seal);
+  --color-seal-hover: var(--seal-hover);
+  --color-seal-soft: var(--seal-soft);
+  --font-sans: var(--font-plex), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-plex), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-feature-settings: "tnum";
 }
 
 /* Leaflet 지도 스타일 커스터마이징 */
@@ -120,26 +138,31 @@ path:focus {
   }
 }
 
-/* 레벨업 축하 애니메이션 */
-@keyframes levelup-bounce {
+/* 레벨업 도장 찍기 애니메이션 (스탬프가 쿵 내려앉는 느낌) */
+@keyframes levelup-stamp {
   0% {
-    transform: scale(0.3);
+    transform: scale(1.6) rotate(-8deg);
     opacity: 0;
   }
-  50% {
-    transform: scale(1.15);
-  }
-  70% {
-    transform: scale(0.95);
+  60% {
+    transform: scale(0.96) rotate(-2deg);
+    opacity: 1;
   }
   100% {
-    transform: scale(1);
+    transform: scale(1) rotate(-3deg);
     opacity: 1;
   }
 }
 
 .animate-levelup {
-  animation: levelup-bounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  animation: levelup-stamp 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-levelup,
+  .gps-pulse {
+    animation: none;
+  }
 }
 
 /* 모바일 하단 탭 safe area */
