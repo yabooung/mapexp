@@ -1,8 +1,34 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { GyeongHyeonChi, MapExpData, RegionExp, UserSettings, ExperienceGrade } from "@/types";
+import { GyeongHyeonChi, MapExpData, RegionExp, UserSettings, ExperienceGrade, Visit } from "@/types";
 import { STORAGE_KEYS, DEFAULT_SETTINGS, DATA_VERSION } from "@/constants";
 import { TOTAL_REGIONS } from "@/constants/regions";
+
+/**
+ * GPS 인증 방문 기록 불변성 보장 병합
+ * - 기존 GPS 기록은 원본 그대로 유지 (수정/삭제된 사본은 무시)
+ * - 새로 들어온 데이터가 GPS 출처를 사칭하면 제거 (위조 방지)
+ */
+function mergeVisitsPreservingGps(original: Visit[] | undefined, incoming: Visit[] | undefined): Visit[] {
+  const originalGps = (original ?? []).filter((v) => v.source === "gps");
+  const originalGpsIds = new Set(originalGps.map((v) => v.id));
+  // 수동 기록만 수용, 기존 GPS 기록의 변조된 사본은 배제
+  const manualIncoming = (incoming ?? []).filter((v) => v.source !== "gps" && !originalGpsIds.has(v.id));
+  return [...originalGps, ...manualIncoming].sort(
+    (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
+  );
+}
+
+/** visits 배열에서 방문 횟수/숙박일 재계산 */
+function computeVisitStats(visits: Visit[]): { visitCount: number; totalNights: number } {
+  const totalNights = visits.reduce((sum, visit) => {
+    const start = new Date(visit.startDate);
+    const end = new Date(visit.endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    return sum + Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }, 0);
+  return { visitCount: visits.length, totalNights };
+}
 
 /**
  * 맵 경험치 스토어 인터페이스
@@ -18,6 +44,8 @@ interface MapExpStore {
   setCountry: (country: "japan" | "korea") => void;
   addRegion: (region: RegionExp) => void;
   updateRegion: (regionId: string, updates: Partial<RegionExp>) => void;
+  /** GPS 인증 기록: 레벨 상향 + 불변 방문 기록 추가 (하루 1건) */
+  addGpsRecord: (regionId: string, minLevel: ExperienceGrade) => void;
   deleteRegion: (regionId: string) => void;
   selectRegion: (regionId: string | null) => void;
   updateSettings: (settings: Partial<UserSettings>) => void;
@@ -62,32 +90,35 @@ export const useMapExpStore = create<MapExpStore>()(
       // 지역 추가
       addRegion: (region) => {
         set((state) => {
+          const existingIndex = state.regions.findIndex(
+            (r) => r.regionId === region.regionId,
+          );
+          const existing = existingIndex >= 0 ? state.regions[existingIndex] : undefined;
+
+          // GPS 인증 기록 보호: 기존 GPS 기록은 유지, 외부에서 온 GPS 사칭 기록은 제거
+          let visits = region.visits;
+          if (visits !== undefined || existing?.visits?.some((v) => v.source === "gps")) {
+            visits = mergeVisitsPreservingGps(existing?.visits, visits);
+          }
+
           // 통계 자동 계산
-          const visitCount = region.visits ? region.visits.length : (region.visitCount || 0)
-          let totalNights = region.totalNights || 0
-          
-          if (region.visits) {
-            totalNights = region.visits.reduce((sum, visit) => {
-              const start = new Date(visit.startDate)
-              const end = new Date(visit.endDate)
-              const diffTime = Math.abs(end.getTime() - start.getTime())
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-              return sum + diffDays
-            }, 0)
+          let visitCount = region.visitCount || 0;
+          let totalNights = region.totalNights || 0;
+          if (visits) {
+            const stats = computeVisitStats(visits);
+            visitCount = stats.visitCount;
+            totalNights = stats.totalNights;
           }
 
           const regionWithStats = {
             ...region,
+            visits,
             visitCount,
             totalNights,
             updatedAt: new Date().toISOString(),
           }
 
           // 이미 존재하는 지역이면 업데이트
-          const existingIndex = state.regions.findIndex(
-            (r) => r.regionId === region.regionId,
-          );
-
           if (existingIndex >= 0) {
             const updatedRegions = [...state.regions];
             updatedRegions[existingIndex] = regionWithStats;
@@ -140,17 +171,14 @@ export const useMapExpStore = create<MapExpStore>()(
             if (region.regionId !== regionId) return region
 
             const updatedRegion = { ...region, ...updates }
-            
-            // visits가 변경되었으면 통계 재계산
+
+            // visits가 변경되었으면 GPS 기록 보호 병합 후 통계 재계산
             if (updates.visits) {
-              updatedRegion.visitCount = updates.visits.length
-              updatedRegion.totalNights = updates.visits.reduce((sum, visit) => {
-                const start = new Date(visit.startDate)
-                const end = new Date(visit.endDate)
-                const diffTime = Math.abs(end.getTime() - start.getTime())
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-                return sum + diffDays
-              }, 0)
+              const merged = mergeVisitsPreservingGps(region.visits, updates.visits)
+              const stats = computeVisitStats(merged)
+              updatedRegion.visits = merged
+              updatedRegion.visitCount = stats.visitCount
+              updatedRegion.totalNights = stats.totalNights
             }
 
             return {
@@ -190,6 +218,64 @@ export const useMapExpStore = create<MapExpStore>()(
                      })
                  }
              }
+        }
+      },
+
+      // GPS 인증 기록 (불변)
+      // - 레벨은 상향만 (이미 더 높으면 유지)
+      // - GPS 방문 기록은 지역당 하루 1건, 생성 후 수정/삭제 불가
+      // - 시정촌이면 부모 현에도 동일하게 기록
+      addGpsRecord: (regionId, minLevel) => {
+        const now = new Date()
+        const nowIso = now.toISOString()
+        const today = nowIso.slice(0, 10)
+
+        set((state) => {
+          const existingIndex = state.regions.findIndex((r) => r.regionId === regionId)
+          const existing = existingIndex >= 0 ? state.regions[existingIndex] : undefined
+
+          const currentLevel =
+            existing?.gyeonghyeonchi ?? (existing?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+          const newLevel = (currentLevel >= minLevel ? currentLevel : minLevel) as ExperienceGrade
+
+          const visits = [...(existing?.visits ?? [])]
+          const hasGpsToday = visits.some(
+            (v) => v.source === "gps" && v.startDate.slice(0, 10) === today,
+          )
+          if (!hasGpsToday) {
+            visits.push({
+              id: `gps-${now.getTime()}-${regionId}`,
+              startDate: nowIso,
+              endDate: nowIso,
+              title: "GPS 인증 기록",
+              source: "gps",
+            })
+            visits.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+          } else if (newLevel === currentLevel) {
+            return state // 변경 사항 없음
+          }
+
+          const stats = computeVisitStats(visits)
+          const updated: RegionExp = {
+            ...(existing ?? { regionId }),
+            regionId,
+            gyeonghyeonchi: newLevel,
+            visits,
+            visitCount: stats.visitCount,
+            totalNights: stats.totalNights,
+            updatedAt: nowIso,
+          }
+
+          const regions = [...state.regions]
+          if (existingIndex >= 0) regions[existingIndex] = updated
+          else regions.push(updated)
+          return { regions }
+        })
+
+        // 시정촌이면 부모 현에도 GPS 인증 기록 (롤업)
+        if (regionId.includes("_")) {
+          const [parentId] = regionId.split("_")
+          get().addGpsRecord(parentId, minLevel)
         }
       },
 

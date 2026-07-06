@@ -151,19 +151,34 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
         {visits.map((visit) => {
           const days = differenceInDays(new Date(visit.endDate), new Date(visit.startDate)) + 1
           const nights = days - 1
-          
+          const isGps = visit.source === 'gps'
+
           return (
-            <div key={visit.id} className="border border-gray-100 rounded-lg p-3 hover:bg-gray-50 transition-colors">
+            <div
+              key={visit.id}
+              className={`border rounded-lg p-3 transition-colors ${
+                isGps ? 'border-indigo-100 bg-indigo-50/50' : 'border-gray-100 hover:bg-gray-50'
+              }`}
+            >
               <div className="flex justify-between items-start">
                 <div>
-                  <div className="font-medium text-sm text-gray-900">
+                  <div className="font-medium text-sm text-gray-900 flex items-center gap-2 flex-wrap">
                     {visit.title || '방문'}
-                    <span className="ml-2 text-xs font-normal text-gray-500">
-                      ({days}일간, {nights}박)
-                    </span>
+                    {isGps && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded-full">
+                        🛰️ GPS 인증
+                      </span>
+                    )}
+                    {!isGps && (
+                      <span className="text-xs font-normal text-gray-500">
+                        ({days}일간, {nights}박)
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {format(new Date(visit.startDate), 'yyyy.MM.dd')} ~ {format(new Date(visit.endDate), 'yyyy.MM.dd')}
+                    {isGps
+                      ? format(new Date(visit.startDate), 'yyyy.MM.dd HH:mm')
+                      : `${format(new Date(visit.startDate), 'yyyy.MM.dd')} ~ ${format(new Date(visit.endDate), 'yyyy.MM.dd')}`}
                   </div>
                   {visit.memo && (
                     <div className="text-xs text-gray-600 mt-2 bg-white p-2 rounded border border-gray-100">
@@ -171,20 +186,26 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-1">
-                  <button 
-                    onClick={() => handleEditClick(visit)}
-                    className="text-xs text-blue-600 px-2 py-1 hover:bg-blue-50 rounded"
-                  >
-                    수정
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteClick(visit.id)}
-                    className="text-xs text-red-600 px-2 py-1 hover:bg-red-50 rounded"
-                  >
-                    삭제
-                  </button>
-                </div>
+                {isGps ? (
+                  <span className="text-xs text-gray-400 px-2 py-1 select-none" title="GPS 인증 기록은 시간을 수정하거나 삭제할 수 없습니다">
+                    🔒
+                  </span>
+                ) : (
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleEditClick(visit)}
+                      className="text-xs text-blue-600 px-2 py-1 hover:bg-blue-50 rounded"
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(visit.id)}
+                      className="text-xs text-red-600 px-2 py-1 hover:bg-red-50 rounded"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )

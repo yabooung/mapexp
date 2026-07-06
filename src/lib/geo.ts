@@ -1,5 +1,5 @@
-import { geoContains } from 'd3-geo'
-import type { Feature, FeatureCollection } from 'geojson'
+import { booleanPointInPolygon, point as turfPoint } from '@turf/turf'
+import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import { REGION_ID_MAP } from '@/constants/regions'
 import { getRegionMetadata } from '@/data/regions'
 
@@ -13,8 +13,29 @@ export interface DetectedRegion {
   name: string
 }
 
+/** 지역 ID → 한자 현 이름 역매핑 (예: tokyo → 東京都) */
+export const PREF_KANJI_BY_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(REGION_ID_MAP['japan']).map(([kanji, id]) => [id, kanji]),
+)
+
+/**
+ * 시정촌 표시 이름 (정령지정시 구는 시 이름을 붙여 충돌 방지: 札幌市中央区)
+ * 데이터 출처: 국토수치정보 N03 (가공: smartnews-smri/japan-topography, 1/1000 간소화)
+ */
+export function municipalityName(props: Record<string, string | null> | null): string | null {
+  if (!props) return null
+  const muni = props.N03_004
+  if (!muni) return null
+  const city = props.N03_003
+  if (city && city.endsWith('市')) return `${city}${muni}`
+  return muni
+}
+
 let prefectureCache: FeatureCollection | null = null
 let loadingPromise: Promise<FeatureCollection | null> | null = null
+
+let municipalityCache: FeatureCollection | null = null
+let muniLoadingPromise: Promise<FeatureCollection | null> | null = null
 
 /**
  * 도도부현 GeoJSON 로드 (ID 주입 포함, 1회만 fetch)
@@ -53,21 +74,30 @@ export async function loadPrefectures(): Promise<FeatureCollection | null> {
 }
 
 /**
+ * point-in-polygon 판정 (turf: 평면 ray-casting)
+ * d3-geo의 geoContains는 폴리곤 감김 방향(winding order)이 반대인 데이터에서
+ * 오판정하므로 사용하지 않는다.
+ */
+function containsPoint(feature: Feature, lng: number, lat: number): boolean {
+  const geomType = feature.geometry?.type
+  if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') return false
+  try {
+    return booleanPointInPolygon(turfPoint([lng, lat]), feature as Feature<Polygon | MultiPolygon>)
+  } catch {
+    return false // 일부 지오메트리 오류는 무시
+  }
+}
+
+/**
  * 위/경도가 속한 도도부현 찾기
  */
 export function findRegionAt(lat: number, lng: number, fc: FeatureCollection): DetectedRegion | null {
-  const point: [number, number] = [lng, lat] // GeoJSON은 [lng, lat]
-
   for (const feature of fc.features) {
     const id = (feature.properties as Record<string, string> | null)?.id
     if (!id) continue
-    try {
-      if (geoContains(feature as Feature, point)) {
-        const meta = getRegionMetadata(id)
-        return { id, name: meta?.name || (feature.properties as Record<string, string>).name || id }
-      }
-    } catch {
-      // 일부 지오메트리 오류는 무시
+    if (containsPoint(feature as Feature, lng, lat)) {
+      const meta = getRegionMetadata(id)
+      return { id, name: meta?.name || (feature.properties as Record<string, string>).name || id }
     }
   }
   return null
@@ -80,6 +110,60 @@ export async function detectRegionAt(lat: number, lng: number): Promise<Detected
   const fc = await loadPrefectures()
   if (!fc) return null
   return findRegionAt(lat, lng, fc)
+}
+
+/**
+ * 전국 시정촌 GeoJSON 로드 (1.6MB, 1회만 fetch — 서비스 워커가 cache-first로 캐싱)
+ */
+export async function loadMunicipalities(): Promise<FeatureCollection | null> {
+  if (municipalityCache) return municipalityCache
+  if (muniLoadingPromise) return muniLoadingPromise
+
+  muniLoadingPromise = (async () => {
+    try {
+      const response = await fetch('/geojson/japan-municipalities.json')
+      if (!response.ok) return null
+      const json = (await response.json()) as FeatureCollection
+      if (json.type === 'FeatureCollection') {
+        municipalityCache = json
+      }
+      return municipalityCache
+    } catch (error) {
+      console.error('Failed to load municipalities for GPS detection:', error)
+      return null
+    } finally {
+      muniLoadingPromise = null
+    }
+  })()
+
+  return muniLoadingPromise
+}
+
+/**
+ * 위/경도가 속한 시정촌 찾기 (현 ID로 후보를 좁혀 검색)
+ * 반환 ID는 스토어 규약과 동일한 `${prefId}_${muniName}` 형태
+ */
+export async function detectMunicipalityAt(
+  lat: number,
+  lng: number,
+  prefId: string,
+): Promise<DetectedRegion | null> {
+  const fc = await loadMunicipalities()
+  if (!fc) return null
+
+  const prefKanji = PREF_KANJI_BY_ID[prefId]
+  if (!prefKanji) return null
+
+  for (const feature of fc.features) {
+    const props = feature.properties as Record<string, string | null> | null
+    if (props?.N03_001 !== prefKanji) continue
+    if (containsPoint(feature as Feature, lng, lat)) {
+      const name = municipalityName(props)
+      if (!name) return null
+      return { id: `${prefId}_${name}`, name }
+    }
+  }
+  return null
 }
 
 /**

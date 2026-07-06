@@ -26,7 +26,24 @@ export default function RegionModal({
 }: RegionModalProps) {
   const { getRegionById, addRegion, updateRegion, deleteRegion } =
     useMapExpStore()
-  const regionInfo = getRegionMetadata(regionId)
+  // 시정촌 ID(예: tokyo_千代田区)는 메타데이터가 없으므로 ID에서 이름을 유도
+  const regionInfo = (() => {
+    const meta = getRegionMetadata(regionId)
+    if (meta) return meta
+    if (regionId.includes('_')) {
+      const [parentId, muniName] = regionId.split('_')
+      const parentMeta = getRegionMetadata(parentId)
+      return {
+        id: regionId,
+        name: muniName,
+        nameEn: muniName,
+        nameLocal: parentMeta ? `${parentMeta.nameLocal} ${muniName}` : muniName,
+        country: 'japan' as const,
+        type: 'prefecture' as const,
+      }
+    }
+    return undefined
+  })()
   const existingRegion = getRegionById(regionId)
 
   const [level, setLevel] = useState<ExperienceGrade>(
