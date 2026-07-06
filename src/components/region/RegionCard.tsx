@@ -32,7 +32,7 @@ export default function RegionCard({
     <Card
       padding="md"
       shadow="sm"
-      onClick={(e) => onClick(e as unknown as React.MouseEvent)}
+      onClick={(e) => onClick(e)}
       hover={true}
       className="relative overflow-hidden"
       style={{ backgroundColor }}
