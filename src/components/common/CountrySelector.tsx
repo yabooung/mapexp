@@ -1,12 +1,14 @@
 'use client'
 
 import { useMapExpStore } from '@/store'
+import { useT } from '@/lib/i18n'
 
 /**
  * 국가 선택 컴포넌트
  */
 export default function CountrySelector() {
   const { country, setCountry } = useMapExpStore()
+  const t = useT()
 
   return (
     <div className="inline-flex rounded-md border border-line bg-card p-0.5">
@@ -18,7 +20,7 @@ export default function CountrySelector() {
             : 'text-muted hover:text-ink'
         }`}
       >
-        일본
+        {t('common.japan')}
       </button>
       <button
         onClick={() => setCountry('korea')}
@@ -28,7 +30,7 @@ export default function CountrySelector() {
             : 'text-muted hover:text-ink'
         }`}
       >
-        한국
+        {t('common.korea')}
       </button>
     </div>
   )

@@ -6,6 +6,7 @@ import { useGpsStore } from '@/store/gps'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
 import Icon from '@/components/common/Icon'
+import { useT, useLang, Lang } from '@/lib/i18n'
 import toast from 'react-hot-toast'
 
 interface SettingsModalProps {
@@ -13,19 +14,27 @@ interface SettingsModalProps {
   onClose: () => void
 }
 
+const LANG_OPTIONS: Array<{ value: Lang; label: string }> = [
+  { value: 'ko', label: '한국어' },
+  { value: 'en', label: 'English' },
+  { value: 'ja', label: '日本語' },
+]
+
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { exportData, importData, clearAllRegions } = useMapExpStore()
+  const { exportData, importData, clearAllRegions, updateSettings } = useMapExpStore()
   const autoDetectVisit = useGpsStore((s) => s.autoDetectVisit)
   const setAutoDetectVisit = useGpsStore((s) => s.setAutoDetectVisit)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const t = useT()
+  const lang = useLang()
 
   const handleAutoDetectToggle = () => {
     const next = !autoDetectVisit
     setAutoDetectVisit(next)
     if (next) {
-      toast.success('자동 방문 감지가 켜졌습니다. 새 지역 진입 시 자동으로 기록됩니다.')
+      toast.success(t('settings.autoDetectOn'))
     } else {
-      toast('자동 방문 감지가 꺼졌습니다.')
+      toast(t('settings.autoDetectOff'))
     }
   }
 
@@ -36,7 +45,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       const jsonString = JSON.stringify(data, null, 2)
       const blob = new Blob([jsonString], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
-      
+
       const a = document.createElement('a')
       a.href = url
       a.download = `mapexp-data-${new Date().toISOString().slice(0, 10)}.json`
@@ -44,11 +53,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      
-      toast.success('데이터가 다운로드되었습니다.')
+
+      toast.success(t('settings.exportDone'))
     } catch (err) {
       console.error(err)
-      toast.error('데이터 내보내기 실패')
+      toast.error(t('settings.exportFail'))
     }
   }
 
@@ -66,27 +75,26 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       try {
         const json = event.target?.result as string
         const data = JSON.parse(json)
-        
-        if (confirm('기존 데이터가 덮어씌워집니다. 계속하시겠습니까?')) {
+
+        if (confirm(t('settings.importConfirm'))) {
           importData(data)
-          toast.success('데이터를 성공적으로 불러왔습니다.')
+          toast.success(t('settings.importDone'))
           onClose()
         }
       } catch (err) {
         console.error(err)
-        toast.error('잘못된 데이터 파일입니다.')
+        toast.error(t('settings.importFail'))
       }
     }
     reader.readAsText(file)
-    // 입력 초기화
     e.target.value = ''
   }
 
   // 데이터 초기화
   const handleReset = () => {
-    if (confirm('정말로 모든 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
+    if (confirm(t('settings.resetConfirm'))) {
       clearAllRegions()
-      toast.success('모든 데이터가 초기화되었습니다.')
+      toast.success(t('settings.resetDone'))
       onClose()
     }
   }
@@ -95,28 +103,44 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="설정 및 데이터 관리"
+      title={t('settings.title')}
       size="md"
       footer={
         <div className="flex justify-end">
           <Button variant="secondary" onClick={onClose}>
-            닫기
+            {t('common.close')}
           </Button>
         </div>
       }
     >
       <div className="space-y-6">
+        {/* 언어 */}
+        <div>
+          <h3 className="text-sm font-semibold text-ink mb-3">{t('settings.language')}</h3>
+          <div className="inline-flex rounded-md border border-line bg-card p-0.5">
+            {LANG_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => updateSettings({ language: opt.value })}
+                className={`px-4 py-1.5 rounded-[5px] text-sm font-medium transition-colors ${
+                  lang === opt.value ? 'bg-ink text-paper' : 'text-muted hover:text-ink'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-line"></div>
+
         {/* GPS 설정 */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">
-            GPS 위치 서비스
-          </h3>
+          <h3 className="text-sm font-semibold text-ink mb-3">{t('settings.gpsSection')}</h3>
           <label className="flex items-center justify-between gap-3 p-3 bg-paper rounded-lg cursor-pointer border border-line">
             <div>
-              <p className="text-sm font-medium text-ink">자동 방문 감지</p>
-              <p className="text-xs text-muted mt-0.5">
-                새 지역에 진입하면 자동으로 &lsquo;통과(1)&rsquo; 기록을 남깁니다. (앱이 열려 있는 동안)
-              </p>
+              <p className="text-sm font-medium text-ink">{t('settings.autoDetect')}</p>
+              <p className="text-xs text-muted mt-0.5">{t('settings.autoDetectDesc')}</p>
             </div>
             <button
               role="switch"
@@ -142,17 +166,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         {/* 데이터 백업/복원 */}
         <div>
-          <h3 className="text-sm font-semibold text-ink mb-3">
-            데이터 백업/복원
-          </h3>
+          <h3 className="text-sm font-semibold text-ink mb-3">{t('settings.backupSection')}</h3>
           <div className="flex gap-3">
             <Button variant="primary" onClick={handleExport} className="flex-1 gap-1.5">
               <Icon name="download" size={15} />
-              JSON 내보내기
+              {t('settings.export')}
             </Button>
             <Button variant="secondary" onClick={handleImportClick} className="flex-1 gap-1.5">
               <Icon name="upload" size={15} />
-              JSON 가져오기
+              {t('settings.import')}
             </Button>
             <input
               type="file"
@@ -162,25 +184,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               className="hidden"
             />
           </div>
-          <p className="text-xs text-muted mt-2">
-            데이터를 JSON 파일로 저장하거나 불러올 수 있습니다.
-          </p>
+          <p className="text-xs text-muted mt-2">{t('settings.backupDesc')}</p>
         </div>
 
         <div className="border-t border-line"></div>
 
         {/* 위험 구역 */}
         <div>
-          <h3 className="text-sm font-semibold text-seal mb-3">
-            위험 구역
-          </h3>
+          <h3 className="text-sm font-semibold text-seal mb-3">{t('settings.dangerSection')}</h3>
           <Button variant="danger" onClick={handleReset} className="w-full gap-1.5">
             <Icon name="trash" size={15} />
-            데이터 전체 초기화
+            {t('settings.reset')}
           </Button>
-          <p className="text-xs text-muted mt-2">
-            모든 지역 기록과 설정이 삭제됩니다.
-          </p>
+          <p className="text-xs text-muted mt-2">{t('settings.resetDesc')}</p>
         </div>
       </div>
     </Modal>

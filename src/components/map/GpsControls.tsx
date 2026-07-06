@@ -3,9 +3,11 @@
 import toast from 'react-hot-toast'
 import { useGpsStore } from '@/store/gps'
 import { useMapExpStore } from '@/store'
-import { GyeongHyeonChi, ExperienceGrade, EXP_LEVEL_LABELS } from '@/types'
+import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { trackDistanceMeters, formatDistance } from '@/lib/geo'
 import Icon from '@/components/common/Icon'
+import { useT, useLang, levelLabel, regionDisplayName } from '@/lib/i18n'
+import { getRegionMetadata } from '@/data/regions'
 
 interface GpsControlsProps {
   onRegionClick: (regionId: string) => void
@@ -31,13 +33,17 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
   const { setWatchEnabled, setFollowMode, startTracking, stopTracking, clearTrack } = useGpsStore()
 
   const { getRegionById, addGpsRecord } = useMapExpStore()
+  const t = useT()
+  const lang = useLang()
 
   const gpsActive = watchEnabled || isTracking || autoDetectVisit
   const distance = trackDistanceMeters(trackPoints)
 
   // 기록 대상: 시정촌이 감지되면 시정촌, 아니면 현
   const targetId = currentMuniId ?? currentRegionId
-  const targetLabel = currentMuniName ? `${currentRegionName} · ${currentMuniName}` : currentRegionName
+  const regionMeta = currentRegionId ? getRegionMetadata(currentRegionId) : undefined
+  const prefDisplay = regionMeta ? regionDisplayName(regionMeta, lang) : currentRegionName
+  const targetLabel = currentMuniName ? `${prefDisplay} · ${currentMuniName}` : prefDisplay
 
   const currentLevel: ExperienceGrade = (() => {
     if (!targetId) return GyeongHyeonChi.UNVISITED
@@ -49,7 +55,7 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
     if (!watchEnabled) {
       setWatchEnabled(true)
       setFollowMode(true)
-      toast('내 위치를 찾는 중입니다', { duration: 2000 })
+      toast(t('gps.locating'), { duration: 2000 })
     } else if (!followMode) {
       setFollowMode(true)
     } else {
@@ -62,18 +68,18 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
   const handleTrackToggle = () => {
     if (isTracking) {
       stopTracking()
-      toast('이동 경로 기록을 정지했습니다')
+      toast(t('gps.trackStop'))
     } else {
       startTracking()
       if (!watchEnabled) setWatchEnabled(true)
-      toast('이동 경로 기록을 시작합니다')
+      toast(t('gps.trackStart'))
     }
   }
 
   const handleClearTrack = () => {
-    if (confirm('기록된 이동 경로를 모두 삭제하시겠습니까?')) {
+    if (confirm(t('gps.trackClearConfirm'))) {
       clearTrack()
-      toast.success('이동 경로가 삭제되었습니다')
+      toast.success(t('gps.trackCleared'))
     }
   }
 
@@ -85,7 +91,7 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
       return
     }
     addGpsRecord(targetId, GyeongHyeonChi.LANDED)
-    toast.success(`${targetLabel} — 접지 도장을 찍었습니다`)
+    toast.success(t('gps.quickToast', { label: targetLabel }))
   }
 
   const circleBtn =
@@ -101,14 +107,14 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
             {targetLabel}
           </span>
           <span className="text-xs text-muted whitespace-nowrap hidden sm:inline">
-            {EXP_LEVEL_LABELS[currentLevel]}
+            {levelLabel(currentLevel, lang)}
           </span>
           {currentLevel < GyeongHyeonChi.LANDED ? (
             <button
               onClick={handleQuickRecord}
               className="px-3 py-1.5 bg-seal text-white rounded-full text-xs font-semibold hover:bg-seal-hover active:scale-95 transition-all whitespace-nowrap"
             >
-              접지 기록
+              {t('gps.quickRecord')}
             </button>
           ) : (
             <button
@@ -116,7 +122,7 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
               className="flex items-center gap-1 px-3 py-1.5 bg-paper text-ink rounded-full text-xs font-semibold hover:bg-line/60 active:scale-95 transition-all whitespace-nowrap"
             >
               <Icon name="pen" size={12} />
-              상세
+              {t('gps.detail')}
             </button>
           )}
         </div>

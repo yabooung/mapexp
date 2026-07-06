@@ -16,6 +16,7 @@ import GpsManager from '@/components/gps/GpsManager'
 import LevelUpWatcher from '@/components/common/LevelUpWatcher'
 import BottomNav, { MobileTab } from '@/components/layout/BottomNav'
 import Icon from '@/components/common/Icon'
+import { useT } from '@/lib/i18n'
 
 // Leaflet을 dynamic import (SSR 비활성화)
 const MapView = dynamic(() => import('@/components/map/MapView'), {
@@ -38,6 +39,7 @@ function HomeContent() {
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
   const [view, setView] = useState<MobileTab>('map')
   const [showTokyoModal, setShowTokyoModal] = useState(false)
+  const t = useT()
 
   // 공유 URL 처리
   useEffect(() => {
@@ -81,11 +83,9 @@ function HomeContent() {
         <div className="hidden lg:flex mb-6 flex-row items-end justify-between gap-4">
           <div>
             <h1 className="text-[28px] font-bold tracking-tight text-ink leading-tight">
-              나의 경현치 지도
+              {t('page.title')}
             </h1>
-            <p className="text-muted mt-1 text-[15px]">
-              지나가고, 내리고, 걷고, 묵은 자리마다 도장이 쌓입니다
-            </p>
+            <p className="text-muted mt-1 text-[15px]">{t('page.tagline')}</p>
           </div>
           <CountrySelector />
         </div>
@@ -101,7 +101,7 @@ function HomeContent() {
                 }`}
               >
                 <Icon name="map" size={15} />
-                지도
+                {t('nav.map')}
               </button>
               <button
                 onClick={() => setView('list')}
@@ -110,7 +110,7 @@ function HomeContent() {
                 }`}
               >
                 <Icon name="list" size={15} />
-                리스트
+                {t('nav.list')}
               </button>
             </div>
 
@@ -119,14 +119,12 @@ function HomeContent() {
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-md text-sm font-medium text-muted border border-line bg-card hover:text-ink hover:bg-paper transition-colors"
             >
               <Icon name="building" size={15} />
-              시·군·구 관리
+              {t('page.manageMunis')}
             </button>
           </div>
 
           {view !== 'list' && (
-            <p className="mt-2.5 text-xs text-muted">
-              지도 클릭으로 레벨 변경 (0→5→0) · Shift+클릭으로 상세 설정 · 좌하단 조준 버튼으로 GPS 추적
-            </p>
+            <p className="mt-2.5 text-xs text-muted">{t('page.guide')}</p>
           )}
         </div>
 
@@ -149,7 +147,7 @@ function HomeContent() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-medium text-ink border border-line bg-card active:bg-paper"
                 >
                   <Icon name="building" size={16} />
-                  시·군·구 일괄 관리
+                  {t('page.manageMunisLong')}
                 </button>
               </div>
             </div>

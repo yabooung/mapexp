@@ -1,0 +1,252 @@
+import { useMapExpStore } from '@/store'
+import { ExperienceGrade, RegionMetadata } from '@/types'
+
+/**
+ * 다국어 사전 (한국어 / English / 日本語)
+ * 값은 [ko, en, ja] 튜플. t(key)로 조회하며 {n} 등 자리표시자는 params로 치환.
+ */
+
+export type Lang = 'ko' | 'en' | 'ja'
+const LANG_INDEX: Record<Lang, number> = { ko: 0, en: 1, ja: 2 }
+
+const STRINGS = {
+  // 공통 / 헤더 / 내비게이션
+  'app.subtitle': ['일본·한국 경현치 지도', 'Japan & Korea Keikenchi Map', '日本・韓国 経県値マップ'],
+  'nav.map': ['지도', 'Map', '地図'],
+  'nav.list': ['리스트', 'List', 'リスト'],
+  'nav.stats': ['통계', 'Stats', '統計'],
+  'common.share': ['공유', 'Share', '共有'],
+  'common.settings': ['설정', 'Settings', '設定'],
+  'common.close': ['닫기', 'Close', '閉じる'],
+  'common.cancel': ['취소', 'Cancel', 'キャンセル'],
+  'common.save': ['저장', 'Save', '保存'],
+  'common.delete': ['삭제', 'Delete', '削除'],
+  'common.edit': ['수정', 'Edit', '編集'],
+  'common.japan': ['일본', 'Japan', '日本'],
+  'common.korea': ['한국', 'Korea', '韓国'],
+
+  // 경현치 등급 (0~5)
+  'level.0': ['미답', 'Unvisited', '未踏'],
+  'level.1': ['통과', 'Passed', '通過'],
+  'level.2': ['접지', 'Landed', '接地'],
+  'level.3': ['방문', 'Visited', '訪問'],
+  'level.4': ['숙박', 'Stayed', '宿泊'],
+  'level.5': ['거주', 'Lived', '居住'],
+  'level.term': ['경현치', 'Keikenchi', '経県値'],
+
+  // 페이지 (데스크톱)
+  'page.title': ['나의 경현치 지도', 'My Keikenchi Map', 'わたしの経県値マップ'],
+  'page.tagline': [
+    '지나가고, 내리고, 걷고, 묵은 자리마다 도장이 쌓입니다',
+    'Every pass, stop, walk, and stay leaves a stamp',
+    '通って、降りて、歩いて、泊まった場所に判が積もる',
+  ],
+  'page.manageMunis': ['시·군·구 관리', 'Municipalities', '市区町村管理'],
+  'page.manageMunisLong': ['시·군·구 일괄 관리', 'Manage municipalities', '市区町村を一括管理'],
+  'page.guide': [
+    '지도 클릭으로 레벨 변경 (0→5→0) · Shift+클릭으로 상세 설정 · 좌하단 조준 버튼으로 GPS 추적',
+    'Click map to cycle level (0→5→0) · Shift+Click for details · Use the locate button for GPS',
+    '地図クリックでレベル変更 (0→5→0)・Shift+クリックで詳細・左下の照準ボタンでGPS',
+  ],
+
+  // 통계
+  'stats.travelerLevel': ['여행자 레벨', 'Traveler Level', '旅行者レベル'],
+  'stats.exp': ['경현치 {n}', 'EXP {n}', '経県値 {n}'],
+  'stats.toNext': ['/ 다음 레벨까지 {n}', '/ {n} to next level', '/ 次のレベルまで {n}'],
+  'stats.visited': ['방문 지역', 'Visited', '訪問地域'],
+  'stats.completion': ['달성률', 'Completion', '達成率'],
+  'stats.distribution': ['경현치 분포', 'Distribution', '経県値分布'],
+  'stats.progress': ['진행도', 'Progress', '進行度'],
+  'stats.regions': ['{a} / {b} 지역', '{a} / {b} regions', '{a} / {b} 地域'],
+  'stats.points': ['{n}점', '{n}pt', '{n}点'],
+  'stats.count': ['{n}', '{n}', '{n}'],
+
+  // 도장첩 (뱃지)
+  'badges.title': ['도장첩', 'Stamp Book', 'スタンプ帳'],
+  'badge.first-step.name': ['첫 발자국', 'First Step', '初めの一歩'],
+  'badge.first-step.desc': ['첫 지역 기록하기', 'Record your first region', '最初の地域を記録する'],
+  'badge.explorer.name': ['탐험가', 'Explorer', '探検家'],
+  'badge.explorer.desc': ['10개 지역 방문하기', 'Visit 10 regions', '10地域を訪問する'],
+  'badge.adventurer.name': ['모험가', 'Adventurer', '冒険家'],
+  'badge.adventurer.desc': ['25개 지역 방문하기', 'Visit 25 regions', '25地域を訪問する'],
+  'badge.half-japan.name': ['절반 정복', 'Halfway There', '半分制覇'],
+  'badge.half-japan.desc': ['달성률 50% 달성하기', 'Reach 50% completion', '達成率50%に到達する'],
+  'badge.complete.name': ['전국 제패', 'Conqueror', '全国制覇'],
+  'badge.complete.desc': ['모든 지역 방문하기', 'Visit every region', 'すべての地域を訪問する'],
+  'badge.first-stay.name': ['첫 숙박', 'First Stay', '初宿泊'],
+  'badge.first-stay.desc': ['숙박(4) 지역 만들기', 'Get a region to Stayed (4)', '宿泊(4)の地域を作る'],
+  'badge.first-master.name': ['첫 마스터', 'First Master', '初マスター'],
+  'badge.first-master.desc': ['거주(5) 지역 만들기', 'Get a region to Lived (5)', '居住(5)の地域を作る'],
+  'badge.triple-master.name': ['트리플 마스터', 'Triple Master', 'トリプルマスター'],
+  'badge.triple-master.desc': ['거주(5) 지역 3개 만들기', 'Get 3 regions to Lived (5)', '居住(5)の地域を3つ作る'],
+  'badge.kansai-king.name': ['간사이 킹', 'Kansai King', '関西キング'],
+  'badge.kansai-king.desc': ['간사이 6개 지역 모두 방문하기', 'Visit all 6 Kansai prefectures', '関西6府県をすべて訪問する'],
+  'badge.kanto-master.name': ['간토 마스터', 'Kanto Master', '関東マスター'],
+  'badge.kanto-master.desc': ['간토 7개 지역 모두 방문하기', 'Visit all 7 Kanto prefectures', '関東7都県をすべて訪問する'],
+  'badge.kyushu-explorer.name': ['규슈 탐험가', 'Kyushu Explorer', '九州探検家'],
+  'badge.kyushu-explorer.desc': ['규슈·오키나와 8개 지역 모두 방문하기', 'Visit all 8 Kyushu & Okinawa prefectures', '九州・沖縄8県をすべて訪問する'],
+  'badge.on-the-road.name': ['길 위에서', 'On the Road', '道の上で'],
+  'badge.on-the-road.desc': ['GPS 트랙 10km 기록하기', 'Track 10km with GPS', 'GPSトラックを10km記録する'],
+
+  // GPS 컨트롤
+  'gps.locating': ['내 위치를 찾는 중입니다', 'Locating you…', '現在地を取得しています'],
+  'gps.trackStart': ['이동 경로 기록을 시작합니다', 'Track recording started', '移動ルートの記録を開始します'],
+  'gps.trackStop': ['이동 경로 기록을 정지했습니다', 'Track recording stopped', '移動ルートの記録を停止しました'],
+  'gps.trackClearConfirm': ['기록된 이동 경로를 모두 삭제하시겠습니까?', 'Delete the recorded track?', '記録した移動ルートを削除しますか？'],
+  'gps.trackCleared': ['이동 경로가 삭제되었습니다', 'Track deleted', '移動ルートを削除しました'],
+  'gps.quickRecord': ['접지 기록', 'Log landing', '接地を記録'],
+  'gps.detail': ['상세', 'Details', '詳細'],
+  'gps.quickToast': ['{label} — 접지 도장을 찍었습니다', 'Landed stamp at {label}', '{label} — 接地スタンプを押しました'],
+  'gps.passToast': ['{label} — 통과 도장이 찍혔습니다', 'Passed stamp at {label}', '{label} — 通過スタンプが押されました'],
+  'gps.trackAria': ['경로 기록', 'Track recording', 'ルート記録'],
+  'gps.locateAria': ['내 위치', 'My location', '現在地'],
+  'gps.notSupported': ['이 브라우저는 위치 서비스를 지원하지 않습니다.', 'Geolocation is not supported in this browser.', 'このブラウザは位置情報に対応していません。'],
+  'gps.denied': ['위치 권한이 거부되었습니다.', 'Location permission denied.', '位置情報の許可が拒否されました。'],
+
+  // 설정 모달
+  'settings.title': ['설정 및 데이터 관리', 'Settings & Data', '設定とデータ管理'],
+  'settings.language': ['언어', 'Language', '言語'],
+  'settings.gpsSection': ['GPS 위치 서비스', 'GPS Location', 'GPS位置情報'],
+  'settings.autoDetect': ['자동 방문 감지', 'Auto visit detection', '自動訪問検知'],
+  'settings.autoDetectDesc': [
+    "새 지역에 진입하면 자동으로 '통과(1)' 기록을 남깁니다. (앱이 열려 있는 동안)",
+    "Automatically logs 'Passed (1)' when you enter a new region (while the app is open).",
+    '新しい地域に入ると自動で「通過(1)」を記録します。(アプリを開いている間)',
+  ],
+  'settings.autoDetectOn': ['자동 방문 감지가 켜졌습니다. 새 지역 진입 시 자동으로 기록됩니다.', 'Auto detection on. New regions will be logged automatically.', '自動訪問検知をオンにしました。'],
+  'settings.autoDetectOff': ['자동 방문 감지가 꺼졌습니다.', 'Auto detection off.', '自動訪問検知をオフにしました。'],
+  'settings.backupSection': ['데이터 백업/복원', 'Backup & Restore', 'バックアップ/復元'],
+  'settings.export': ['JSON 내보내기', 'Export JSON', 'JSONエクスポート'],
+  'settings.import': ['JSON 가져오기', 'Import JSON', 'JSONインポート'],
+  'settings.backupDesc': ['데이터를 JSON 파일로 저장하거나 불러올 수 있습니다.', 'Save or load your data as a JSON file.', 'データをJSONファイルとして保存・読込できます。'],
+  'settings.dangerSection': ['위험 구역', 'Danger Zone', '危険な操作'],
+  'settings.reset': ['데이터 전체 초기화', 'Reset all data', '全データを初期化'],
+  'settings.resetDesc': ['모든 지역 기록과 설정이 삭제됩니다.', 'All records and settings will be deleted.', 'すべての記録と設定が削除されます。'],
+  'settings.resetConfirm': ['정말로 모든 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.', 'Delete ALL data? This cannot be undone.', '本当にすべてのデータを削除しますか？\nこの操作は元に戻せません。'],
+  'settings.resetDone': ['모든 데이터가 초기화되었습니다.', 'All data has been reset.', 'すべてのデータを初期化しました。'],
+  'settings.exportDone': ['데이터가 다운로드되었습니다.', 'Data downloaded.', 'データをダウンロードしました。'],
+  'settings.exportFail': ['데이터 내보내기 실패', 'Export failed', 'エクスポートに失敗しました'],
+  'settings.importConfirm': ['기존 데이터가 덮어씌워집니다. 계속하시겠습니까?', 'Existing data will be overwritten. Continue?', '既存のデータが上書きされます。続行しますか？'],
+  'settings.importDone': ['데이터를 성공적으로 불러왔습니다.', 'Data imported.', 'データを読み込みました。'],
+  'settings.importFail': ['잘못된 데이터 파일입니다.', 'Invalid data file.', '無効なデータファイルです。'],
+
+  // 리스트
+  'list.search': ['지역 검색...', 'Search regions…', '地域を検索…'],
+  'list.sortGroupJp': ['지방별', 'By region', '地方別'],
+  'list.sortGroupKr': ['권역별', 'By region', '圏域別'],
+  'list.sortName': ['이름순', 'Name', '名前順'],
+  'list.sortLevel': ['레벨순', 'Level', 'レベル順'],
+  'list.hint': ['클릭: 레벨 변경 · Shift+클릭: 상세', 'Click: cycle level · Shift+Click: details', 'クリック: レベル変更・Shift+クリック: 詳細'],
+  'list.noResult': ["'{q}'에 해당하는 지역이 없습니다", "No regions match '{q}'", '「{q}」に該当する地域がありません'],
+
+  // 지역 상세 모달
+  'region.levelLabel': ['경험치 레벨', 'Experience level', '経験値レベル'],
+  'region.levelDesc.0': ['미경현 (스친 적도 없다) - 0점', 'Never been (0 pt)', '未経県 (かすったこともない) - 0点'],
+  'region.levelDesc.1': ['통과했다 (철도/차 통과, 배 기항. 항공기 제외) - 1점', 'Passed through by rail/car/ship (1 pt)', '通過した (鉄道・車・船。航空機は除く) - 1点'],
+  'region.levelDesc.2': ['내렸다 (환승이나 휴게소 휴식 등) - 2점', 'Set foot (transfer, rest stop) (2 pt)', '降り立った (乗換や休憩など) - 2点'],
+  'region.levelDesc.3': ['걸었다 (묵었던 적은 없다) - 3점', 'Walked around, never stayed (3 pt)', '歩いた (泊まったことはない) - 3点'],
+  'region.levelDesc.4': ['묵었다 (야간 통과는 제외) - 4점', 'Stayed overnight (4 pt)', '泊まった (夜行通過は除く) - 4点'],
+  'region.levelDesc.5': ['살았다 (3개월 정도의 장기 체류 포함) - 5점', 'Lived (incl. 3+ month stays) (5 pt)', '住んだ (3ヶ月程度の長期滞在を含む) - 5点'],
+  'region.residedTitle': ['거주 (居住) — 5점 최고 등급', 'Lived — highest grade (5 pt)', '居住 — 最高ランク (5点)'],
+  'region.residedDesc': ['해당 지역에서 생활한 경험이 있거나, 3개월 이상 장기 체류한 경우에 해당합니다.', 'You lived there or stayed for 3+ months.', 'その地域で生活した経験、または3ヶ月以上の長期滞在が該当します。'],
+  'region.totalVisits': ['총 방문: {n}회', 'Total visits: {n}', '総訪問: {n}回'],
+  'region.visitDate': ['방문일 (선택)', 'Visit date (optional)', '訪問日 (任意)'],
+  'region.memo': ['메모 (선택)', 'Memo (optional)', 'メモ (任意)'],
+  'region.memoPlaceholder': ['이 지역에 대한 메모를 입력하세요...', 'Notes about this region…', 'この地域についてのメモ…'],
+  'region.memoLimit': ['메모는 최대 500자까지 입력 가능합니다', 'Memo is limited to 500 characters', 'メモは500文字までです'],
+  'region.saved': ['지역 정보가 수정되었습니다', 'Region updated', '地域情報を更新しました'],
+  'region.added': ['지역 정보가 추가되었습니다', 'Region saved', '地域情報を保存しました'],
+  'region.deleteConfirm': ['이 지역의 기록을 삭제하시겠습니까?', 'Delete this region record?', 'この地域の記録を削除しますか？'],
+  'region.deleted': ['지역 정보가 삭제되었습니다', 'Region deleted', '地域情報を削除しました'],
+  'region.visitTip': ['방문 기록을 추가하면 방문 횟수와 숙박일이 자동 계산됩니다.', 'Add visits to auto-calculate counts and nights.', '訪問記録を追加すると回数と宿泊日数が自動計算されます。'],
+
+  // 방문 기록
+  'visits.title': ['방문 기록 ({n})', 'Visits ({n})', '訪問記録 ({n})'],
+  'visits.add': ['+ 기록 추가', '+ Add visit', '+ 記録を追加'],
+  'visits.start': ['시작일', 'Start', '開始日'],
+  'visits.end': ['종료일', 'End', '終了日'],
+  'visits.visitTitle': ['제목 (선택)', 'Title (optional)', 'タイトル (任意)'],
+  'visits.titlePlaceholder': ['예: 여름 휴가, 출장', 'e.g. Summer trip', '例: 夏休み、出張'],
+  'visits.durationFmt': ['({d}일간, {n}박)', '({d} days, {n} nights)', '({d}日間, {n}泊)'],
+  'visits.defaultTitle': ['방문', 'Visit', '訪問'],
+  'visits.gpsBadge': ['GPS 인증', 'GPS verified', 'GPS認証'],
+  'visits.gpsLocked': ['GPS 인증 기록은 시간을 수정하거나 삭제할 수 없습니다', 'GPS-verified records cannot be edited or deleted', 'GPS認証記録は編集・削除できません'],
+  'visits.deleteConfirm': ['이 방문 기록을 삭제하시겠습니까?', 'Delete this visit?', 'この訪問記録を削除しますか？'],
+  'visits.dateRequired': ['날짜를 선택해주세요.', 'Please pick dates.', '日付を選択してください。'],
+  'visits.dateOrder': ['종료일은 시작일 이후여야 합니다.', 'End date must be after start date.', '終了日は開始日以降にしてください。'],
+  'visits.gpsTitle': ['GPS 인증 기록', 'GPS verified visit', 'GPS認証記録'],
+
+  // 시·군·구 관리 모달
+  'muni.count': ['{kind} {n}개', '{n} {kind}', '{kind} {n}件'],
+  'muni.kindJp': ['시정촌', 'municipalities', '市区町村'],
+  'muni.kindKr': ['시군구', 'municipalities', '市郡区'],
+  'muni.progress': ['진행', 'Progress', '進行'],
+  'muni.markAll': ['전체 방문 처리', 'Mark all visited', '一括訪問にする'],
+  'muni.reset': ['초기화', 'Reset', 'リセット'],
+  'muni.all': ['전체', 'All', 'すべて'],
+  'muni.loading': ['데이터를 불러오는 중...', 'Loading…', '読み込み中…'],
+  'muni.markAllConfirm': ["{name}의 기초 지역을 모두 '방문'으로 표시할까요?", "Mark all municipalities in {name} as visited?", '{name}の市区町村をすべて「訪問」にしますか？'],
+  'muni.resetConfirm': ['{name}의 기초 지역 기록을 모두 초기화할까요?', 'Reset all municipality records in {name}?', '{name}の市区町村の記録をすべてリセットしますか？'],
+  'muni.selectAria': ['광역 지역 선택', 'Select prefecture', '都道府県を選択'],
+
+  // 지도 패널
+  'map.label': ['라벨', 'Labels', 'ラベル'],
+  'map.labelCustom': ['직접 표시', 'Custom', '独自表示'],
+  'map.labelNative': ['지도 원본', 'Map default', '地図標準'],
+  'map.off': ['끔', 'Off', 'オフ'],
+  'map.on': ['켬', 'On', 'オン'],
+  'map.tileLang': ['언어', 'Language', '言語'],
+  'map.tileLocal': ['현지', 'Local', '現地'],
+  'map.tileKo': ['한국어', 'Korean', '韓国語'],
+  'map.tileJa': ['일본어', 'Japanese', '日本語'],
+  'map.baseTiles': ['배경 지도', 'Base map', '背景地図'],
+  'map.settingsAria': ['지도 설정', 'Map settings', '地図設定'],
+
+  // 레벨업
+  'levelup.title': ['Level Up', 'Level Up', 'Level Up'],
+  'levelup.sub': ['여행자 레벨', 'Traveler Level', '旅行者レベル'],
+  'levelup.badgeToast': ['도장 획득 — {name}', 'Stamp earned — {name}', 'スタンプ獲得 — {name}'],
+} as const
+
+export type I18nKey = keyof typeof STRINGS
+
+export function translate(key: I18nKey, lang: Lang, params?: Record<string, string | number>): string {
+  const entry = STRINGS[key]
+  let text: string = entry ? entry[LANG_INDEX[lang]] : key
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      text = text.replaceAll(`{${k}}`, String(v))
+    }
+  }
+  return text
+}
+
+/** 현재 언어 (스토어 설정) */
+export function useLang(): Lang {
+  return useMapExpStore((s) => s.settings.language ?? 'ko') as Lang
+}
+
+/** 컴포넌트용 번역 훅 */
+export function useT() {
+  const lang = useLang()
+  return (key: I18nKey, params?: Record<string, string | number>) => translate(key, lang, params)
+}
+
+/** 비컴포넌트 컨텍스트용 (토스트 등) */
+export function tNow(key: I18nKey, params?: Record<string, string | number>): string {
+  const lang = (useMapExpStore.getState().settings.language ?? 'ko') as Lang
+  return translate(key, lang, params)
+}
+
+/** 등급 라벨 */
+export function levelLabel(level: ExperienceGrade, lang: Lang): string {
+  return translate(`level.${level}` as I18nKey, lang)
+}
+
+/** 지역 표시 이름 (언어별) */
+export function regionDisplayName(meta: RegionMetadata, lang: Lang): string {
+  if (lang === 'ko') return meta.name
+  if (lang === 'en') return meta.nameEn
+  // ja: 일본 지역은 현지어(일본어), 한국 지역은 로마자
+  return meta.country === 'japan' ? meta.nameLocal : meta.nameEn
+}
