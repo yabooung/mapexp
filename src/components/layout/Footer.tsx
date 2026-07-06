@@ -1,52 +1,57 @@
 'use client'
 
 import { APP_NAME, APP_VERSION } from '@/constants'
+import { useT } from '@/lib/i18n'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
+  const t = useT()
 
   return (
-    <footer className="bg-white border-t border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* 왼쪽: 저작권 정보 */}
-          <div className="text-sm text-gray-600">
-            © {currentYear} {APP_NAME}. All rights reserved.
+    <footer className="bg-card border-t border-line">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-sm text-muted">
+            © {currentYear} {APP_NAME} <span className="text-faint">v{APP_VERSION}</span>
           </div>
 
-          {/* 가운데: 버전 정보 */}
-          <div className="text-xs text-gray-500">
-            Version {APP_VERSION}
-          </div>
+          {/* 프라이버시 한 줄 */}
+          <div className="text-xs text-muted">{t('footer.privacy')}</div>
 
-          {/* 오른쪽: 링크들 */}
-          <div className="flex items-center gap-4">
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              GitHub
-            </a>
-            <a
-              href="#"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              도움말
-            </a>
-            <a
-              href="#"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              피드백
-            </a>
-          </div>
+          <a
+            href="https://github.com/yabooung/mapexp"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-muted hover:text-ink transition-colors"
+          >
+            GitHub
+          </a>
         </div>
+
+        {/* 데이터 출처 (라이선스 표기) */}
+        <p className="mt-3 text-[11px] leading-relaxed text-faint">
+          {t('footer.sources')}{' '}
+          <a href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted">
+            国土数値情報 (N03)
+          </a>
+          {' · '}
+          <a href="https://github.com/smartnews-smri/japan-topography" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted">
+            smartnews-smri/japan-topography
+          </a>
+          {' · '}
+          <a href="https://github.com/southkorea/southkorea-maps" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted">
+            southkorea-maps (KOSTAT)
+          </a>
+          {' · '}
+          <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted">
+            CARTO
+          </a>
+          {' / '}
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted">
+            OpenStreetMap
+          </a>
+        </p>
       </div>
     </footer>
   )
 }
-
-
-

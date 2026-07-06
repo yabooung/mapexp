@@ -14,6 +14,7 @@ import BadgePanel from '@/components/stats/BadgePanel'
 import MunicipalityManagerModal from '@/components/region/MunicipalityManagerModal'
 import GpsManager from '@/components/gps/GpsManager'
 import LevelUpWatcher from '@/components/common/LevelUpWatcher'
+import OnboardingHint from '@/components/common/OnboardingHint'
 import BottomNav, { MobileTab } from '@/components/layout/BottomNav'
 import Icon from '@/components/common/Icon'
 import { useT, useLang, muniTerm } from '@/lib/i18n'
@@ -166,6 +167,8 @@ function HomeContent() {
               {/* 지도는 항상 마운트 유지 (탭 전환 시 상태 보존) */}
               <div className={`${view === 'list' ? 'hidden' : 'block'} h-full`}>
                 <MapView onRegionClick={handleRegionClick} />
+                {/* 첫 방문 온보딩 (한 번만 표시) */}
+                <OnboardingHint />
               </div>
 
               {view === 'list' && (

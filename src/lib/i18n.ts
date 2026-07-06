@@ -213,6 +213,36 @@ const STRINGS = {
   'map.tileJa': ['일본어', 'Japanese', '日本語'],
   'map.baseTiles': ['배경 지도', 'Base map', '背景地図'],
   'map.settingsAria': ['지도 설정', 'Map settings', '地図設定'],
+  'map.loading': ['지도를 불러오는 중...', 'Loading map…', '地図を読み込み中…'],
+  'map.loadFailed': ['지도 데이터를 불러오지 못했습니다', "Couldn't load map data", '地図データを読み込めませんでした'],
+  'map.retry': ['다시 시도', 'Retry', '再試行'],
+
+  // 온보딩
+  'onboard.title': ['경현치 지도에 오신 것을 환영합니다', 'Welcome to your Keikenchi map', '経県値マップへようこそ'],
+  'onboard.tap': [
+    '지도의 지역을 탭하면 도장이 찍힙니다 (탭할 때마다 미답→통과→접지→방문→숙박→거주)',
+    'Tap a region to stamp it — each tap cycles the level (Passed → Landed → Visited → Stayed → Lived)',
+    '地域をタップすると判が押せます (タップごとに 通過→接地→訪問→宿泊→居住)',
+  ],
+  'onboard.gps': [
+    '좌하단 조준 버튼을 켜면 지금 있는 지역을 GPS로 자동 감지합니다',
+    'Turn on the locate button to auto-detect where you are with GPS',
+    '左下の照準ボタンでGPSが現在の地域を自動検知します',
+  ],
+  'onboard.share': [
+    '기록은 내 기기에만 저장되고, 공유 버튼으로 내 지도를 자랑할 수 있습니다',
+    'Everything stays on your device — share your map with the share button',
+    '記録は端末にのみ保存され、共有ボタンで自分の地図を自慢できます',
+  ],
+  'onboard.start': ['시작하기', 'Get started', 'はじめる'],
+
+  // 푸터
+  'footer.privacy': [
+    '기록과 위치 정보는 내 기기(브라우저)에만 저장됩니다',
+    'Your records and location never leave your device',
+    '記録と位置情報は端末内にのみ保存されます',
+  ],
+  'footer.sources': ['지도 데이터 출처:', 'Map data:', '地図データ出典:'],
 
   // 레벨업
   'levelup.title': ['Level Up', 'Level Up', 'Level Up'],
