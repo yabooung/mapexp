@@ -4,6 +4,7 @@ import { useState } from 'react'
 import ShareModal from '@/components/share/ShareModal'
 import SettingsModal from '@/components/common/SettingsModal'
 import Icon from '@/components/common/Icon'
+import LanguageSwitcher from '@/components/common/LanguageSwitcher'
 import { useT } from '@/lib/i18n'
 
 export default function Header() {
@@ -31,7 +32,10 @@ export default function Header() {
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              {/* 언어 전환 */}
+              <LanguageSwitcher />
+
               {/* 공유 버튼 */}
               <button
                 onClick={() => setIsShareModalOpen(true)}

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans_KR, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
@@ -7,10 +8,12 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
 
-const plexSansKr = IBM_Plex_Sans_KR({
-  variable: "--font-plex",
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin"],
+// Pretendard 가변 폰트 - Windows 100% 배율에서도 힌팅이 좋아 저해상도 렌더링 품질이 높다
+const pretendard = localFont({
+  src: "../src/fonts/PretendardVariable.woff2",
+  variable: "--font-sans-kr",
+  weight: "45 920",
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
@@ -49,7 +52,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body
-        className={`${plexSansKr.variable} ${geistMono.variable} antialiased`}
+        className={`${pretendard.variable} ${geistMono.variable} antialiased`}
       >
         <div className="flex flex-col h-dvh lg:h-auto lg:min-h-screen">
           <Header />

@@ -346,21 +346,14 @@ export default function MapView({ onRegionClick }: MapViewProps) {
   const muniStyleRef = useRef<(f?: Feature) => PathOptions>(() => ({}))
 
   // 지역 스타일
+  // 주의: interactive:false를 반환하는 분기를 두면 안 된다.
+  // 레이어 생성 시점의 스테일 스타일로 만들어진 path는 setStyle로
+  // 인터랙티브를 복원할 수 없어 영구 클릭 불능이 된다.
+  // (활성 현은 어차피 data 필터에서 제외되므로 숨김 분기 자체가 불필요)
   const getRegionStyle = (feature?: Feature): PathOptions => {
     if (!feature?.properties?.id) return { fillOpacity: 0, opacity: 0 }
 
     const regionId = feature.properties.id as string
-    
-    // Visual Polish: Prevent Overlap
-    // If we are showing the Municipality Overlay for this prefecture, hide the Base Layer prefecture
-    // to avoid double-opacity artifacts.
-    const isOverlayActive = mapLevel === 'municipality' && viewPrefectureId
-    const isTargetPrefecture = regionId === viewPrefectureId || (viewPrefectureId === '13' && regionId === 'tokyo') // Handle ID mismatch
-    
-    if (isOverlayActive && isTargetPrefecture) {
-        return { fillOpacity: 0, opacity: 0, interactive: false } // Hide completely
-    }
-
     const regionExp = getRegionById(regionId)
     const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
     const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
@@ -635,7 +628,8 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                    return true
               })
           } as FeatureCollection}
-          style={(f) => baseStyleRef.current(f as Feature)}
+          // 생성 시에는 현재 렌더의 신선한 클로저를 사용 (ref는 이 시점에 아직 이전 렌더 값)
+          style={getRegionStyle}
           onEachFeature={onEachFeature}
         />
 
@@ -645,7 +639,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                 ref={overlayLayerRef}
                 key={`overlay-${country}-${viewPrefectureId}`}
                 data={overlayGeoData}
-                style={(f) => muniStyleRef.current(f as Feature)}
+                style={getMunicipalityStyle}
                 onEachFeature={onEachMunicipalityFeature}
              />
         )}
