@@ -14,6 +14,7 @@ import GpsControls from './GpsControls'
 import Icon from '@/components/common/Icon'
 import { municipalityName, PREF_KANJI_BY_ID, loadPrefectures, featureContainsPoint, type Country } from '@/lib/geo'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
+import { useT, tNow, I18nKey } from '@/lib/i18n'
 
 interface MapViewProps {
   onRegionClick: (regionId: string) => void
@@ -152,15 +153,11 @@ export default function MapView({ onRegionClick }: MapViewProps) {
   const country = storeCountry as Country
   const [baseGeoData, setBaseGeoData] = useState<GeoJsonObject | null>(null)
   const [baseCountry, setBaseCountry] = useState<string | null>(null)
-  
-  // Data Version Key to force re-render of GeoJSON when data changes
-  // Data Version Key to force re-render of GeoJSON when data changes
-  // We include length and max updatedAt.
-  // Also adding a random element or sum of levels to be absolutely sure?
-  // Let's stick to standard practice but ensure it's robust.
-  const latestUpdate = regions.length > 0 ? regions.reduce((max, r) => r.updatedAt > max ? r.updatedAt : max, '') : 'init'
-  const totalLevels = regions.reduce((sum, r) => sum + (r.gyeonghyeonchi ?? r.level ?? 0), 0)
-  const dataKey = `${latestUpdate}-${regions.length}-${totalLevels}`
+
+  // 성능/안정성: 데이터 변경 시 레이어를 재마운트하지 않고 setStyle로 갱신한다.
+  // (재마운트 방식은 클릭 직후 레이어가 파괴되어 연속 클릭·줌 중 클릭이 유실되던 원인)
+  const baseLayerRef = useRef<L.GeoJSON | null>(null)
+  const overlayLayerRef = useRef<L.GeoJSON | null>(null)
 
   const [overlayGeoData, setOverlayGeoData] = useState<GeoJsonObject | null>(null)
   const [boundary, setBoundary] = useState<GeoJsonObject | null>(null)
@@ -172,6 +169,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
   const [mapLevel, setMapLevel] = useState<'prefecture' | 'municipality'>('prefecture')
   const [viewPrefectureId, setViewPrefectureId] = useState<string | null>(null) // ID of the prefecture to show details for
   const [panelOpen, setPanelOpen] = useState(false) // 모바일: 범례/컨트롤 패널 토글
+  const t = useT()
 
   // Smart Inheritance Logic:
   // Identify which prefectures have "Detailed" data (at least one child municipality is tracked).
@@ -342,6 +340,11 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     loadGeoData()
   }, [country, mapLevel, viewPrefectureId, baseGeoData])
 
+  // 항상 최신 스타일 함수를 참조하기 위한 ref
+  // (레이어 이벤트 핸들러의 스테일 클로저 문제 방지)
+  const baseStyleRef = useRef<(f?: Feature) => PathOptions>(() => ({}))
+  const muniStyleRef = useRef<(f?: Feature) => PathOptions>(() => ({}))
+
   // 지역 스타일
   const getRegionStyle = (feature?: Feature): PathOptions => {
     if (!feature?.properties?.id) return { fillOpacity: 0, opacity: 0 }
@@ -380,65 +383,68 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     }
   }
 
+  // 툴팁 내용 빌더 - 열릴 때마다 최신 레벨/언어를 읽는다
+  const buildTooltip = (regionId: string, regionName: string) => {
+    const exp = useMapExpStore.getState().getRegionById(regionId)
+    const lvl = exp?.gyeonghyeonchi ?? (exp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+    return `
+      <div style="text-align: center;">
+        <div style="font-weight: bold; font-size: 14px;">${regionName}</div>
+        <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">
+          ${tNow('level.term')}: ${tNow(`level.${lvl}` as I18nKey)} (${lvl})
+        </div>
+      </div>
+    `
+  }
+
+  // 레벨 순환 클릭 처리 (base/overlay 공용)
+  const cycleLevelOnClick = (
+    e: LeafletMouseEvent,
+    regionId: string,
+    styleRef: React.RefObject<(f?: Feature) => PathOptions>,
+    feature: Feature,
+  ) => {
+    e.originalEvent.preventDefault()
+    if (e.originalEvent.shiftKey) {
+      onRegionClick(regionId)
+      return
+    }
+
+    const currentExp = useMapExpStore.getState().getRegionById(regionId)
+    const currentVal = currentExp?.gyeonghyeonchi ?? (currentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+    const nextVal = (currentVal >= GyeongHyeonChi.RESIDED ? GyeongHyeonChi.UNVISITED : currentVal + 1) as ExperienceGrade
+
+    if (currentExp) {
+      updateRegion(regionId, { gyeonghyeonchi: nextVal })
+    } else {
+      addRegion({ regionId, gyeonghyeonchi: nextVal, updatedAt: new Date().toISOString() })
+    }
+
+    // 즉시 반영 (스토어 갱신 → 효과에서 전체 재스타일도 수행되지만, 클릭 피드백은 바로)
+    e.target.setStyle(styleRef.current(feature))
+  }
+
   const onEachFeature = (feature: Feature, layer: Layer) => {
     if (!feature.properties?.id) return
 
     const regionId = feature.properties.id as string
     const regionName = feature.properties.name_ko || feature.properties.name
-    const regionExp = getRegionById(regionId)
-    const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
 
-    const levelLabels = ['미답 (0)', '통과 (1)', '접지 (2)', '방문 (3)', '숙박 (4)', '거주 (5)']
-    const tooltipContent = `
-      <div style="text-align: center;">
-        <div style="font-weight: bold; font-size: 14px;">${regionName}</div>
-        <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">
-          경현치: ${levelLabels[gyeonghyeonchi]}
-        </div>
-      </div>
-    `
-
-    layer.bindTooltip(tooltipContent, {
+    layer.bindTooltip(() => buildTooltip(regionId, regionName), {
       permanent: false,
       direction: 'top',
       className: 'region-tooltip',
     })
 
-    const handleClick = (e: LeafletMouseEvent) => {
-      e.originalEvent.preventDefault()
-      if (e.originalEvent.shiftKey) {
-        onRegionClick(regionId)
-        return
-      }
-
-      const currentExp = useMapExpStore.getState().getRegionById(regionId)
-      const currentVal = currentExp?.gyeonghyeonchi ?? (currentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
-      const nextVal = (currentVal >= GyeongHyeonChi.RESIDED ? GyeongHyeonChi.UNVISITED : currentVal + 1) as ExperienceGrade
-
-      if (currentExp) {
-        updateRegion(regionId, { gyeonghyeonchi: nextVal })
-      } else {
-        addRegion({ regionId, gyeonghyeonchi: nextVal, updatedAt: new Date().toISOString() })
-      }
-
-      setTimeout(() => {
-        const target = e.target
-        const newStyle = getRegionStyle(feature)
-        target.setStyle(newStyle)
-      }, 50)
-    }
-
     layer.on({
-      click: handleClick,
+      click: (e: LeafletMouseEvent) => cycleLevelOnClick(e, regionId, baseStyleRef, feature),
       mouseover: (e: LeafletMouseEvent) => {
         const target = e.target
         target.setStyle({ weight: 3, color: '#000', fillOpacity: 0.9 })
         target.bringToFront()
       },
       mouseout: (e: LeafletMouseEvent) => {
-        const target = e.target
-        const style = getRegionStyle(feature)
-        target.setStyle(style)
+        e.target.setStyle(baseStyleRef.current(feature))
       },
     })
   }
@@ -501,65 +507,36 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         }
   }
 
+  // 매 렌더마다 최신 스타일 함수를 ref에 반영하고 레이어를 재스타일
+  // (기록/설정이 바뀐 렌더에서만 실제 시각 변화 발생. 레이어 재마운트 없음)
+  useEffect(() => {
+    baseStyleRef.current = getRegionStyle
+    muniStyleRef.current = getMunicipalityStyle
+    baseLayerRef.current?.setStyle((f) => baseStyleRef.current(f as Feature))
+    overlayLayerRef.current?.setStyle((f) => muniStyleRef.current(f as Feature))
+  })
+
   const onEachMunicipalityFeature = (feature: Feature, layer: Layer) => {
     if (!feature.properties?.id) return
 
     const regionId = feature.properties.id as string
     const regionName = feature.properties.name_ko || feature.properties.name
-    const regionExp = getRegionById(regionId)
-    const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
 
-    const levelLabels = ['미답 (0)', '통과 (1)', '접지 (2)', '방문 (3)', '숙박 (4)', '거주 (5)']
-    const tooltipContent = `
-      <div style="text-align: center;">
-        <div style="font-weight: bold; font-size: 14px;">${regionName}</div>
-        <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">
-          경현치: ${levelLabels[gyeonghyeonchi]}
-        </div>
-      </div>
-    `
-
-    layer.bindTooltip(tooltipContent, {
+    layer.bindTooltip(() => buildTooltip(regionId, regionName), {
       permanent: false,
       direction: 'top',
       className: 'region-tooltip',
     })
 
-    const handleClick = (e: LeafletMouseEvent) => {
-        e.originalEvent.preventDefault()
-        if (e.originalEvent.shiftKey) {
-            onRegionClick(regionId)
-            return
-        }
-
-        const currentExp = useMapExpStore.getState().getRegionById(regionId)
-        const currentVal = currentExp?.gyeonghyeonchi ?? (currentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
-        const nextVal = (currentVal >= GyeongHyeonChi.RESIDED ? GyeongHyeonChi.UNVISITED : currentVal + 1) as ExperienceGrade
-
-        if (currentExp) {
-            updateRegion(regionId, { gyeonghyeonchi: nextVal })
-        } else {
-            addRegion({ regionId, gyeonghyeonchi: nextVal, updatedAt: new Date().toISOString() })
-        }
-
-        setTimeout(() => {
-            const target = e.target
-            const newStyle = getMunicipalityStyle(feature)
-            target.setStyle(newStyle)
-        }, 50)
-    }
-
     layer.on({
-        click: handleClick,
+        click: (e: LeafletMouseEvent) => cycleLevelOnClick(e, regionId, muniStyleRef, feature),
         mouseover: (e: LeafletMouseEvent) => {
             const target = e.target
             target.setStyle({ weight: 2, color: '#666', fillOpacity: 0.2 })
             target.bringToFront()
         },
         mouseout: (e: LeafletMouseEvent) => {
-            const target = e.target
-            const style = getMunicipalityStyle(feature)
-            target.setStyle(style)
+            e.target.setStyle(muniStyleRef.current(feature))
         },
     })
   }
@@ -643,7 +620,8 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         
         {/* Base Layer (Prefectures) - Always Visible */}
         <GeoJSON
-          key={`base-${country}-${dataKey}-${mapLevel}-${viewPrefectureId}`} 
+          ref={baseLayerRef}
+          key={`base-${country}-${mapLevel}-${viewPrefectureId}`}
           data={{
               ...baseGeoData!,
               features: (baseGeoData! as FeatureCollection).features.filter(f => {
@@ -657,21 +635,17 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                    return true
               })
           } as FeatureCollection}
-          style={getRegionStyle}
-          // Only enable interactions if NO overlay is present, OR if overlay treats unvisited as transparent
-          // Actually, we want clicks on unvisited areas to fall through? 
-          // Leaflet doesn't easily support "click-through" for specific polygons in a single layer unless we use pointer-events: none.
-          // BUT, we want base layer to handle clicks for unvisited areas.
-          // Strategy: Base Layer always handles clicks. Overlay Layer ONLY handles clicks for Visited features.
+          style={(f) => baseStyleRef.current(f as Feature)}
           onEachFeature={onEachFeature}
         />
 
         {/* Overlay Layer (Municipalities) - Only if zoomed in */}
         {overlayGeoData && (
              <GeoJSON
-                key={`overlay-${viewPrefectureId}-${dataKey}`}
+                ref={overlayLayerRef}
+                key={`overlay-${country}-${viewPrefectureId}`}
                 data={overlayGeoData}
-                style={getMunicipalityStyle}
+                style={(f) => muniStyleRef.current(f as Feature)}
                 onEachFeature={onEachMunicipalityFeature}
              />
         )}
@@ -714,7 +688,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         className={`sm:hidden absolute bottom-20 right-4 z-[1001] w-11 h-11 rounded-full border flex items-center justify-center transition-all active:scale-90 shadow-[0_2px_8px_rgba(38,35,28,0.14)] ${
           panelOpen ? 'bg-ink border-ink text-paper' : 'bg-card border-line text-muted'
         }`}
-        aria-label="지도 설정"
+        aria-label={t('map.settingsAria')}
       >
         <Icon name={panelOpen ? 'x' : 'layers'} size={18} />
       </button>
@@ -726,9 +700,9 @@ export default function MapView({ onRegionClick }: MapViewProps) {
               onClick={cycleLabelMode}
               className="w-full py-1.5 px-2.5 rounded-md border border-line font-medium flex items-center justify-between text-ink hover:bg-paper transition-colors"
             >
-               <span className="text-muted">라벨</span>
+               <span className="text-muted">{t('map.label')}</span>
                <span className="font-semibold">
-                 {labelMode === 'custom' ? '직접 표시' : labelMode === 'native' ? '지도 원본' : '끔'}
+                 {labelMode === 'custom' ? t('map.labelCustom') : labelMode === 'native' ? t('map.labelNative') : t('map.off')}
                </span>
             </button>
 
@@ -737,9 +711,9 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                 className="w-full py-1.5 px-2.5 rounded-md border border-line font-medium flex items-center justify-between text-ink hover:bg-paper transition-colors"
                 title="지도 라벨 언어 변경"
             >
-                <span className="text-muted">언어</span>
+                <span className="text-muted">{t('map.tileLang')}</span>
                 <span className="font-semibold">
-                  {tileLanguage === 'local' ? '현지' : tileLanguage === 'ko' ? '한국어' : '일본어'}
+                  {tileLanguage === 'local' ? t('map.tileLocal') : tileLanguage === 'ko' ? t('map.tileKo') : t('map.tileJa')}
                 </span>
             </button>
 
@@ -771,17 +745,17 @@ export default function MapView({ onRegionClick }: MapViewProps) {
               }}
               className="w-full py-1.5 px-2.5 rounded-md border border-line font-medium flex items-center justify-between text-ink hover:bg-paper transition-colors"
             >
-               <span className="text-muted">배경 지도</span>
-               <span className="font-semibold">{showTiles ? '켬' : '끔'}</span>
+               <span className="text-muted">{t('map.baseTiles')}</span>
+               <span className="font-semibold">{showTiles ? t('map.on') : t('map.off')}</span>
             </button>
         </div>
 
-        <div className="text-[10px] font-semibold tracking-[0.08em] text-muted uppercase mb-2">경현치</div>
+        <div className="text-[10px] font-semibold tracking-[0.08em] text-muted uppercase mb-2">{t('level.term')}</div>
         <div className="space-y-1">
           {([5, 4, 3, 2, 1, 0] as ExperienceGrade[]).map((lvl) => (
             <div key={lvl} className="flex items-center gap-2">
                <span className="w-3 h-3 rounded-[3px] border border-black/10" style={{ backgroundColor: EXP_COLORS[lvl] }} />
-               <span className="text-ink">{['미답', '통과', '접지', '방문', '숙박', '거주'][lvl]}</span>
+               <span className="text-ink">{t(`level.${lvl}` as I18nKey)}</span>
                <span className="ml-auto text-faint tabular-nums">{lvl}</span>
             </div>
           ))}

@@ -2,6 +2,7 @@
 
 import { useGpsStore } from '@/store/gps'
 import Icon, { IconName } from '@/components/common/Icon'
+import { useT, I18nKey } from '@/lib/i18n'
 
 export type MobileTab = 'map' | 'list' | 'stats'
 
@@ -10,10 +11,10 @@ interface BottomNavProps {
   onChange: (tab: MobileTab) => void
 }
 
-const TABS: Array<{ id: MobileTab; icon: IconName; label: string }> = [
-  { id: 'map', icon: 'map', label: '지도' },
-  { id: 'list', icon: 'list', label: '리스트' },
-  { id: 'stats', icon: 'chart', label: '통계' },
+const TABS: Array<{ id: MobileTab; icon: IconName; labelKey: I18nKey }> = [
+  { id: 'map', icon: 'map', labelKey: 'nav.map' },
+  { id: 'list', icon: 'list', labelKey: 'nav.list' },
+  { id: 'stats', icon: 'chart', labelKey: 'nav.stats' },
 ]
 
 /**
@@ -21,11 +22,14 @@ const TABS: Array<{ id: MobileTab; icon: IconName; label: string }> = [
  */
 export default function BottomNav({ tab, onChange }: BottomNavProps) {
   const isTracking = useGpsStore((s) => s.isTracking)
+  const t = useT()
 
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 z-[1100] bg-card border-t border-line pb-safe">
       <div className="flex">
-        {TABS.map(({ id, icon, label }) => (
+        {TABS.map(({ id, icon, labelKey }) => {
+          const label = t(labelKey)
+          return (
           <button
             key={id}
             onClick={() => onChange(id)}
@@ -43,7 +47,8 @@ export default function BottomNav({ tab, onChange }: BottomNavProps) {
               <span className="absolute top-1.5 right-1/2 translate-x-5 w-1.5 h-1.5 bg-seal rounded-full animate-pulse" />
             )}
           </button>
-        ))}
+          )
+        })}
       </div>
     </nav>
   )

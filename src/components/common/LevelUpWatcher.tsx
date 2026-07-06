@@ -7,6 +7,7 @@ import { useGpsStore } from '@/store/gps'
 import { TOTAL_REGIONS } from '@/constants'
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters } from '@/lib/geo'
+import { tNow, useT, I18nKey } from '@/lib/i18n'
 
 /**
  * 레벨업/뱃지 달성 감지 워처
@@ -23,6 +24,7 @@ export default function LevelUpWatcher() {
   const prevLevelRef = useRef<number | null>(null)
   const prevBadgesRef = useRef<Set<string> | null>(null)
   const [celebration, setCelebration] = useState<number | null>(null)
+  const t = useT()
 
   useEffect(() => {
     const level = getSystemLevel()
@@ -51,7 +53,7 @@ export default function LevelUpWatcher() {
     const badges = computeBadges(regions, TOTAL_REGIONS[country], trackKm, country)
     for (const badge of badges) {
       if (badge.achieved && !prevBadgesRef.current.has(badge.id)) {
-        toast(`도장 획득 — ${badge.name}`, {
+        toast(tNow('levelup.badgeToast', { name: tNow(`badge.${badge.id}.name` as I18nKey) }), {
           duration: 4000,
           style: {
             background: 'var(--seal)',
@@ -71,9 +73,9 @@ export default function LevelUpWatcher() {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
       {/* 레벨업: 인주 도장이 쿵 찍히는 연출 */}
       <div className="animate-levelup w-44 h-44 rounded-full border-[5px] border-seal bg-seal-soft/95 flex flex-col items-center justify-center text-seal shadow-[0_8px_32px_rgba(190,58,43,0.35)]">
-        <span className="text-[11px] font-bold tracking-[0.3em] uppercase">Level Up</span>
+        <span className="text-[11px] font-bold tracking-[0.3em] uppercase">{t('levelup.title')}</span>
         <span className="text-6xl font-bold leading-none mt-1 tabular-nums">{celebration}</span>
-        <span className="text-xs font-medium mt-1.5">여행자 레벨</span>
+        <span className="text-xs font-medium mt-1.5">{t('levelup.sub')}</span>
       </div>
     </div>
   )

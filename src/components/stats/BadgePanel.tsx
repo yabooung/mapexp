@@ -7,6 +7,7 @@ import { TOTAL_REGIONS } from '@/constants'
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters } from '@/lib/geo'
 import Card from '@/components/common/Card'
+import { useT, I18nKey } from '@/lib/i18n'
 
 /**
  * 뱃지 패널 — 낙관(落款) 도장 스타일.
@@ -16,6 +17,7 @@ export default function BadgePanel() {
   const [mounted, setMounted] = useState(false)
   const { country, regions } = useMapExpStore()
   const trackPoints = useGpsStore((s) => s.trackPoints)
+  const t = useT()
 
   useEffect(() => {
     setMounted(true)
@@ -30,18 +32,21 @@ export default function BadgePanel() {
   return (
     <Card>
       <div className="flex items-baseline justify-between mb-4">
-        <h3 className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">도장첩</h3>
+        <h3 className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">{t('badges.title')}</h3>
         <span className="text-xs text-muted tabular-nums">
           {achievedCount} / {badges.length}
         </span>
       </div>
 
       <div className="grid grid-cols-4 gap-x-2 gap-y-4">
-        {badges.map((badge, i) => (
+        {badges.map((badge, i) => {
+          const name = t(`badge.${badge.id}.name` as I18nKey)
+          const desc = t(`badge.${badge.id}.desc` as I18nKey)
+          return (
           <div
             key={badge.id}
             className="flex flex-col items-center text-center"
-            title={`${badge.name}: ${badge.description}`}
+            title={`${name}: ${desc}`}
           >
             {/* 도장 */}
             <span
@@ -55,7 +60,7 @@ export default function BadgePanel() {
               {badge.icon}
             </span>
             <span className={`mt-1.5 text-[10px] leading-tight break-keep ${badge.achieved ? 'text-ink font-medium' : 'text-muted'}`}>
-              {badge.name}
+              {name}
             </span>
             {!badge.achieved && badge.progress > 0 && (
               <span className="mt-1 w-9 bg-paper rounded-full h-0.5 overflow-hidden">
@@ -66,7 +71,8 @@ export default function BadgePanel() {
               </span>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
     </Card>
   )

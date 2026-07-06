@@ -8,6 +8,7 @@ import { EXP_COLORS } from '@/constants'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { getRegionsByCountry } from '@/data/regions'
 import { loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
+import { useT, useLang, regionDisplayName } from '@/lib/i18n'
 
 interface MunicipalityManagerModalProps {
   isOpen: boolean
@@ -33,6 +34,8 @@ export default function MunicipalityManagerModal({
   initialPrefectureId,
 }: MunicipalityManagerModalProps) {
   const { getRegionById, addRegion, updateRegion, regions, country } = useMapExpStore()
+  const t = useT()
+  const lang = useLang()
   const [prefectureId, setPrefectureId] = useState<string>('')
   const [municipalities, setMunicipalities] = useState<MuniItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -113,10 +116,11 @@ export default function MunicipalityManagerModal({
     setSelectedMuni(null)
   }
 
-  const prefName = prefectures.find((p) => p.id === prefectureId)?.name || prefectureId
+  const prefMeta = prefectures.find((p) => p.id === prefectureId)
+  const prefName = prefMeta ? regionDisplayName(prefMeta, lang) : prefectureId
 
   const handleBulkUpdate = (level: ExperienceGrade) => {
-    if (!confirm(level === 0 ? `${prefName}의 기초 지역 기록을 모두 초기화할까요?` : `${prefName}의 기초 지역을 모두 '방문'으로 표시할까요?`)) return
+    if (!confirm(t(level === 0 ? 'muni.resetConfirm' : 'muni.markAllConfirm', { name: prefName }))) return
 
     municipalities.forEach((muni) => {
       const current = getRegionById(muni.id)
@@ -128,13 +132,13 @@ export default function MunicipalityManagerModal({
     })
   }
 
-  // 분류 탭 (일본: 区/市/町村, 한국: 구/시/군)
+  // 분류 탭 (일본: 区/市/町村, 한국: 구/시/군) - 접미사 자체가 라벨이라 번역 불필요
   const categories = useMemo(() => {
     if (country === 'japan') {
       return {
-        ward: { label: '구(区)', items: municipalities.filter((m) => m.name.endsWith('区')) },
-        city: { label: '시(市)', items: municipalities.filter((m) => m.name.endsWith('市')) },
-        town: { label: '정·촌', items: municipalities.filter((m) => m.name.endsWith('町') || m.name.endsWith('村')) },
+        ward: { label: '区', items: municipalities.filter((m) => m.name.endsWith('区')) },
+        city: { label: '市', items: municipalities.filter((m) => m.name.endsWith('市')) },
+        town: { label: '町·村', items: municipalities.filter((m) => m.name.endsWith('町') || m.name.endsWith('村')) },
       }
     }
     return {
@@ -167,19 +171,19 @@ export default function MunicipalityManagerModal({
                 value={prefectureId}
                 onChange={(e) => setPrefectureId(e.target.value)}
                 className="text-lg font-bold text-ink bg-card border border-line rounded-md px-3 py-1.5 max-w-[220px] focus:outline-none focus:border-ink"
-                aria-label="광역 지역 선택"
+                aria-label={t('muni.selectAria')}
               >
                 {prefectures.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {regionDisplayName(p, lang)}
                   </option>
                 ))}
               </select>
               <p className="text-sm text-muted whitespace-nowrap hidden sm:block">
-                {country === 'japan' ? '시정촌' : '시군구'} {total}개
+                {t('muni.count', { kind: t(country === 'japan' ? 'muni.kindJp' : 'muni.kindKr'), n: total })}
               </p>
             </div>
-            <button onClick={onClose} className="p-2 text-muted hover:text-ink hover:bg-line/50 rounded-full shrink-0" aria-label="닫기">
+            <button onClick={onClose} className="p-2 text-muted hover:text-ink hover:bg-line/50 rounded-full shrink-0" aria-label={t('common.close')}>
               ✕
             </button>
           </div>
@@ -188,7 +192,7 @@ export default function MunicipalityManagerModal({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-3 rounded-lg border border-line">
             <div className="flex items-center gap-4 w-full sm:w-auto">
               <div className="flex flex-col">
-                <span className="text-xs text-muted font-semibold uppercase tracking-wider">진행</span>
+                <span className="text-xs text-muted font-semibold uppercase tracking-wider">{t('muni.progress')}</span>
                 <div className="text-xl font-bold text-ink tabular-nums">
                   {visitedCount} <span className="text-faint text-sm">/ {total}</span>
                 </div>
@@ -196,7 +200,7 @@ export default function MunicipalityManagerModal({
               <div className="h-8 w-px bg-line"></div>
               <div className="flex flex-col flex-1 sm:w-48">
                 <div className="flex justify-between text-xs mb-1 text-muted">
-                  <span>달성률</span>
+                  <span>{t('stats.completion')}</span>
                   <span className="tabular-nums">{progress}%</span>
                 </div>
                 <div className="w-full bg-paper rounded-full h-1.5">
@@ -210,13 +214,13 @@ export default function MunicipalityManagerModal({
                 onClick={() => handleBulkUpdate(GyeongHyeonChi.VISITED)}
                 className="flex-1 sm:flex-none px-3 py-1.5 bg-ink text-paper rounded-md hover:opacity-90 text-sm font-medium transition-opacity"
               >
-                전체 방문 처리
+                {t('muni.markAll')}
               </button>
               <button
                 onClick={() => handleBulkUpdate(GyeongHyeonChi.UNVISITED)}
                 className="flex-1 sm:flex-none px-3 py-1.5 border border-seal/40 text-seal rounded-md hover:bg-seal-soft text-sm font-medium transition-colors"
               >
-                초기화
+                {t('muni.reset')}
               </button>
             </div>
           </div>
@@ -225,7 +229,7 @@ export default function MunicipalityManagerModal({
           <div className="flex gap-1.5 mt-4 overflow-x-auto pb-1">
             {(
               [
-                ['all', `전체 (${total})`],
+                ['all', `${t('muni.all')} (${total})`],
                 ['ward', `${categories.ward.label} (${categories.ward.items.length})`],
                 ['city', `${categories.city.label} (${categories.city.items.length})`],
                 ['town', `${categories.town.label} (${categories.town.items.length})`],
@@ -251,7 +255,7 @@ export default function MunicipalityManagerModal({
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-48 gap-3">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-seal"></div>
-              <div className="text-muted text-sm">데이터를 불러오는 중...</div>
+              <div className="text-muted text-sm">{t('muni.loading')}</div>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">

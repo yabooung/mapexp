@@ -6,6 +6,7 @@ import { useGpsStore } from '@/store/gps'
 import { useMapExpStore } from '@/store'
 import { detectRegionAt, detectMunicipalityAt } from '@/lib/geo'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
+import { tNow } from '@/lib/i18n'
 
 /**
  * 헤드리스 GPS 매니저
@@ -37,8 +38,8 @@ export default function GpsManager() {
     }
 
     if (!('geolocation' in navigator)) {
-      useGpsStore.getState().setStatus('error', '이 브라우저는 위치 서비스를 지원하지 않습니다.')
-      toast.error('이 브라우저는 위치 서비스를 지원하지 않습니다.')
+      useGpsStore.getState().setStatus('error', tNow('gps.notSupported'))
+      toast.error(tNow('gps.notSupported'))
       return
     }
 
@@ -90,7 +91,7 @@ export default function GpsManager() {
                 if (level === GyeongHyeonChi.UNVISITED) {
                   mapStore.addGpsRecord(targetId, GyeongHyeonChi.PASSED)
                   lastAutoRecordRegionRef.current = targetId
-                  toast(`${targetName} — 통과 도장이 찍혔습니다`)
+                  toast(tNow('gps.passToast', { label: targetName }))
                 }
               }
             }
@@ -104,8 +105,8 @@ export default function GpsManager() {
     const handleError = (err: GeolocationPositionError) => {
       const gps = useGpsStore.getState()
       if (err.code === err.PERMISSION_DENIED) {
-        gps.setStatus('denied', '위치 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.')
-        toast.error('위치 권한이 거부되었습니다.')
+        gps.setStatus('denied', tNow('gps.denied'))
+        toast.error(tNow('gps.denied'))
         // 권한 거부 시 관련 기능 모두 끄기
         gps.setWatchEnabled(false)
         gps.stopTracking()

@@ -1,8 +1,9 @@
 'use client'
 
-import { RegionExp, RegionMetadata, GyeongHyeonChi, EXP_LEVEL_LABELS, ExperienceGrade } from '@/types'
+import { RegionExp, RegionMetadata, GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
 import Card from '@/components/common/Card'
+import { useLang, levelLabel, regionDisplayName } from '@/lib/i18n'
 
 interface RegionCardProps {
   regionInfo: RegionMetadata
@@ -19,10 +20,12 @@ export default function RegionCard({
   regionExp,
   onClick,
 }: RegionCardProps) {
+  const lang = useLang()
   const gyeonghyeonchi = (regionExp?.gyeonghyeonchi ?? regionExp?.level ?? GyeongHyeonChi.UNVISITED) as ExperienceGrade
   const isUnvisited = gyeonghyeonchi === GyeongHyeonChi.UNVISITED
   const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
-  const levelLabel = EXP_LEVEL_LABELS[gyeonghyeonchi].replace(' (미경현)', '')
+  const gradeLabel = levelLabel(gyeonghyeonchi, lang)
+  const displayName = regionDisplayName(regionInfo, lang)
 
   return (
     <Card
@@ -46,11 +49,13 @@ export default function RegionCard({
         {/* 지역명 */}
         <div className="flex-1 min-w-0">
           <h3 className={`text-[15px] font-bold truncate ${isUnvisited ? 'text-muted' : 'text-ink'}`}>
-            {regionInfo.name}
+            {displayName}
           </h3>
           <p className="text-xs text-faint truncate">
-            {regionInfo.nameEn}
-            {regionInfo.nameLocal !== regionInfo.name && <span className="ml-1.5">{regionInfo.nameLocal}</span>}
+            {lang === 'en' ? regionInfo.nameLocal : regionInfo.nameEn}
+            {regionInfo.nameLocal !== displayName && lang !== 'en' && (
+              <span className="ml-1.5">{regionInfo.nameLocal}</span>
+            )}
           </p>
         </div>
 
@@ -65,7 +70,7 @@ export default function RegionCard({
           </span>
         ) : (
           <span className={`text-xs shrink-0 ${isUnvisited ? 'text-faint' : 'text-muted font-medium'}`}>
-            {levelLabel}
+            {gradeLabel}
           </span>
         )}
       </div>

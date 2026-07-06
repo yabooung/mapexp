@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import { useMapExpStore } from '@/store'
 import { getRegionMetadata } from '@/data/regions'
 import { ExpLevel, Visit, GyeongHyeonChi, ExperienceGrade } from '@/types'
-import { EXP_LEVEL_LABELS } from '@/types/region'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
 import toast from 'react-hot-toast'
 import VisitList from './VisitList'
+import { useT, useLang, levelLabel, I18nKey } from '@/lib/i18n'
 
 interface RegionModalProps {
   isOpen: boolean
@@ -26,6 +26,8 @@ export default function RegionModal({
 }: RegionModalProps) {
   const { getRegionById, addRegion, updateRegion, deleteRegion } =
     useMapExpStore()
+  const t = useT()
+  const lang = useLang()
   // 시정촌 ID(예: tokyo_千代田区)는 메타데이터가 없으므로 ID에서 이름을 유도
   const regionInfo = (() => {
     const meta = getRegionMetadata(regionId)
@@ -77,7 +79,7 @@ export default function RegionModal({
   const handleSave = () => {
     // 검증
     if (memo.length > 500) {
-      toast.error('메모는 최대 500자까지 입력 가능합니다')
+      toast.error(t('region.memoLimit'))
       return
     }
 
@@ -96,30 +98,21 @@ export default function RegionModal({
 
     if (existingRegion) {
       updateRegion(regionId, regionData)
-      toast.success('지역 정보가 수정되었습니다')
+      toast.success(t('region.saved'))
     } else {
       addRegion(regionData)
-      toast.success('지역 정보가 추가되었습니다')
+      toast.success(t('region.added'))
     }
 
     onClose()
   }
 
   const handleDelete = () => {
-    if (confirm('이 지역의 기록을 삭제하시겠습니까?')) {
+    if (confirm(t('region.deleteConfirm'))) {
       deleteRegion(regionId)
-      toast.success('지역 정보가 삭제되었습니다')
+      toast.success(t('region.deleted'))
       onClose()
     }
-  }
-
-  const levelDescriptions = {
-    [GyeongHyeonChi.UNVISITED]: '미경현 (스친 적도 없다) - 0점',
-    [GyeongHyeonChi.PASSED]: '통과했다 (철도/차 통과, 배 기항. 항공기 제외) - 1점',
-    [GyeongHyeonChi.LANDED]: '내렸다 (환승이나 휴게소 휴식 등) - 2점',
-    [GyeongHyeonChi.VISITED]: '걸었다 (묵었던 적은 없다) - 3점',
-    [GyeongHyeonChi.STAYED]: '묵었다 (야간 통과는 제외) - 4점',
-    [GyeongHyeonChi.RESIDED]: '살았다 (3개월 정도의 장기 체류 포함) - 5점',
   }
 
   return (
@@ -133,16 +126,16 @@ export default function RegionModal({
           <div>
             {existingRegion && level > GyeongHyeonChi.UNVISITED && (
               <Button variant="danger" onClick={handleDelete}>
-                삭제
+                {t('common.delete')}
               </Button>
             )}
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>
-              취소
+              {t('common.cancel')}
             </Button>
             <Button variant="primary" onClick={handleSave}>
-              저장
+              {t('common.save')}
             </Button>
           </div>
         </div>
@@ -152,7 +145,7 @@ export default function RegionModal({
         {/* 레벨 선택 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            경험치 레벨 <span className="text-red-500">*</span>
+            {t('region.levelLabel')} <span className="text-red-500">*</span>
           </label>
           <div className="space-y-2">
             {Object.values(ExpLevel)
@@ -179,7 +172,7 @@ export default function RegionModal({
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">
-                          Lv.{lvNum} - {EXP_LEVEL_LABELS[lvNum]}
+                          Lv.{lvNum} - {levelLabel(lvNum, lang)}
                         </span>
                         {lvNum === GyeongHyeonChi.RESIDED && (
                           <span className="w-5 h-5 rounded-full bg-seal text-white flex items-center justify-center text-[10px] font-bold select-none">
@@ -188,7 +181,7 @@ export default function RegionModal({
                         )}
                       </div>
                       <p className="text-sm text-gray-600 mt-1">
-                        {levelDescriptions[lvNum]}
+                        {t(`region.levelDesc.${lvNum}` as I18nKey)}
                       </p>
                     </div>
                   </label>
@@ -200,16 +193,12 @@ export default function RegionModal({
         {/* 레벨 5 설명 */}
         {level === GyeongHyeonChi.RESIDED && (
           <div className="bg-seal-soft border border-seal/30 rounded-lg p-4">
-            <p className="text-sm font-medium text-seal mb-1">
-              거주 (居住) — 5점 최고 등급
-            </p>
-            <p className="text-xs text-ink/70">
-              해당 지역에서 생활한 경험이 있거나, 3개월 이상 장기 체류한 경우에 해당합니다.
-            </p>
+            <p className="text-sm font-medium text-seal mb-1">{t('region.residedTitle')}</p>
+            <p className="text-xs text-ink/70">{t('region.residedDesc')}</p>
             {/* 자동 계산된 통계 표시 */}
             <div className="mt-3 flex gap-4 text-xs font-medium text-ink">
               <div className="bg-card px-2 py-1 rounded border border-line tabular-nums">
-                총 방문: {visits.length}회
+                {t('region.totalVisits', { n: visits.length })}
               </div>
             </div>
           </div>
@@ -223,14 +212,14 @@ export default function RegionModal({
         {/* 기존 메모/날짜 입력 (레거시 - 필요하다면 유지하지만, 방문 기록으로 대체 권장) */}
         {(visits.length === 0) && (
           <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-gray-500">
-            <p>방문 기록을 추가하면 방문 횟수와 숙박일이 자동 계산됩니다.</p>
+            <p>{t('region.visitTip')}</p>
           </div>
         )}
 
         {/* 방문일 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            방문일 (선택)
+            {t('region.visitDate')}
           </label>
           <input
             type="date"
@@ -243,7 +232,7 @@ export default function RegionModal({
         {/* 메모 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            메모 (선택)
+            {t('region.memo')}
           </label>
           <textarea
             value={memo}
@@ -251,7 +240,7 @@ export default function RegionModal({
             rows={4}
             maxLength={500}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="이 지역에 대한 메모를 입력하세요..."
+            placeholder={t('region.memoPlaceholder')}
           />
           <p className="text-xs text-gray-500 mt-1 text-right">
             {memo.length} / 500

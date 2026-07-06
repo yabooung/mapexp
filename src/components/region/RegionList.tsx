@@ -6,6 +6,7 @@ import { getRegionsByCountry } from '@/data/regions'
 import { GyeongHyeonChi, ExperienceGrade, RegionMetadata } from '@/types'
 import { REGION_GROUPS } from '@/constants/regions'
 import RegionCard from './RegionCard'
+import { useT } from '@/lib/i18n'
 
 interface RegionListProps {
   onRegionClick: (regionId: string) => void
@@ -20,6 +21,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
   const { country, getRegionById } = useMapExpStore()
   const [searchText, setSearchText] = useState('')
   const [sortBy, setSortBy] = useState<SortMode>('group')
+  const t = useT()
 
   // 현재 국가의 모든 지역 메타데이터
   const allRegions = getRegionsByCountry(country)
@@ -113,7 +115,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
         <div className="relative">
           <input
             type="text"
-            placeholder="지역 검색..."
+            placeholder={t('list.search')}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="w-full px-4 py-2 pl-10 bg-card border border-line rounded-md focus:outline-none focus:border-ink text-ink placeholder:text-faint"
@@ -138,9 +140,9 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
           <div className="inline-flex rounded-md border border-line bg-card p-0.5">
             {(
               [
-                ['group', country === 'japan' ? '지방별' : '권역별'],
-                ['name', '이름순'],
-                ['level', '레벨순'],
+                ['group', country === 'japan' ? t('list.sortGroupJp') : t('list.sortGroupKr')],
+                ['name', t('list.sortName')],
+                ['level', t('list.sortLevel')],
               ] as Array<[SortMode, string]>
             ).map(([mode, label]) => (
               <button
@@ -156,7 +158,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
           </div>
 
           <div className="text-xs text-muted hidden sm:block">
-            클릭: 레벨 변경 · Shift+클릭: 상세
+            {t('list.hint')}
           </div>
         </div>
       </div>
@@ -192,7 +194,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
         {/* 검색 결과 없음 */}
         {filteredRegions.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-muted">
-            <p className="text-sm">&lsquo;{searchText}&rsquo;에 해당하는 지역이 없습니다</p>
+            <p className="text-sm">{t('list.noResult', { q: searchText })}</p>
           </div>
         )}
       </div>

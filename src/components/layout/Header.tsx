@@ -4,10 +4,12 @@ import { useState } from 'react'
 import ShareModal from '@/components/share/ShareModal'
 import SettingsModal from '@/components/common/SettingsModal'
 import Icon from '@/components/common/Icon'
+import { useT } from '@/lib/i18n'
 
 export default function Header() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const t = useT()
 
   return (
     <>
@@ -25,7 +27,7 @@ export default function Header() {
               </span>
               <div className="leading-none">
                 <h1 className="text-lg sm:text-xl font-bold tracking-tight text-ink">MAPEXP</h1>
-                <p className="hidden sm:block text-[11px] text-muted mt-0.5">일본 경현치 지도</p>
+                <p className="hidden sm:block text-[11px] text-muted mt-0.5">{t('app.subtitle')}</p>
               </div>
             </div>
 
@@ -36,14 +38,14 @@ export default function Header() {
                 className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-ink text-paper rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
               >
                 <Icon name="share" size={15} />
-                공유
+                {t('common.share')}
               </button>
 
               {/* 설정 버튼 */}
               <button
                 onClick={() => setIsSettingsModalOpen(true)}
                 className="p-2 text-muted hover:text-ink hover:bg-paper rounded-md transition-colors"
-                aria-label="설정"
+                aria-label={t('common.settings')}
               >
                 <Icon name="gear" size={19} />
               </button>

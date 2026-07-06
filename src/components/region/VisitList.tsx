@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Visit } from '@/types'
 import Button from '@/components/common/Button'
 import Icon from '@/components/common/Icon'
+import { useT } from '@/lib/i18n'
 import { differenceInDays, format } from 'date-fns'
 
 interface VisitListProps {
@@ -12,6 +13,7 @@ interface VisitListProps {
 }
 
 export default function VisitList({ visits, onChange }: VisitListProps) {
+  const t = useT()
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   
@@ -49,7 +51,7 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
   }
 
   const handleDeleteClick = (visitId: string) => {
-    if (confirm('이 방문 기록을 삭제하시겠습니까?')) {
+    if (confirm(t('visits.deleteConfirm'))) {
       const newVisits = visits.filter(v => v.id !== visitId)
       onChange(newVisits)
     }
@@ -57,12 +59,12 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
 
   const handleSave = () => {
     if (!startDate || !endDate) {
-      alert('날짜를 선택해주세요.')
+      alert(t('visits.dateRequired'))
       return
     }
 
     if (startDate > endDate) {
-      alert('종료일은 시작일 이후여야 합니다.')
+      alert(t('visits.dateOrder'))
       return
     }
 
@@ -91,10 +93,10 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-900">방문 기록 ({visits.length})</h4>
+        <h4 className="text-sm font-medium text-ink">{t('visits.title', { n: visits.length })}</h4>
         {!isAdding && (
           <Button variant="secondary" size="sm" onClick={handleAddClick}>
-            + 기록 추가
+            {t('visits.add')}
           </Button>
         )}
       </div>
@@ -103,7 +105,7 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
         <div className="bg-gray-50 p-4 rounded-lg space-y-3 border border-gray-200">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">시작일</label>
+              <label className="block text-xs text-gray-500 mb-1">{t('visits.start')}</label>
               <input
                 type="date"
                 value={startDate}
@@ -112,7 +114,7 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">종료일</label>
+              <label className="block text-xs text-gray-500 mb-1">{t('visits.end')}</label>
               <input
                 type="date"
                 value={endDate}
@@ -122,12 +124,12 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">제목 (선택)</label>
+            <label className="block text-xs text-gray-500 mb-1">{t('visits.visitTitle')}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="예: 여름 휴가, 출장"
+              placeholder={t('visits.titlePlaceholder')}
               className="w-full text-sm border-gray-300 rounded-md"
             />
           </div>
@@ -141,8 +143,8 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={resetForm}>취소</Button>
-            <Button variant="primary" size="sm" onClick={handleSave}>저장</Button>
+            <Button variant="secondary" size="sm" onClick={resetForm}>{t('common.cancel')}</Button>
+            <Button variant="primary" size="sm" onClick={handleSave}>{t('common.save')}</Button>
           </div>
         </div>
       )}
@@ -164,16 +166,16 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
               <div className="flex justify-between items-start">
                 <div>
                   <div className="font-medium text-sm text-ink flex items-center gap-2 flex-wrap">
-                    {visit.title || '방문'}
+                    {visit.title === 'GPS 인증 기록' ? t('visits.gpsTitle') : visit.title || t('visits.defaultTitle')}
                     {isGps && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-seal border border-seal/40 px-1.5 py-0.5 rounded-full">
                         <Icon name="pin" size={9} />
-                        GPS 인증
+                        {t('visits.gpsBadge')}
                       </span>
                     )}
                     {!isGps && (
                       <span className="text-xs font-normal text-muted">
-                        ({days}일간, {nights}박)
+                        {t('visits.durationFmt', { d: days, n: nights })}
                       </span>
                     )}
                   </div>
@@ -191,7 +193,7 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
                 {isGps ? (
                   <span
                     className="text-faint px-2 py-1 select-none"
-                    title="GPS 인증 기록은 시간을 수정하거나 삭제할 수 없습니다"
+                    title={t('visits.gpsLocked')}
                   >
                     <Icon name="lock" size={13} />
                   </span>
@@ -201,13 +203,13 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
                       onClick={() => handleEditClick(visit)}
                       className="text-xs text-muted px-2 py-1 hover:text-ink hover:bg-paper rounded"
                     >
-                      수정
+                      {t('common.edit')}
                     </button>
                     <button
                       onClick={() => handleDeleteClick(visit.id)}
                       className="text-xs text-seal px-2 py-1 hover:bg-seal-soft rounded"
                     >
-                      삭제
+                      {t('common.delete')}
                     </button>
                   </div>
                 )}
