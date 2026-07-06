@@ -48,8 +48,8 @@ const STRINGS = {
     'Every pass, stop, walk, and stay leaves a stamp',
     '通って、降りて、歩いて、泊まった場所に判が積もる',
   ],
-  'page.manageMunis': ['시·군·구 관리', 'Municipalities', '市区町村管理'],
-  'page.manageMunisLong': ['시·군·구 일괄 관리', 'Manage municipalities', '市区町村を一括管理'],
+  'page.manageMunis': ['{term} 관리', '{term}', '{term}管理'],
+  'page.manageMunisLong': ['{term} 일괄 관리', 'Manage {term}', '{term}を一括管理'],
   'page.guide': [
     '지도 클릭으로 레벨 변경 (0→5→0) · Shift+클릭으로 상세 설정 · 좌하단 조준 버튼으로 GPS 추적',
     'Click map to cycle level (0→5→0) · Shift+Click for details · Use the locate button for GPS',
@@ -184,9 +184,14 @@ const STRINGS = {
   'visits.gpsTitle': ['GPS 인증 기록', 'GPS verified visit', 'GPS認証記録'],
 
   // 시·군·구 관리 모달
+  // 기초 지역 용어는 UI 언어가 아니라 보고 있는 국가를 따른다 (일본=시정촌, 한국=시군구)
   'muni.count': ['{kind} {n}개', '{n} {kind}', '{kind} {n}件'],
-  'muni.kindJp': ['시정촌', 'municipalities', '市区町村'],
-  'muni.kindKr': ['시군구', 'municipalities', '市郡区'],
+  'muni.termJp': ['시정촌', 'municipalities', '市区町村'],
+  'muni.termKr': ['시군구', 'municipalities', '市郡区'],
+  'muni.search': ['{kind} 검색...', 'Search…', '{kind}を検索…'],
+  'muni.cycleHint': ['클릭으로 레벨 순환 (0→5→0)', 'Click to cycle level (0→5→0)', 'クリックでレベル変更 (0→5→0)'],
+  'muni.prevPref': ['이전 지역', 'Previous', '前の地域'],
+  'muni.nextPref': ['다음 지역', 'Next', '次の地域'],
   'muni.progress': ['진행', 'Progress', '進行'],
   'muni.markAll': ['전체 방문 처리', 'Mark all visited', '一括訪問にする'],
   'muni.reset': ['초기화', 'Reset', 'リセット'],
@@ -248,6 +253,11 @@ export function tNow(key: I18nKey, params?: Record<string, string | number>): st
 /** 등급 라벨 */
 export function levelLabel(level: ExperienceGrade, lang: Lang): string {
   return translate(`level.${level}` as I18nKey, lang)
+}
+
+/** 기초 지역 용어 - UI 언어가 아니라 국가 기준 (일본=시정촌, 한국=시군구) */
+export function muniTerm(country: 'japan' | 'korea', lang: Lang): string {
+  return translate(country === 'japan' ? 'muni.termJp' : 'muni.termKr', lang)
 }
 
 /** 지역 표시 이름 (언어별) */
