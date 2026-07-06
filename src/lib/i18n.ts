@@ -217,6 +217,32 @@ const STRINGS = {
   'map.loadFailed': ['지도 데이터를 불러오지 못했습니다', "Couldn't load map data", '地図データを読み込めませんでした'],
   'map.retry': ['다시 시도', 'Retry', '再試行'],
 
+  // 공유
+  'share.title': ['지도 공유하기', 'Share your map', '地図を共有'],
+  'share.desc': ['아래 링크를 복사하여 친구들에게 내 지도를 공유해보세요!', 'Copy the link below and share your map!', '下のリンクをコピーして地図を共有しましょう！'],
+  'share.copy': ['링크 복사', 'Copy link', 'リンクをコピー'],
+  'share.copied': ['공유 링크가 복사되었습니다!', 'Link copied!', 'リンクをコピーしました！'],
+  'share.copyFail': ['링크 복사에 실패했습니다.', 'Copy failed.', 'コピーに失敗しました。'],
+  'share.native': ['공유하기', 'Share…', '共有…'],
+  'share.shareText': ['내 경현치 지도를 확인해보세요!', 'Check out my Keikenchi map!', '私の経県値マップを見てください！'],
+  'share.image': ['이미지 카드 저장', 'Save image card', '画像カードを保存'],
+  'share.imageDone': ['이미지 카드를 저장했습니다!', 'Image saved!', '画像を保存しました！'],
+  'share.imageFail': ['이미지 생성에 실패했습니다.', 'Image generation failed.', '画像の生成に失敗しました。'],
+  'share.info': [
+    "공유 링크를 받은 사람은 '보기 모드'로 열리며, 마음에 들면 자기 지도 만들기를 바로 시작할 수 있습니다.",
+    'Recipients open your map in view-only mode and can start their own map right away.',
+    '共有リンクは閲覧モードで開き、気に入ればすぐ自分の地図を始められます。',
+  ],
+
+  // 공유 뷰어
+  'viewer.banner': ['공유된 지도를 보는 중 — 내 기록은 안전하게 보관돼 있어요', 'Viewing a shared map — your own records are safe', '共有地図を表示中 — 自分の記録は保管されています'],
+  'viewer.exit': ['내 지도 만들기', 'Start my map', '自分の地図へ'],
+  'viewer.adopt': ['이 지도 저장', 'Save this map', 'この地図を保存'],
+  'viewer.loaded': ['공유된 지도를 열었습니다 (보기 모드)', 'Shared map opened (view mode)', '共有地図を開きました (閲覧モード)'],
+  'viewer.invalid': ['잘못된 공유 링크입니다.', 'Invalid share link.', '無効な共有リンクです。'],
+  'viewer.adopted': ['이 지도를 내 지도로 저장했습니다', 'Saved as your map', '自分の地図として保存しました'],
+  'viewer.exited': ['내 지도로 돌아왔습니다', 'Back to your map', '自分の地図に戻りました'],
+
   // 온보딩
   'onboard.title': ['경현치 지도에 오신 것을 환영합니다', 'Welcome to your Keikenchi map', '経県値マップへようこそ'],
   'onboard.tap': [

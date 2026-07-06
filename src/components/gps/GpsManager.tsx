@@ -108,7 +108,8 @@ export default function GpsManager() {
 
             // 자동 방문 감지: 새 지역 진입 시 GPS 인증 '통과(1)' 기록
             // 시정촌이 감지되면 시정촌 단위로 기록 (부모 현은 자동 롤업)
-            if (region && state.autoDetectVisit) {
+            // 공유 지도 열람 중에는 기록하지 않음
+            if (region && state.autoDetectVisit && !useMapExpStore.getState().isViewer) {
               const targetId = muni?.id ?? region.id
               const targetName = muni ? `${region.name} ${muni.name}` : region.name
               const changed = muni ? muni.id !== prevMuniId : region.id !== state.currentRegionId

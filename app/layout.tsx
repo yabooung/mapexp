@@ -23,6 +23,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ??
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
+  ),
   title: "MAPEXP - 지역 경험치 맵",
   description: "방문한 지역을 기록하고 경험치를 쌓는 지도 서비스. GPS로 이동 경로를 추적하고 새 지역 방문을 자동으로 기록하세요.",
   appleWebApp: {
@@ -39,9 +43,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: "#4F46E5",
+  // 접근성: 페이지 확대 허용 (지도 제스처는 Leaflet이 독립적으로 처리)
+  themeColor: "#be3a2b",
   viewportFit: "cover",
 };
 
