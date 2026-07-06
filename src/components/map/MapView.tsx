@@ -12,7 +12,8 @@ import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import GpsLayer from './GpsLayer'
 import GpsControls from './GpsControls'
 import Icon from '@/components/common/Icon'
-import { municipalityName, PREF_KANJI_BY_ID } from '@/lib/geo'
+import { municipalityName, PREF_KANJI_BY_ID, loadPrefectures, featureContainsPoint, type Country } from '@/lib/geo'
+import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 
 interface MapViewProps {
   onRegionClick: (regionId: string) => void
@@ -66,8 +67,6 @@ const BoundaryTileLayer = ({ url, boundary, attribution }: { url: string, bounda
   return null
 }
 
-import { geoContains } from 'd3-geo'
-
 /** 컨테이너 크기 변경 시 Leaflet 리사이즈 (탭 전환/모바일 회전 대응) */
 const AutoResize = () => {
   const map = useMap()
@@ -110,16 +109,8 @@ const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLe
           const currentData = baseGeoDataRef.current
           if (currentData && (currentData as any).features) {
               const features = (currentData as any).features as Feature[]
-              const found = features.find(f => {
-                   // Simple check or robust point-in-polygon
-                   // For performance, let's trust d3-geo's geoContains
-                   // Note: geoContains takes [lng, lat]
-                   try {
-                       return geoContains(f, centerPoint)
-                   } catch (e) {
-                       return false 
-                   }
-              })
+              // turf 기반 판정 (winding order에 안전 - geo.ts 참고)
+              const found = features.find(f => featureContainsPoint(f, centerPoint[0], centerPoint[1]))
               
               if (found && found.properties?.id) {
                   setViewPrefecture(found.properties.id)
@@ -127,7 +118,7 @@ const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLe
                   // Fallback: Find Closest Centroid
                   // useful for bays, oceans, or complex borders where center is technically "outside"
                   let minDist = Infinity
-                  let closestId = 'tokyo' // Default
+                  let closestId: string | null = null
                   
                   features.forEach(f => {
                       if (f.properties?.id) {
@@ -158,8 +149,9 @@ const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLe
 
 export default function MapView({ onRegionClick }: MapViewProps) {
   const { country: storeCountry, getRegionById, addRegion, updateRegion, settings, regions } = useMapExpStore()
-  const country = 'japan' // Force Japan mode (Korea archived)
+  const country = storeCountry as Country
   const [baseGeoData, setBaseGeoData] = useState<GeoJsonObject | null>(null)
+  const [baseCountry, setBaseCountry] = useState<string | null>(null)
   
   // Data Version Key to force re-render of GeoJSON when data changes
   // Data Version Key to force re-render of GeoJSON when data changes
@@ -218,56 +210,41 @@ export default function MapView({ onRegionClick }: MapViewProps) {
       return lang === 'local' ? '&copy; CARTO' : '&copy; Google Maps'
   }
 
-  // GeoJSON/TopoJSON 데이터 로드
+  // 국가 전환 시 오버레이/뷰 상태 초기화
+  useEffect(() => {
+    setMapLevel('prefecture')
+    setViewPrefectureId(null)
+    setOverlayGeoData(null)
+  }, [country])
+
+  // GeoJSON 데이터 로드
   useEffect(() => {
     const loadGeoData = async () => {
       setIsLoading(true)
       try {
-        // 1. Load Base Data (Prefectures) - Always Japan for now
-        // Cached or refetched? For simplicity, fetch if not present or country changed.
-        // We actually want to keep base data stable.
-        
-        if (!baseGeoData || country !== 'japan') { // Simplified check
-             const url = '/geojson/japan-prefectures.json'
-             const response = await fetch(url)
-             const json = await response.json()
-             
-             // Initialization for boundary & ID Injection (CRITICAL FOR ZOOM HANDLER)
-             if (json.type === 'FeatureCollection') {
-                 const collection = json as FeatureCollection
-                 collection.features.forEach((feat: any) => {
-                    // Pre-calculate ID for robust detection
-                    const nameJa = feat.properties?.nam_ja || feat.properties?.name_ja
-                    const nameKo = feat.properties?.name_ko || feat.properties?.NAME_1 || feat.properties?.name
-                    const originalName = country === 'japan' ? nameJa : nameKo
-                    const mappedId = REGION_ID_MAP[country][originalName]
-                    
-                    if (mappedId) {
-                         feat.properties = { 
-                             ...feat.properties, 
-                             id: mappedId, 
-                             name_ko: country === 'japan' ? feat.properties?.nam_ja : nameKo, 
-                             name: originalName 
-                         }
-                    }
-                 })
-                 
-                 setBaseGeoData(json)
-                 setBoundary(json as FeatureCollection)
-             } else {
-                 setBaseGeoData(json)
+        // 1. Load Base Data (광역: 도도부현/시도) - geo.ts 공용 로더 (ID 주입 + 캐싱)
+        let base = baseGeoData as FeatureCollection | null
+        if (!base || baseCountry !== country) {
+             const fc = await loadPrefectures(country)
+             if (fc) {
+                 base = fc
+                 setBaseGeoData(fc)
+                 setBaseCountry(country)
+                 setBoundary(fc)
              }
         }
 
-        // 2. Load Overlay Data (Municipalities) - On Demand
+        // 2. Load Overlay Data (기초: 시정촌/시군구) - On Demand
         if (mapLevel === 'municipality' && viewPrefectureId) {
-             let url = '/geojson/japan-municipalities.json' // Fallback
-             
+             let url = country === 'japan'
+                 ? '/geojson/japan-municipalities.json'
+                 : '/geojson/korea-municipalities.json'
+
              // Tokyo (Use detailed separate file)
-             if (viewPrefectureId === 'tokyo' || viewPrefectureId === '13') {
-                 url = '/geojson/japan-detail/N03-21_13_210101.json' 
+             if (country === 'japan' && (viewPrefectureId === 'tokyo' || viewPrefectureId === '13')) {
+                 url = '/geojson/japan-detail/N03-21_13_210101.json'
              }
-             
+
              if (url) {
                  const response = await fetch(url)
                  if (response.ok) {
@@ -277,26 +254,39 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                      if (json.type === 'FeatureCollection') {
                          const collection = json as FeatureCollection
 
-                         // 전국 파일에서는 현재 보고 있는 현의 시정촌만 추림 (성능)
-                         const viewPrefKanji =
-                             viewPrefectureId === '13' ? '東京都' : PREF_KANJI_BY_ID[viewPrefectureId] ?? null
-                         const features = viewPrefKanji
-                             ? collection.features.filter(
-                                   (f: any) => !f.properties?.N03_001 || f.properties.N03_001 === viewPrefKanji,
-                               )
-                             : collection.features
+                         // 전국 파일에서는 현재 보고 있는 광역의 기초 지역만 추림 (성능)
+                         let features = collection.features
+                         if (country === 'japan') {
+                             const viewPrefKanji =
+                                 viewPrefectureId === '13' ? '東京都' : PREF_KANJI_BY_ID[viewPrefectureId] ?? null
+                             if (viewPrefKanji) {
+                                 features = features.filter(
+                                     (f: any) => !f.properties?.N03_001 || f.properties.N03_001 === viewPrefKanji,
+                                 )
+                             }
+                         } else {
+                             const provCode = KOREA_PROV_CODE_BY_ID[viewPrefectureId]
+                             if (provCode) {
+                                 features = features.filter((f: any) => f.properties?.code?.startsWith(provCode))
+                             }
+                         }
                          const filtered: FeatureCollection = { ...collection, features }
 
                          filtered.features.forEach((feat: any) => {
-                             // 정령지정시 구는 시 이름 포함 (예: 札幌市中央区) - ID 충돌 방지
-                             const muniName = municipalityName(feat.properties)
-                                 || feat.properties?.name || feat.properties?.nam || 'Unknown'
-                             const prefName = feat.properties?.N03_001
+                             let muniName: string
+                             let parentId: string
 
-                             // Map Kanji Pref Name to English ID (e.g. 東京都 -> tokyo) to match Store IDs
-                             let parentId = prefName
-                             if (prefName && REGION_ID_MAP['japan'][prefName]) {
-                                 parentId = REGION_ID_MAP['japan'][prefName]
+                             if (country === 'japan') {
+                                 // 정령지정시 구는 시 이름 포함 (예: 札幌市中央区) - ID 충돌 방지
+                                 muniName = municipalityName(feat.properties)
+                                     || feat.properties?.name || feat.properties?.nam || 'Unknown'
+                                 const prefName = feat.properties?.N03_001
+                                 parentId = prefName && REGION_ID_MAP['japan'][prefName]
+                                     ? REGION_ID_MAP['japan'][prefName]
+                                     : viewPrefectureId
+                             } else {
+                                 muniName = feat.properties?.name || 'Unknown'
+                                 parentId = viewPrefectureId
                              }
                              const genId = `${parentId}_${muniName}`
 
@@ -462,20 +452,10 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         
         if (gyeonghyeonchi === GyeongHyeonChi.UNVISITED) {
             // Unvisited: Check Parent Prefecture Level for Inheritance
-            const prefName = feature.properties?.N03_001
             let parentLevel = GyeongHyeonChi.UNVISITED
-            
-            // Robust Parent Detection
-            let parentId = ''
-            
-            // 1. Try Property Mapping (General & Most Accurate)
-            if (prefName && REGION_ID_MAP['japan'][prefName]) {
-                parentId = REGION_ID_MAP['japan'][prefName]
-            }
-            // 2. Try viewPrefectureId (Contextual Fallback)
-            else if (viewPrefectureId === 'tokyo' || viewPrefectureId === '13') {
-                parentId = 'tokyo'
-            }
+
+            // genId가 `${parentId}_${muniName}` 형태이므로 접두사로 부모 판별 (국가 무관)
+            const parentId = regionId.includes('_') ? regionId.split('_')[0] : ''
             
             // Determine Parent Level
             if (parentId) {
@@ -647,7 +627,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         touchZoom={true}
       >
         {showTiles && (
-          country === 'japan' && boundary ? (
+          boundary ? (
               <BoundaryTileLayer
                 boundary={boundary}
                 attribution={getAttribution(tileLanguage)}

@@ -60,15 +60,16 @@ export default function GpsManager() {
         detectingRef.current = true
         lastDetectRef.current = now
 
-        detectRegionAt(pos.coords.latitude, pos.coords.longitude)
+        const country = useMapExpStore.getState().country
+        detectRegionAt(pos.coords.latitude, pos.coords.longitude, country)
           .then(async (region) => {
             const state = useGpsStore.getState()
             state.setCurrentRegion(region?.id ?? null, region?.name ?? null)
 
-            // 시정촌 감지 (현이 확인된 경우에만)
+            // 기초 지역(시정촌/시군구) 감지 (광역이 확인된 경우에만)
             let muni = null
             if (region) {
-              muni = await detectMunicipalityAt(pos.coords.latitude, pos.coords.longitude, region.id)
+              muni = await detectMunicipalityAt(pos.coords.latitude, pos.coords.longitude, region.id, country)
             }
             const prevMuniId = state.currentMuniId
             useGpsStore.getState().setCurrentMuni(muni?.id ?? null, muni?.name ?? null)

@@ -24,7 +24,7 @@ export default function BadgePanel() {
   if (!mounted) return null
 
   const trackKm = trackDistanceMeters(trackPoints) / 1000
-  const badges = computeBadges(regions, TOTAL_REGIONS[country], trackKm)
+  const badges = computeBadges(regions, TOTAL_REGIONS[country], trackKm, country)
   const achievedCount = badges.filter((b) => b.achieved).length
 
   return (

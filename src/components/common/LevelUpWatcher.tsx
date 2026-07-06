@@ -28,7 +28,7 @@ export default function LevelUpWatcher() {
     const level = getSystemLevel()
     const trackKm = trackDistanceMeters(trackPoints) / 1000
     const achieved = new Set(
-      computeBadges(regions, TOTAL_REGIONS[country], trackKm)
+      computeBadges(regions, TOTAL_REGIONS[country], trackKm, country)
         .filter((b) => b.achieved)
         .map((b) => b.id),
     )
@@ -48,7 +48,7 @@ export default function LevelUpWatcher() {
     prevLevelRef.current = level
 
     // 새 뱃지 감지
-    const badges = computeBadges(regions, TOTAL_REGIONS[country], trackKm)
+    const badges = computeBadges(regions, TOTAL_REGIONS[country], trackKm, country)
     for (const badge of badges) {
       if (badge.achieved && !prevBadgesRef.current.has(badge.id)) {
         toast(`도장 획득 — ${badge.name}`, {

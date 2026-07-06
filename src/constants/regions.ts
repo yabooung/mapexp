@@ -56,7 +56,7 @@ export const JAPAN_REGION_IDS = [
  */
 export const TOTAL_REGIONS = {
   japan: JAPAN_REGION_IDS.length, // 47
-  korea: 0, // Korea archived
+  korea: 17, // 17개 시도
 } as const
 
 /**
@@ -119,7 +119,62 @@ export const REGION_ID_MAP: Record<string, Record<string, string>> = {
     '鹿児島県': 'kagoshima',
     '沖縄県': 'okinawa',
   },
-  korea: {},
+  korea: {
+    // 2018 통계청 데이터 명칭 + 현행 명칭 모두 매핑
+    '서울특별시': 'seoul',
+    '인천광역시': 'incheon',
+    '경기도': 'gyeonggi',
+    '부산광역시': 'busan',
+    '대구광역시': 'daegu',
+    '광주광역시': 'gwangju',
+    '대전광역시': 'daejeon',
+    '울산광역시': 'ulsan',
+    '세종특별자치시': 'sejong',
+    '강원도': 'gangwon',
+    '강원특별자치도': 'gangwon',
+    '충청북도': 'chungbuk',
+    '충청남도': 'chungnam',
+    '전라북도': 'jeonbuk',
+    '전북특별자치도': 'jeonbuk',
+    '전라남도': 'jeonnam',
+    '경상북도': 'gyeongbuk',
+    '경상남도': 'gyeongnam',
+    '제주특별자치도': 'jeju',
+  },
+}
+
+/**
+ * 한국 시도 통계청 코드 (시군구 code 앞 2자리와 매칭)
+ */
+export const KOREA_PROV_CODE_BY_ID: Record<string, string> = {
+  seoul: '11',
+  busan: '21',
+  daegu: '22',
+  incheon: '23',
+  gwangju: '24',
+  daejeon: '25',
+  ulsan: '26',
+  sejong: '29',
+  gyeonggi: '31',
+  gangwon: '32',
+  chungbuk: '33',
+  chungnam: '34',
+  jeonbuk: '35',
+  jeonnam: '36',
+  gyeongbuk: '37',
+  gyeongnam: '38',
+  jeju: '39',
+}
+
+/**
+ * 지역 ID가 해당 국가 소속인지 판별 (시군구/시정촌 ID는 부모 기준)
+ */
+const KOREA_ID_SET = new Set(Object.keys(KOREA_PROV_CODE_BY_ID))
+const JAPAN_ID_SET = new Set<string>(JAPAN_REGION_IDS)
+
+export function isRegionOfCountry(regionId: string, country: 'japan' | 'korea'): boolean {
+  const parentId = regionId.includes('_') ? regionId.split('_')[0] : regionId
+  return country === 'japan' ? JAPAN_ID_SET.has(parentId) : KOREA_ID_SET.has(parentId)
 }
 
 

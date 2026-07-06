@@ -38,7 +38,7 @@ export default function RegionModal({
         name: muniName,
         nameEn: muniName,
         nameLocal: parentMeta ? `${parentMeta.nameLocal} ${muniName}` : muniName,
-        country: 'japan' as const,
+        country: parentMeta?.country ?? ('japan' as const),
         type: 'prefecture' as const,
       }
     }

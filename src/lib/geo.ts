@@ -1,25 +1,28 @@
 import { booleanPointInPolygon, point as turfPoint } from '@turf/turf'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
-import { REGION_ID_MAP } from '@/constants/regions'
+import { REGION_ID_MAP, KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { getRegionMetadata } from '@/data/regions'
 
 /**
- * GPS 위치 → 지역 감지 유틸리티
- * 도도부현 GeoJSON을 모듈 레벨에 캐싱하고 point-in-polygon으로 현재 지역을 찾는다.
+ * GPS 위치 → 지역 감지 유틸리티 (일본/한국)
+ * 광역(도도부현/시도)과 기초(시정촌/시군구) GeoJSON을 국가별로 캐싱하고
+ * point-in-polygon으로 현재 지역을 찾는다.
  */
+
+export type Country = 'japan' | 'korea'
 
 export interface DetectedRegion {
   id: string
   name: string
 }
 
-/** 지역 ID → 한자 현 이름 역매핑 (예: tokyo → 東京都) */
+/** 지역 ID → 현지어 광역 이름 역매핑 (예: tokyo → 東京都, seoul → 서울특별시) */
 export const PREF_KANJI_BY_ID: Record<string, string> = Object.fromEntries(
   Object.entries(REGION_ID_MAP['japan']).map(([kanji, id]) => [id, kanji]),
 )
 
 /**
- * 시정촌 표시 이름 (정령지정시 구는 시 이름을 붙여 충돌 방지: 札幌市中央区)
+ * 시정촌 표시 이름 (일본: 정령지정시 구는 시 이름을 붙여 충돌 방지: 札幌市中央区)
  * 데이터 출처: 국토수치정보 N03 (가공: smartnews-smri/japan-topography, 1/1000 간소화)
  */
 export function municipalityName(props: Record<string, string | null> | null): string | null {
@@ -31,46 +34,63 @@ export function municipalityName(props: Record<string, string | null> | null): s
   return muni
 }
 
-let prefectureCache: FeatureCollection | null = null
-let loadingPromise: Promise<FeatureCollection | null> | null = null
+/** 국가별 데이터 URL */
+const PREFECTURE_URLS: Record<Country, string> = {
+  japan: '/geojson/japan-prefectures.json',
+  korea: '/geojson/korea-provinces.json',
+}
+const MUNICIPALITY_URLS: Record<Country, string> = {
+  japan: '/geojson/japan-municipalities.json',
+  // 출처: 통계청 2018 행정구역 (southkorea/southkorea-maps, mapshaper 간소화)
+  korea: '/geojson/korea-municipalities.json',
+}
 
-let municipalityCache: FeatureCollection | null = null
-let muniLoadingPromise: Promise<FeatureCollection | null> | null = null
+const fcCache: Partial<Record<string, FeatureCollection>> = {}
+const fcLoading: Partial<Record<string, Promise<FeatureCollection | null>>> = {}
 
-/**
- * 도도부현 GeoJSON 로드 (ID 주입 포함, 1회만 fetch)
- */
-export async function loadPrefectures(): Promise<FeatureCollection | null> {
-  if (prefectureCache) return prefectureCache
-  if (loadingPromise) return loadingPromise
+async function loadFc(
+  key: string,
+  url: string,
+  postprocess?: (fc: FeatureCollection) => void,
+): Promise<FeatureCollection | null> {
+  if (fcCache[key]) return fcCache[key]!
+  if (fcLoading[key]) return fcLoading[key]!
 
-  loadingPromise = (async () => {
+  fcLoading[key] = (async () => {
     try {
-      const response = await fetch('/geojson/japan-prefectures.json')
+      const response = await fetch(url)
       if (!response.ok) return null
       const json = (await response.json()) as FeatureCollection
-
-      if (json.type === 'FeatureCollection') {
-        json.features.forEach((feat) => {
-          const props = feat.properties as Record<string, string> | null
-          const nameJa = props?.nam_ja || props?.name_ja
-          const mappedId = nameJa ? REGION_ID_MAP['japan'][nameJa] : undefined
-          if (mappedId) {
-            feat.properties = { ...props, id: mappedId, name: nameJa }
-          }
-        })
-        prefectureCache = json
-      }
-      return prefectureCache
+      if (json.type !== 'FeatureCollection') return null
+      postprocess?.(json)
+      fcCache[key] = json
+      return json
     } catch (error) {
-      console.error('Failed to load prefectures for GPS detection:', error)
+      console.error(`Failed to load ${url}:`, error)
       return null
     } finally {
-      loadingPromise = null
+      delete fcLoading[key]
     }
   })()
 
-  return loadingPromise
+  return fcLoading[key]!
+}
+
+/**
+ * 광역 GeoJSON 로드 (ID 주입 포함, 국가별 1회만 fetch)
+ */
+export async function loadPrefectures(country: Country = 'japan'): Promise<FeatureCollection | null> {
+  return loadFc(`pref-${country}`, PREFECTURE_URLS[country], (fc) => {
+    fc.features.forEach((feat) => {
+      const props = feat.properties as Record<string, string> | null
+      // 일본: nam_ja/name_ja, 한국: name(한글)
+      const localName = country === 'japan' ? props?.nam_ja || props?.name_ja : props?.name
+      const mappedId = localName ? REGION_ID_MAP[country][localName] : undefined
+      if (mappedId) {
+        feat.properties = { ...props, id: mappedId, name: localName }
+      }
+    })
+  })
 }
 
 /**
@@ -78,6 +98,10 @@ export async function loadPrefectures(): Promise<FeatureCollection | null> {
  * d3-geo의 geoContains는 폴리곤 감김 방향(winding order)이 반대인 데이터에서
  * 오판정하므로 사용하지 않는다.
  */
+export function featureContainsPoint(feature: Feature, lng: number, lat: number): boolean {
+  return containsPoint(feature, lng, lat)
+}
+
 function containsPoint(feature: Feature, lng: number, lat: number): boolean {
   const geomType = feature.geometry?.type
   if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') return false
@@ -89,7 +113,7 @@ function containsPoint(feature: Feature, lng: number, lat: number): boolean {
 }
 
 /**
- * 위/경도가 속한 도도부현 찾기
+ * 위/경도가 속한 광역 지역 찾기
  */
 export function findRegionAt(lat: number, lng: number, fc: FeatureCollection): DetectedRegion | null {
   for (const feature of fc.features) {
@@ -104,61 +128,63 @@ export function findRegionAt(lat: number, lng: number, fc: FeatureCollection): D
 }
 
 /**
- * 비동기 편의 함수: 데이터 로드 후 지역 감지
+ * 비동기 편의 함수: 데이터 로드 후 광역 지역 감지
  */
-export async function detectRegionAt(lat: number, lng: number): Promise<DetectedRegion | null> {
-  const fc = await loadPrefectures()
+export async function detectRegionAt(
+  lat: number,
+  lng: number,
+  country: Country = 'japan',
+): Promise<DetectedRegion | null> {
+  const fc = await loadPrefectures(country)
   if (!fc) return null
   return findRegionAt(lat, lng, fc)
 }
 
 /**
- * 전국 시정촌 GeoJSON 로드 (1.6MB, 1회만 fetch — 서비스 워커가 cache-first로 캐싱)
+ * 기초(시정촌/시군구) GeoJSON 로드 (국가별 1회만 fetch — 서비스 워커가 cache-first로 캐싱)
  */
-export async function loadMunicipalities(): Promise<FeatureCollection | null> {
-  if (municipalityCache) return municipalityCache
-  if (muniLoadingPromise) return muniLoadingPromise
-
-  muniLoadingPromise = (async () => {
-    try {
-      const response = await fetch('/geojson/japan-municipalities.json')
-      if (!response.ok) return null
-      const json = (await response.json()) as FeatureCollection
-      if (json.type === 'FeatureCollection') {
-        municipalityCache = json
-      }
-      return municipalityCache
-    } catch (error) {
-      console.error('Failed to load municipalities for GPS detection:', error)
-      return null
-    } finally {
-      muniLoadingPromise = null
-    }
-  })()
-
-  return muniLoadingPromise
+export async function loadMunicipalities(country: Country = 'japan'): Promise<FeatureCollection | null> {
+  return loadFc(`muni-${country}`, MUNICIPALITY_URLS[country])
 }
 
 /**
- * 위/경도가 속한 시정촌 찾기 (현 ID로 후보를 좁혀 검색)
+ * 위/경도가 속한 기초 지역(시정촌/시군구) 찾기 (광역 ID로 후보를 좁혀 검색)
  * 반환 ID는 스토어 규약과 동일한 `${prefId}_${muniName}` 형태
  */
 export async function detectMunicipalityAt(
   lat: number,
   lng: number,
   prefId: string,
+  country: Country = 'japan',
 ): Promise<DetectedRegion | null> {
-  const fc = await loadMunicipalities()
+  const fc = await loadMunicipalities(country)
   if (!fc) return null
 
-  const prefKanji = PREF_KANJI_BY_ID[prefId]
-  if (!prefKanji) return null
+  if (country === 'japan') {
+    const prefKanji = PREF_KANJI_BY_ID[prefId]
+    if (!prefKanji) return null
+
+    for (const feature of fc.features) {
+      const props = feature.properties as Record<string, string | null> | null
+      if (props?.N03_001 !== prefKanji) continue
+      if (containsPoint(feature as Feature, lng, lat)) {
+        const name = municipalityName(props)
+        if (!name) return null
+        return { id: `${prefId}_${name}`, name }
+      }
+    }
+    return null
+  }
+
+  // 한국: 통계청 코드 앞 2자리로 시도 필터
+  const provCode = KOREA_PROV_CODE_BY_ID[prefId]
+  if (!provCode) return null
 
   for (const feature of fc.features) {
     const props = feature.properties as Record<string, string | null> | null
-    if (props?.N03_001 !== prefKanji) continue
+    if (!props?.code?.startsWith(provCode)) continue
     if (containsPoint(feature as Feature, lng, lat)) {
-      const name = municipalityName(props)
+      const name = props.name
       if (!name) return null
       return { id: `${prefId}_${name}`, name }
     }
