@@ -1,263 +1,35 @@
-# MAPEXP - 지역 경험치 맵
+# MAPEXP — 나의 경현치 지도
 
-일본 47개 도도부현과 한국 17개 시도의 방문 경험을 기록하고 시각화하는 웹 애플리케이션입니다.
+방문한 지역을 기록하고 경험치(経県値)를 쌓는 지도 서비스.
+일본 47개 도도부현·1,897개 시정촌과 한국 16개 시도·250개 시군구를 지원합니다.
 
-## 🎯 주요 기능
+## 주요 기능
 
-### ✅ 주요 기능 (Minimal MV)
+- **경현치 기록**: 지역을 탭할 때마다 미답(0) → 통과(1) → 접지(2) → 방문(3) → 숙박(4) → 거주(5) 순환
+- **GPS**: 현재 지역(광역+기초 동시) 자동 감지, 이동 경로 트랙 기록, 자동 방문 감지
+  - GPS 인증 기록은 생성 후 시간 수정·삭제 불가 (수동 기록은 과거 날짜 자유 입력)
+- **게임화**: 여행자 레벨, 한자 낙관 도장첩(뱃지 12종), 레벨업 연출
+- **공유**: 읽기 전용 공유 링크(LZ 압축 URL), SNS용 이미지 카드 저장
+- **다국어**: 한국어 · English · 日本語
+- **PWA**: 홈 화면 설치, 오프라인 지도 데이터 캐싱
+- **프라이버시**: 모든 기록과 위치 정보는 사용자 브라우저(localStorage)에만 저장 — 서버 없음
 
-- **🇯🇵 일본 전국 지도**
-  - 47개 도도부현 완벽 지원
-  - 클릭으로 간편하게 레벨 변경 (0~4단계 순환)
-  - 마스터(Lv.5) 레벨: 상세 기록 시 황금 테두리 부여
+## 기술 스택
 
-- **✏️ 정밀한 기록 시스템**
-  - **6단계 레벨링**: 미방문 / 통과 / 정차 / 방문 / 거주 / 마스터
-  - **다중 방문 기록 (Multi-visit)**: 언제, 얼마나 머물렀는지 히스토리 관리
-  - **자동 통계**: 총 방문 횟수 및 숙박일 자동 계산
+Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Leaflet(react-leaflet) · Zustand · Turf.js
 
-- **💾 데이터 안전 관리**
-  - **URL 공유**: 내 지도를 링크 하나로 즉시 공유
-  - **백업/복원**: JSON 파일로 데이터 영구 소장
-  - **프라이버시**: 모든 데이터는 브라우저(LocalStorage)에만 저장
-
-> **Note**: 한국 지도 기능은 현재 비활성화되어 있으며, 추후 확장을 위한 템플릿으로 남아있습니다.
-
-## 🚀 시작하기
-
-### 필수 요구사항
-
-- Node.js 20 이상
-- npm 또는 yarn
-
-### 설치
+## 개발
 
 ```bash
-# 의존성 설치
 npm install
-
-# 개발 서버 실행
-npm run dev
+npm run dev    # http://localhost:3000
+npm run build  # 프로덕션 빌드
 ```
 
-개발 서버가 [http://localhost:3000](http://localhost:3000)에서 실행됩니다.
+## 지도 데이터 출처
 
-**⚠️ 중요**: 현재 샘플 GeoJSON 데이터(일본 5개, 한국 4개)를 사용 중입니다.
-전체 47개 도도부현과 17개 시도 지도를 사용하려면 [지도 사용 가이드](docs/MAP_USAGE.md)를 참고하세요.
+- 일본: [国土数値情報 N03](https://nlftp.mlit.go.jp/ksj/) (가공: [smartnews-smri/japan-topography](https://github.com/smartnews-smri/japan-topography))
+- 한국: 통계청 행정구역 ([southkorea/southkorea-maps](https://github.com/southkorea/southkorea-maps)), 2026-07 행정구역 개편(전남광주통합특별시, 군위군 대구 편입) 반영
+- 배경 타일: [CARTO](https://carto.com/attributions) / [OpenStreetMap](https://www.openstreetmap.org/copyright)
 
-### 빌드
-
-```bash
-# 프로덕션 빌드
-npm run build
-
-# 프로덕션 서버 실행
-npm start
-```
-
-## 📁 프로젝트 구조
-
-```
-mapexp/
-├── app/                      # Next.js App Router
-│   ├── layout.tsx           # Root 레이아웃
-│   ├── page.tsx             # 홈 페이지
-│   └── globals.css          # 전역 스타일
-├── src/
-│   ├── components/          # React 컴포넌트
-│   │   ├── common/          # 공통 컴포넌트 (Button, Modal, Card)
-│   │   ├── layout/          # 레이아웃 (Header, Footer)
-│   │   ├── region/          # 지역 관련 (RegionCard, RegionList, RegionModal)
-│   │   └── stats/           # 통계 (StatsPanel)
-│   ├── store/               # Zustand 상태 관리
-│   ├── types/               # TypeScript 타입 정의
-│   ├── lib/                 # 유틸리티 함수
-│   ├── constants/           # 상수 및 설정
-│   └── data/                # 정적 데이터 (지역 메타데이터)
-├── public/                  # 정적 파일
-└── docs/                    # 문서
-```
-
-## 🛠 기술 스택
-
-### 프론트엔드
-
-- **Next.js 16** - React 프레임워크 (App Router)
-- **React 19** - UI 라이브러리
-- **TypeScript 5** - 정적 타입 검사
-- **Tailwind CSS 4** - 유틸리티 기반 CSS
-
-### 상태 관리
-
-- **Zustand 5** - 경량 상태 관리
-  - persist 미들웨어로 LocalStorage 자동 동기화
-
-### UI/UX
-
-- **react-hot-toast** - 알림 메시지
-- **react-hook-form** - 폼 관리
-- **zod** - 스키마 검증
-
-### 향후 추가 예정
-
-- **Leaflet** - 인터랙티브 지도
-- **lz-string** - URL 공유 압축
-- **html2canvas** - 이미지 다운로드
-
-## 🎨 주요 컴포넌트
-
-### 1. RegionCard
-
-지역 정보를 카드 형태로 표시합니다.
-
-- 레벨별 배경색
-- 마스터 뱃지 (⭐)
-- 메모 미리보기
-
-### 2. RegionModal
-
-지역 정보를 입력/수정하는 모달입니다.
-
-- 6단계 레벨 선택
-- 마스터 레벨 추가 정보 (방문 횟수, 숙박일)
-- 방문일, 메모 입력
-
-### 3. StatsPanel
-
-통계 정보를 표시합니다.
-
-- 총 경험치
-- 방문 지역 수 / 전체
-- 달성률 (%)
-- 레벨별 분포
-
-### 4. CountrySelector
-
-국가를 전환합니다.
-
-- 🇯🇵 일본 (47개 도도부현)
-- 🇰🇷 한국 (17개 시도)
-
-## 📊 데이터 구조
-
-### RegionExp
-
-```typescript
-{
-  regionId: string        // 지역 ID
-  level: ExpLevel         // 0-5
-  memo?: string           // 메모 (최대 500자)
-  visitDate?: string      // 방문일 (ISO 8601)
-  visitCount?: number     // 방문 횟수 (Lv.5)
-  totalNights?: number    // 총 숙박일 (Lv.5)
-  updatedAt: string       // 마지막 수정
-}
-```
-
-### 마스터 레벨 조건
-
-- (방문 3회 이상 & 숙박 3박 이상) **OR** 30일 이상
-
-## ⭐ 경험치 레벨 시스템 상세
-
-### 레벨별 기준 및 점수
-
-| 레벨 | 이름      | 기준                               | 점수    | 색상   |
-| ---- | --------- | ---------------------------------- | ------- | ------ |
-| Lv.0 | 미방문    | 방문한 적 없음                     | 0점     | 회색   |
-| Lv.1 | 통과      | 공항, 역 등에서 환승만             | 1점     | 연노랑 |
-| Lv.2 | 정차      | 2-3시간 정도 짧게 방문             | 2점     | 노랑   |
-| Lv.3 | 방문      | 반나절 ~ 하루 정도 방문            | 3점     | 주황   |
-| Lv.4 | 거주      | 1박 이상 숙박                      | 4점     | 빨강   |
-| Lv.5 | 마스터 ⭐ | (3회 이상 & 3박 이상) OR 30일 이상 | **8점** | 금색   |
-
-### 레벨 선택 가이드
-
-**Lv.1 (통과)**: 나리타 공항에서 환승만 했다면? → 도쿄 Lv.1
-**Lv.2 (정차)**: 후쿠오카 공항에서 2시간 대기하며 라멘 먹고 공항 둘러봤다면? → 후쿠오카 Lv.2
-**Lv.3 (방문)**: 교토 당일치기로 금각사, 청수사 관광했다면? → 교토 Lv.3
-**Lv.4 (거주)**: 오사카에서 2박 3일 호텔 숙박했다면? → 오사카 Lv.4
-**Lv.5 (마스터)**: 도쿄에 5번 방문했고 총 10박을 했다면? → 도쿄 Lv.5 ⭐
-
-### 총 경험치 계산 예시
-
-```
-일본 도쿄 (Lv.5 마스터): 8점
-일본 오사카 (Lv.4 거주): 4점
-일본 교토 (Lv.3 방문): 3점
-일본 나라 (Lv.2 정차): 2점
-한국 서울 (Lv.5 마스터): 8점
-한국 부산 (Lv.4 거주): 4점
--------------------------
-총 경험치: 29점
-방문 지역: 6 / 64 (9.4%)
-마스터 지역: 2개 ⭐
-```
-
-### 왜 마스터는 8점?
-
-마스터 레벨은 단순히 방문이 아닌 **깊은 이해와 경험**을 가진 지역입니다. 3회 이상 방문하거나 30일 이상 체류한 지역으로, 그 지역의 문화와 일상을 체험했다는 의미에서 **2배 보너스 점수(8점)**를 부여합니다!
-
-## 🎯 로드맵
-
-### Phase 1: MVP ✅
-
-- [x] 기본 설정 및 타입 정의
-- [x] Zustand 상태 관리
-- [x] UI 컴포넌트 구현
-- [x] 지역 리스트 및 검색
-- [x] 레벨 선택 모달
-- [x] 통계 패널
-- [x] LocalStorage 자동 저장
-
-### Phase 2: 지도 통합 ✅
-
-- [x] Leaflet 지도 렌더링
-- [x] GeoJSON 데이터 통합 (샘플)
-- [x] 지도 인터랙션 (클릭, 호버)
-- [x] 레벨별 색상 표시
-- [x] 지도/리스트 뷰 전환
-- [ ] 전체 GeoJSON 데이터 통합 (47개 도도부현, 17개 시도)
-
-### Phase 3: 공유 기능 (예정)
-
-- [ ] URL 공유 (LZ-String 압축)
-- [ ] 이미지 다운로드 (html2canvas)
-- [ ] JSON 데이터 import/export
-
-### Phase 4: 추가 기능 (선택)
-
-- [ ] 다크 모드
-- [ ] 다국어 지원 (한국어/영어/일본어)
-- [ ] 마스터 리더보드
-- [ ] 애니메이션 효과
-
-## 🔧 개발 가이드
-
-### 새로운 컴포넌트 추가
-
-1. `src/components/` 적절한 폴더에 파일 생성
-2. TypeScript 타입 정의
-3. 'use client' 디렉티브 추가 (클라이언트 컴포넌트인 경우)
-
-### 상태 관리
-
-```typescript
-import { useMapExpStore } from "@/store";
-
-const { country, regions, addRegion, getTotalExp } = useMapExpStore();
-```
-
-### 스타일링
-
-- Tailwind CSS 유틸리티 클래스 사용
-- 커스텀 색상: `bg-exp-unvisited`, `bg-exp-master` 등
-- 반응형: `sm:`, `md:`, `lg:` 브레이크포인트
-
-## 📝 라이선스
-
-MIT License
-
----
-
-**MAPEXP** - 여행 경험을 게임처럼 기록하세요! 🗺️✨
+'경현치'는 일본의 [経県値](https://ja.wikipedia.org/wiki/%E7%B5%8C%E7%9C%8C%E5%80%A4) 개념을 바탕으로 합니다.

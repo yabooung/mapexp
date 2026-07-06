@@ -15,6 +15,7 @@ import MunicipalityManagerModal from '@/components/region/MunicipalityManagerMod
 import GpsManager from '@/components/gps/GpsManager'
 import LevelUpWatcher from '@/components/common/LevelUpWatcher'
 import OnboardingHint from '@/components/common/OnboardingHint'
+import ViewerBanner from '@/components/common/ViewerBanner'
 import BottomNav, { MobileTab } from '@/components/layout/BottomNav'
 import Icon from '@/components/common/Icon'
 import { useT, useLang, muniTerm } from '@/lib/i18n'
@@ -35,7 +36,8 @@ const MapView = dynamic(() => import('@/components/map/MapView'), {
 function HomeContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { importData, country } = useMapExpStore()
+  const { country, enterViewerMode, initViewerFromStorage } = useMapExpStore()
+  const isViewer = useMapExpStore((s) => s.isViewer)
 
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
   const [view, setView] = useState<MobileTab>('map')
@@ -45,28 +47,32 @@ function HomeContent() {
   // 기초 지역 용어는 보고 있는 국가를 따름 (일본=시정촌, 한국=시군구)
   const term = muniTerm(country, lang)
 
-  // 공유 URL 처리
+  // 새로고침 후에도 뷰어 모드 유지
+  useEffect(() => {
+    initViewerFromStorage()
+  }, [initViewerFromStorage])
+
+  // 공유 URL 처리 - 읽기 전용 뷰어로 열기 (내 데이터는 자동 백업, 덮어쓰지 않음)
   useEffect(() => {
     const shareCode = searchParams.get('share')
     if (shareCode) {
-      if (confirm('공유된 지도를 불러오시겠습니까?\n주의: 현재 내 지도가 덮어씌워집니다.')) {
-        const data = parseShareUrl(shareCode)
-        if (data && data.regions) {
-          importData({
-            country: data.country || 'japan',
-            regions: data.regions,
-            version: '1.0.0',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          })
-          toast.success('공유된 지도를 불러왔습니다!')
-        } else {
-          toast.error('잘못된 공유 링크입니다.')
-        }
+      const data = parseShareUrl(shareCode)
+      if (data && data.regions) {
+        enterViewerMode({
+          country: data.country || 'japan',
+          regions: data.regions,
+          version: '1.0.0',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        toast.success(t('viewer.loaded'))
+      } else {
+        toast.error(t('viewer.invalid'))
       }
       router.replace('/')
     }
-  }, [searchParams, router, importData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, router, enterViewerMode])
 
   const handleRegionClick = (regionId: string) => {
     setSelectedRegionId(regionId)
@@ -80,7 +86,10 @@ function HomeContent() {
     <>
       {/* 헤드리스: GPS 추적 + 레벨업 감지 */}
       <GpsManager />
-      <LevelUpWatcher />
+      {!isViewer && <LevelUpWatcher />}
+
+      {/* 공유 지도 열람 모드 배너 */}
+      <ViewerBanner />
 
       <div className="flex flex-col h-full lg:h-auto lg:block lg:container lg:mx-auto lg:px-4 lg:py-6 lg:max-w-7xl">
         {/* 데스크톱 타이틀 섹션 */}
@@ -167,8 +176,8 @@ function HomeContent() {
               {/* 지도는 항상 마운트 유지 (탭 전환 시 상태 보존) */}
               <div className={`${view === 'list' ? 'hidden' : 'block'} h-full`}>
                 <MapView onRegionClick={handleRegionClick} />
-                {/* 첫 방문 온보딩 (한 번만 표시) */}
-                <OnboardingHint />
+                {/* 첫 방문 온보딩 (한 번만 표시, 공유 열람 중에는 숨김) */}
+                {!isViewer && <OnboardingHint />}
               </div>
 
               {view === 'list' && (

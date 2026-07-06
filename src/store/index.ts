@@ -95,6 +95,15 @@ interface MapExpStore {
   selectedRegionId: string | null;
   settings: UserSettings;
 
+  /** 공유 지도 열람 모드 (내 데이터는 백업 후 안전하게 보관) */
+  isViewer: boolean;
+
+  // 뷰어 액션
+  enterViewerMode: (data: MapExpData) => void;
+  exitViewerMode: () => void;
+  adoptSharedMap: () => void;
+  initViewerFromStorage: () => void;
+
   // 기본 액션
   setCountry: (country: "japan" | "korea") => void;
   addRegion: (region: RegionExp) => void;
@@ -127,7 +136,28 @@ const initialState = {
   regions: [] as RegionExp[],
   selectedRegionId: null,
   settings: DEFAULT_SETTINGS,
+  isViewer: false,
 };
+
+/** 뷰어 모드 진입 시 내 데이터 백업 키 */
+const VIEWER_BACKUP_KEY = "mapexp_viewer_backup";
+
+/** 외부에서 온 공유 데이터 정제 (레벨 범위/타입 검증, GPS 인증 사칭 제거) */
+function sanitizeSharedRegions(regions: unknown): RegionExp[] {
+  if (!Array.isArray(regions)) return [];
+  return regions
+    .filter((r): r is RegionExp => !!r && typeof (r as RegionExp).regionId === "string")
+    .map((r) => {
+      const raw = Number(r.gyeonghyeonchi ?? r.level ?? 0);
+      const level = (Number.isFinite(raw) ? Math.min(5, Math.max(0, Math.round(raw))) : 0) as ExperienceGrade;
+      return {
+        regionId: r.regionId,
+        gyeonghyeonchi: level,
+        memo: typeof r.memo === "string" ? r.memo.slice(0, 500) : undefined,
+        updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : new Date().toISOString(),
+      };
+    });
+}
 
 /**
  * 맵 경험치 스토어
@@ -136,6 +166,66 @@ export const useMapExpStore = create<MapExpStore>()(
   persist(
     (set, get) => ({
       ...initialState,
+
+      // ── 공유 지도 뷰어 모드 ──────────────────────────────
+      // 내 데이터를 localStorage에 백업해두고 공유 데이터를 로드한다.
+      // 새로고침해도 백업이 남아 있어 언제든 복원 가능.
+      enterViewerMode: (data) => {
+        const state = get();
+        try {
+          // 이미 뷰어 모드면 기존 백업 유지 (공유→공유 이동 시 원본 보존)
+          if (!state.isViewer) {
+            localStorage.setItem(
+              VIEWER_BACKUP_KEY,
+              JSON.stringify({ country: state.country, regions: state.regions }),
+            );
+          }
+        } catch {
+          return; // 백업 실패 시 내 데이터를 덮어쓰지 않는다
+        }
+        set({
+          country: data.country === "korea" ? "korea" : "japan",
+          regions: sanitizeSharedRegions(data.regions),
+          selectedRegionId: null,
+          isViewer: true,
+        });
+      },
+
+      exitViewerMode: () => {
+        try {
+          const raw = localStorage.getItem(VIEWER_BACKUP_KEY);
+          const backup = raw ? (JSON.parse(raw) as { country: "japan" | "korea"; regions: RegionExp[] }) : null;
+          localStorage.removeItem(VIEWER_BACKUP_KEY);
+          set({
+            country: backup?.country ?? "japan",
+            regions: backup?.regions ?? [],
+            selectedRegionId: null,
+            isViewer: false,
+          });
+        } catch {
+          set({ isViewer: false });
+        }
+      },
+
+      adoptSharedMap: () => {
+        try {
+          localStorage.removeItem(VIEWER_BACKUP_KEY);
+        } catch {
+          // 무시
+        }
+        set({ isViewer: false });
+      },
+
+      // 새로고침 후에도 뷰어 모드 유지 (백업 존재 = 뷰어 중)
+      initViewerFromStorage: () => {
+        try {
+          if (localStorage.getItem(VIEWER_BACKUP_KEY) && !get().isViewer) {
+            set({ isViewer: true });
+          }
+        } catch {
+          // 무시
+        }
+      },
 
       // 국가 선택
       setCountry: (country) => {
