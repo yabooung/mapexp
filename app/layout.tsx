@@ -59,7 +59,8 @@ export default function RootLayout({
             <Footer />
           </div>
         </div>
-        <Toaster position="top-center" containerStyle={{ top: 64 }} />
+        {/* GPS 현재 지역 배너(지도 상단)와 겹치지 않도록 조금 아래에 표시 */}
+        <Toaster position="top-center" containerStyle={{ top: 120 }} />
         <ServiceWorkerRegister />
       </body>
     </html>

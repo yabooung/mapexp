@@ -24,16 +24,23 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
   const trackPoints = useGpsStore((s) => s.trackPoints)
   const currentRegionId = useGpsStore((s) => s.currentRegionId)
   const currentRegionName = useGpsStore((s) => s.currentRegionName)
+  const currentMuniId = useGpsStore((s) => s.currentMuniId)
+  const currentMuniName = useGpsStore((s) => s.currentMuniName)
+  const autoDetectVisit = useGpsStore((s) => s.autoDetectVisit)
   const { setWatchEnabled, setFollowMode, startTracking, stopTracking, clearTrack } = useGpsStore()
 
-  const { getRegionById, addRegion, updateRegion } = useMapExpStore()
+  const { getRegionById, addGpsRecord } = useMapExpStore()
 
-  const gpsActive = watchEnabled || isTracking
+  const gpsActive = watchEnabled || isTracking || autoDetectVisit
   const distance = trackDistanceMeters(trackPoints)
 
+  // 기록 대상: 시정촌이 감지되면 시정촌, 아니면 현
+  const targetId = currentMuniId ?? currentRegionId
+  const targetLabel = currentMuniName ? `${currentRegionName} · ${currentMuniName}` : currentRegionName
+
   const currentLevel: ExperienceGrade = (() => {
-    if (!currentRegionId) return GyeongHyeonChi.UNVISITED
-    const exp = getRegionById(currentRegionId)
+    if (!targetId) return GyeongHyeonChi.UNVISITED
+    const exp = getRegionById(targetId)
     return exp?.gyeonghyeonchi ?? (exp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
   })()
 
@@ -69,33 +76,24 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
     }
   }
 
-  // 빠른 기록: 현재 지역을 최소 '접지(2)'로 올림
+  // 빠른 기록: 현재 위치(시정촌 우선)를 최소 '접지(2)'로 올림 - GPS 인증 기록
   const handleQuickRecord = () => {
-    if (!currentRegionId || !currentRegionName) return
+    if (!targetId || !targetLabel) return
     if (currentLevel >= GyeongHyeonChi.LANDED) {
-      onRegionClick(currentRegionId)
+      onRegionClick(targetId)
       return
     }
-    const existing = getRegionById(currentRegionId)
-    if (existing) {
-      updateRegion(currentRegionId, { gyeonghyeonchi: GyeongHyeonChi.LANDED })
-    } else {
-      addRegion({
-        regionId: currentRegionId,
-        gyeonghyeonchi: GyeongHyeonChi.LANDED,
-        updatedAt: new Date().toISOString(),
-      })
-    }
-    toast.success(`👣 ${currentRegionName} 접지 기록! (+2 경현치)`)
+    addGpsRecord(targetId, GyeongHyeonChi.LANDED)
+    toast.success(`👣 ${targetLabel} 접지 기록! (GPS 인증)`)
   }
 
   return (
     <>
-      {/* 현재 지역 배너 (상단 중앙) */}
-      {gpsActive && currentRegionId && currentRegionName && (
+      {/* 현재 지역 배너 (상단 중앙) - 현 · 시정촌 표시 */}
+      {gpsActive && targetId && targetLabel && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2 bg-white/95 backdrop-blur rounded-full shadow-lg pl-4 pr-2 py-2 text-sm max-w-[calc(100%-24px)]">
-          <span className="flex items-center gap-1.5 font-semibold text-gray-900 whitespace-nowrap">
-            📍 {currentRegionName}
+          <span className="flex items-center gap-1.5 font-semibold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
+            📍 {targetLabel}
           </span>
           <span className="text-xs text-gray-500 whitespace-nowrap hidden sm:inline">
             {EXP_LEVEL_LABELS[currentLevel]}
@@ -109,7 +107,7 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
             </button>
           ) : (
             <button
-              onClick={() => onRegionClick(currentRegionId)}
+              onClick={() => onRegionClick(targetId)}
               className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold hover:bg-gray-200 active:scale-95 transition-all whitespace-nowrap"
             >
               ✏️ 상세

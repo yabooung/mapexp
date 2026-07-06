@@ -11,6 +11,7 @@ import type { GeoJsonObject, Feature, FeatureCollection } from 'geojson'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import GpsLayer from './GpsLayer'
 import GpsControls from './GpsControls'
+import { municipalityName, PREF_KANJI_BY_ID } from '@/lib/geo'
 
 interface MapViewProps {
   onRegionClick: (regionId: string) => void
@@ -270,24 +271,36 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                  const response = await fetch(url)
                  if (response.ok) {
                     const json = await response.json()
-                    setOverlayGeoData(json)
-                    
+
                      const labels: RegionLabel[] = []
                      if (json.type === 'FeatureCollection') {
                          const collection = json as FeatureCollection
-                         collection.features.forEach((feat: any) => {
-                             const muniName = feat.properties?.N03_004 || feat.properties?.name || feat.properties?.nam || 'Unknown'
+
+                         // 전국 파일에서는 현재 보고 있는 현의 시정촌만 추림 (성능)
+                         const viewPrefKanji =
+                             viewPrefectureId === '13' ? '東京都' : PREF_KANJI_BY_ID[viewPrefectureId] ?? null
+                         const features = viewPrefKanji
+                             ? collection.features.filter(
+                                   (f: any) => !f.properties?.N03_001 || f.properties.N03_001 === viewPrefKanji,
+                               )
+                             : collection.features
+                         const filtered: FeatureCollection = { ...collection, features }
+
+                         filtered.features.forEach((feat: any) => {
+                             // 정령지정시 구는 시 이름 포함 (예: 札幌市中央区) - ID 충돌 방지
+                             const muniName = municipalityName(feat.properties)
+                                 || feat.properties?.name || feat.properties?.nam || 'Unknown'
                              const prefName = feat.properties?.N03_001
-                             
+
                              // Map Kanji Pref Name to English ID (e.g. 東京都 -> tokyo) to match Store IDs
                              let parentId = prefName
                              if (prefName && REGION_ID_MAP['japan'][prefName]) {
                                  parentId = REGION_ID_MAP['japan'][prefName]
                              }
                              const genId = `${parentId}_${muniName}`
-                             
+
                              feat.properties = { ...feat.properties, id: genId, name: muniName, name_ko: muniName }
-                             
+
                              let position: [number, number]
                              if (LABEL_OVERRIDES[genId]) position = LABEL_OVERRIDES[genId]
                              else {
@@ -296,6 +309,10 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                              }
                              labels.push({ id: genId, name: muniName, position })
                          })
+
+                         setOverlayGeoData(filtered)
+                     } else {
+                         setOverlayGeoData(json)
                      }
                      setRegionLabels(labels)
                   }

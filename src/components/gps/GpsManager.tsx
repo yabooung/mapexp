@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { useGpsStore } from '@/store/gps'
 import { useMapExpStore } from '@/store'
-import { detectRegionAt } from '@/lib/geo'
+import { detectRegionAt, detectMunicipalityAt } from '@/lib/geo'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 
 /**
@@ -61,34 +61,36 @@ export default function GpsManager() {
         lastDetectRef.current = now
 
         detectRegionAt(pos.coords.latitude, pos.coords.longitude)
-          .then((region) => {
+          .then(async (region) => {
             const state = useGpsStore.getState()
-            const prevRegionId = state.currentRegionId
             state.setCurrentRegion(region?.id ?? null, region?.name ?? null)
 
-            // 자동 방문 감지: 새 지역 진입 & 미답(0) 지역이면 '통과(1)' 기록
-            if (
-              region &&
-              state.autoDetectVisit &&
-              region.id !== prevRegionId &&
-              lastAutoRecordRegionRef.current !== region.id
-            ) {
-              const mapStore = useMapExpStore.getState()
-              const existing = mapStore.getRegionById(region.id)
-              const level = existing?.gyeonghyeonchi ?? (existing?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+            // 시정촌 감지 (현이 확인된 경우에만)
+            let muni = null
+            if (region) {
+              muni = await detectMunicipalityAt(pos.coords.latitude, pos.coords.longitude, region.id)
+            }
+            const prevMuniId = state.currentMuniId
+            useGpsStore.getState().setCurrentMuni(muni?.id ?? null, muni?.name ?? null)
 
-              if (level === GyeongHyeonChi.UNVISITED) {
-                if (existing) {
-                  mapStore.updateRegion(region.id, { gyeonghyeonchi: GyeongHyeonChi.PASSED })
-                } else {
-                  mapStore.addRegion({
-                    regionId: region.id,
-                    gyeonghyeonchi: GyeongHyeonChi.PASSED,
-                    updatedAt: new Date().toISOString(),
-                  })
+            // 자동 방문 감지: 새 지역 진입 시 GPS 인증 '통과(1)' 기록
+            // 시정촌이 감지되면 시정촌 단위로 기록 (부모 현은 자동 롤업)
+            if (region && state.autoDetectVisit) {
+              const targetId = muni?.id ?? region.id
+              const targetName = muni ? `${region.name} ${muni.name}` : region.name
+              const changed = muni ? muni.id !== prevMuniId : region.id !== state.currentRegionId
+
+              if (changed && lastAutoRecordRegionRef.current !== targetId) {
+                const mapStore = useMapExpStore.getState()
+                const existing = mapStore.getRegionById(targetId)
+                const level =
+                  existing?.gyeonghyeonchi ?? (existing?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
+
+                if (level === GyeongHyeonChi.UNVISITED) {
+                  mapStore.addGpsRecord(targetId, GyeongHyeonChi.PASSED)
+                  lastAutoRecordRegionRef.current = targetId
+                  toast(`🚗 ${targetName} 통과 기록! (GPS 인증)`, { icon: '📍' })
                 }
-                lastAutoRecordRegionRef.current = region.id
-                toast(`🚗 ${region.name} 통과 기록! (+1 경현치)`, { icon: '📍' })
               }
             }
           })

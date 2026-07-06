@@ -36,9 +36,12 @@ interface GpsStore {
   errorMessage: string | null
   /** 사용자가 위치 사용을 켰는지 (비영속 - 세션 단위) */
   watchEnabled: boolean
-  /** 현재 감지된 지역 ID/이름 */
+  /** 현재 감지된 지역(현) ID/이름 */
   currentRegionId: string | null
   currentRegionName: string | null
+  /** 현재 감지된 시정촌 ID/이름 (예: tokyo_千代田区) */
+  currentMuniId: string | null
+  currentMuniName: string | null
 
   // 영속 상태
   isTracking: boolean // 트랙 로그 기록 중 여부
@@ -51,6 +54,7 @@ interface GpsStore {
   setStatus: (status: GpsStatus, errorMessage?: string | null) => void
   setPosition: (position: GpsPosition) => void
   setCurrentRegion: (id: string | null, name: string | null) => void
+  setCurrentMuni: (id: string | null, name: string | null) => void
   startTracking: () => void
   stopTracking: () => void
   clearTrack: () => void
@@ -67,6 +71,8 @@ export const useGpsStore = create<GpsStore>()(
       watchEnabled: false,
       currentRegionId: null,
       currentRegionName: null,
+      currentMuniId: null,
+      currentMuniName: null,
 
       isTracking: false,
       trackPoints: [],
@@ -99,6 +105,7 @@ export const useGpsStore = create<GpsStore>()(
       },
 
       setCurrentRegion: (id, name) => set({ currentRegionId: id, currentRegionName: name }),
+      setCurrentMuni: (id, name) => set({ currentMuniId: id, currentMuniName: name }),
 
       startTracking: () => set({ isTracking: true }),
       stopTracking: () => set({ isTracking: false }),

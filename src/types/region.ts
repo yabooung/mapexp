@@ -52,6 +52,8 @@ export const EXP_LEVEL_LABELS_EN: Record<GyeongHyeonChi, string> = {
 
 /**
  * 방문 기록
+ * - manual: 사용자가 직접 입력 (과거 날짜 포함 자유롭게 수정 가능)
+ * - gps: GPS로 자동 생성된 인증 기록 (날짜/시간 수정·삭제 불가)
  */
 export interface Visit {
   id: string; // 고유 ID (UUID or timestamp)
@@ -59,6 +61,7 @@ export interface Visit {
   endDate: string; // 종료일 (ISO 8601)
   title?: string; // 방문 제목 (예: 여름 휴가)
   memo?: string; // 메모
+  source?: "manual" | "gps"; // 기록 출처 (기본: manual)
 }
 
 /**
