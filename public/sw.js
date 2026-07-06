@@ -2,7 +2,7 @@
  * - GeoJSON/정적 자산: cache-first (용량 큰 지도 데이터 재다운로드 방지)
  * - 페이지/기타: network-first (오프라인 시 캐시 폴백)
  */
-const CACHE_NAME = 'mapexp-v1'
+const CACHE_NAME = 'mapexp-v2'
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()

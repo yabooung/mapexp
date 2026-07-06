@@ -68,16 +68,31 @@ const BoundaryTileLayer = ({ url, boundary, attribution }: { url: string, bounda
   return null
 }
 
-/** 컨테이너 크기 변경 시 Leaflet 리사이즈 (탭 전환/모바일 회전 대응) */
+/** 컨테이너 크기 변경 시 Leaflet 리사이즈 (탭 전환/모바일 회전 대응)
+ *  주의: 줌 애니메이션 중 invalidateSize를 호출하면 벡터/타일 좌표가 어긋나
+ *  "보이는 위치와 클릭 위치가 다른" 버그가 생기므로 애니메이션 종료 후로 미룬다. */
 const AutoResize = () => {
   const map = useMap()
   useEffect(() => {
-    const container = map.getContainer()
-    const observer = new ResizeObserver(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const safeInvalidate = () => {
+      if ((map as unknown as { _animatingZoom?: boolean })._animatingZoom) {
+        map.once('zoomend', () => map.invalidateSize())
+        return
+      }
       map.invalidateSize()
+    }
+
+    const observer = new ResizeObserver(() => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(safeInvalidate, 150)
     })
-    observer.observe(container)
-    return () => observer.disconnect()
+    observer.observe(map.getContainer())
+    return () => {
+      observer.disconnect()
+      if (timer) clearTimeout(timer)
+    }
   }, [map])
   return null
 }
