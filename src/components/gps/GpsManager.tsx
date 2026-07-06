@@ -28,6 +28,37 @@ export default function GpsManager() {
 
   const shouldWatch = watchEnabled || isTracking || autoDetectVisit
 
+  // 트랙 기록 중에는 화면이 꺼지지 않도록 Wake Lock 유지
+  // (웹은 화면이 꺼지면 GPS 추적이 멈추므로, 내비처럼 켜둔 채 쓰는 시나리오 지원)
+  useEffect(() => {
+    if (!isTracking || !('wakeLock' in navigator)) return
+
+    let lock: { release: () => Promise<void>; addEventListener?: unknown } | null = null
+    let released = false
+
+    const acquire = async () => {
+      try {
+        lock = await (navigator as Navigator & { wakeLock: { request: (t: 'screen') => Promise<never> } })
+          .wakeLock.request('screen')
+      } catch {
+        // 배터리 절약 모드 등으로 거부될 수 있음 - 무시
+      }
+    }
+
+    // 탭 복귀 시 재획득 (화면 전환하면 브라우저가 락을 자동 해제함)
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && !released) acquire()
+    }
+
+    acquire()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      released = true
+      document.removeEventListener('visibilitychange', onVisibility)
+      lock?.release().catch(() => {})
+    }
+  }, [isTracking])
+
   useEffect(() => {
     if (!shouldWatch) {
       if (watchIdRef.current !== null) {
