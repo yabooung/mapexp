@@ -32,15 +32,16 @@
   --color-seal: var(--seal);
   --color-seal-hover: var(--seal-hover);
   --color-seal-soft: var(--seal-soft);
-  --font-sans: var(--font-plex), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-sans: var(--font-sans-kr), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-plex), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-family: var(--font-sans-kr), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   font-feature-settings: "tnum";
+  text-rendering: optimizeLegibility;
 }
 
 /* Leaflet 지도 스타일 커스터마이징 */
@@ -84,7 +85,7 @@ path:focus {
 
 /* Custom Map Label */
 .custom-map-label div {
-  font-family: var(--font-geist-sans), sans-serif;
+  font-family: var(--font-sans-kr), sans-serif;
   user-select: none;
 }
 

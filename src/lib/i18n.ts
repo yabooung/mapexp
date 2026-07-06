@@ -33,6 +33,13 @@ const STRINGS = {
   'level.4': ['숙박', 'Stayed', '宿泊'],
   'level.5': ['거주', 'Lived', '居住'],
   'level.term': ['경현치', 'Keikenchi', '経県値'],
+  // 등급 한 글자 (카드 도장용)
+  'level.short.0': ['미', '·', '未'],
+  'level.short.1': ['통', 'P', '通'],
+  'level.short.2': ['접', 'L', '接'],
+  'level.short.3': ['방', 'V', '訪'],
+  'level.short.4': ['숙', 'S', '泊'],
+  'level.short.5': ['거', 'R', '住'],
 
   // 페이지 (데스크톱)
   'page.title': ['나의 경현치 지도', 'My Keikenchi Map', 'わたしの経県値マップ'],
