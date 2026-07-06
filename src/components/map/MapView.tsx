@@ -27,7 +27,6 @@ interface RegionLabel {
 }
 
 type LabelMode = 'custom' | 'native' | 'none'
-type TileLanguage = 'local' | 'ko' | 'ja'
 
 // REGION_ID_MAP imported from constants
 
@@ -180,10 +179,10 @@ export default function MapView({ onRegionClick }: MapViewProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [showTiles, setShowTiles] = useState(true) // 기본값: 타일 표시
   const [labelMode, setLabelMode] = useState<LabelMode>('native') // Default to native for Japan focus
-  const [tileLanguage, setTileLanguage] = useState<TileLanguage>('local') // 기본값: 현지어(영어/현지어)
   const [mapLevel, setMapLevel] = useState<'prefecture' | 'municipality'>('prefecture')
   const [viewPrefectureId, setViewPrefectureId] = useState<string | null>(null) // ID of the prefecture to show details for
   const [panelOpen, setPanelOpen] = useState(false) // 모바일: 범례/컨트롤 패널 토글
+  const [retryKey, setRetryKey] = useState(0) // 지도 데이터 로드 실패 시 재시도
   const t = useT()
 
   // Smart Inheritance Logic:
@@ -202,26 +201,13 @@ export default function MapView({ onRegionClick }: MapViewProps) {
 
 
 
-  // 타일 URL 생성 함수
-  const getTileUrl = (lang: TileLanguage, mode: LabelMode) => {
-    if (lang === 'local') {
-        // CARTO Voyager (기존)
-        return mode === 'native'
-          ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
-    } else {
-        // Google Maps (언어 설정)
-        // hl=ko, hl=ja
-        // lyrs=m (roadmap), r (roadmap/alter), s (satellite), h (hybrid), p (terrain)
-        // 여기서는 표준 로드맵(m) 사용
-        return `https://mt0.google.com/vt/lyrs=m&hl=${lang}&x={x}&y={y}&z={z}`
-    }
-  }
+  // 타일 URL (CARTO Voyager - 무료 사용 가능한 합법 타일만 사용)
+  const getTileUrl = (mode: LabelMode) =>
+    mode === 'native'
+      ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png'
 
-  // 타일 Attribution 생성 함수
-  const getAttribution = (lang: TileLanguage) => {
-      return lang === 'local' ? '&copy; CARTO' : '&copy; Google Maps'
-  }
+  const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
 
   // 국가 전환 시 오버레이/뷰 상태 초기화
   useEffect(() => {
@@ -353,7 +339,8 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     }
 
     loadGeoData()
-  }, [country, mapLevel, viewPrefectureId, baseGeoData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country, mapLevel, viewPrefectureId, baseGeoData, retryKey])
 
   // 항상 최신 스타일 함수를 참조하기 위한 ref
   // (레이어 이벤트 핸들러의 스테일 클로저 문제 방지)
@@ -562,19 +549,6 @@ export default function MapView({ onRegionClick }: MapViewProps) {
       }
   }
 
-  // 언어 모드 전환 핸들러
-  const cycleTileLanguage = () => {
-    if (tileLanguage === 'local') setTileLanguage('ko')
-    else if (tileLanguage === 'ko') setTileLanguage('ja')
-    else setTileLanguage('local')
-    
-    // 언어를 바꾼다는 것은 지도의 라벨을 보고 싶다는 뜻이므로, Native 모드 및 타일 활성화
-    if (labelMode !== 'native') {
-        setLabelMode('native')
-        setShowTiles(true)
-    }
-  }
-
   const mapCenter = country === 'japan' ? [36.5, 138.0] : [36.5, 127.5]
   const mapZoom = country === 'japan' ? 5 : 7
   
@@ -582,10 +556,25 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     ? [[15.0, 110.0], [55.0, 160.0]]
     : [[30.0, 120.0], [43.0, 135.0]]
 
-  if (isLoading && !baseGeoData) {
+  if (!baseGeoData) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-        <div className="text-center">Loading...</div>
+      <div className="w-full h-full flex items-center justify-center bg-paper">
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-seal"></div>
+            <p className="text-sm text-muted">{t('map.loading')}</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-sm text-muted">{t('map.loadFailed')}</p>
+            <button
+              onClick={() => setRetryKey((k) => k + 1)}
+              className="px-4 py-2 bg-ink text-paper rounded-md text-sm font-medium hover:opacity-90"
+            >
+              {t('map.retry')}
+            </button>
+          </div>
+        )}
       </div>
     )
   }
@@ -615,13 +604,13 @@ export default function MapView({ onRegionClick }: MapViewProps) {
           boundary ? (
               <BoundaryTileLayer
                 boundary={boundary}
-                attribution={getAttribution(tileLanguage)}
-                url={getTileUrl(tileLanguage, labelMode)}
+                attribution={TILE_ATTRIBUTION}
+                url={getTileUrl(labelMode)}
               />
           ) : (
               <TileLayer
-                attribution={getAttribution(tileLanguage)}
-                url={getTileUrl(tileLanguage, labelMode)}
+                attribution={TILE_ATTRIBUTION}
+                url={getTileUrl(labelMode)}
               />
           )
         )}
@@ -714,32 +703,6 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                  {labelMode === 'custom' ? t('map.labelCustom') : labelMode === 'native' ? t('map.labelNative') : t('map.off')}
                </span>
             </button>
-
-            <button
-                onClick={cycleTileLanguage}
-                className="w-full py-1.5 px-2.5 rounded-md border border-line font-medium flex items-center justify-between text-ink hover:bg-paper transition-colors"
-                title="지도 라벨 언어 변경"
-            >
-                <span className="text-muted">{t('map.tileLang')}</span>
-                <span className="font-semibold">
-                  {tileLanguage === 'local' ? t('map.tileLocal') : tileLanguage === 'ko' ? t('map.tileKo') : t('map.tileJa')}
-                </span>
-            </button>
-
-            {/* Map Level Toggle - Removed as requested in favor of Zoom LOD */ }
-            {/* 
-            <button
-                onClick={() => setMapLevel(prev => prev === 'prefecture' ? 'municipality' : 'prefecture')}
-                className={`w-full py-1.5 px-2 rounded border font-medium flex items-center justify-center gap-2 transition-colors ${
-                    mapLevel === 'municipality'
-                    ? 'bg-purple-50 border-purple-300 text-purple-700'
-                    : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
-                }`}
-            >
-                <span>{mapLevel === 'prefecture' ? '🗾' : '🏙️'}</span>
-                {mapLevel === 'prefecture' ? 'View: Prefectures' : 'View: Cities'}
-            </button> 
-            */}
 
             <button
               onClick={() => {
