@@ -12,6 +12,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@turf/turf": "^7.3.2",
     "@types/d3-geo": "^3.1.0",
+    "@vercel/analytics": "^2.0.1",
     "caniuse-lite": "^1.0.30001802",
     "d3-geo": "^3.1.1",
     "date-fns": "^4.1.0",
