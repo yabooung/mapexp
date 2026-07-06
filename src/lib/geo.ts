@@ -1,4 +1,4 @@
-import { booleanPointInPolygon, point as turfPoint } from '@turf/turf'
+import { booleanPointInPolygon, point as turfPoint, rewind } from '@turf/turf'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import { REGION_ID_MAP, KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { getRegionMetadata } from '@/data/regions'
@@ -62,6 +62,10 @@ async function loadFc(
       if (!response.ok) return null
       const json = (await response.json()) as FeatureCollection
       if (json.type !== 'FeatureCollection') return null
+      // 감김 방향을 d3 규약(외곽 시계방향)으로 통일
+      // (mapshaper 산출물은 RFC7946 방향이라 d3 geoPath/geoCentroid가 오동작함.
+      //  turf는 방향 무관하므로 감지 로직에는 영향 없음)
+      rewind(json, { reverse: true, mutate: true })
       postprocess?.(json)
       fcCache[key] = json
       return json

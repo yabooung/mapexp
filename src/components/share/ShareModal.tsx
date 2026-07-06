@@ -7,7 +7,8 @@ import { generateShareUrl } from '@/lib/share'
 import { TOTAL_REGIONS, EXP_COLORS } from '@/constants'
 import { ExperienceGrade } from '@/types'
 import { computeBadges } from '@/lib/badges'
-import { trackDistanceMeters } from '@/lib/geo'
+import { trackDistanceMeters, type Country } from '@/lib/geo'
+import { renderRegionMapImage } from '@/lib/mapSnapshot'
 import { useT, useLang, levelLabel, I18nKey } from '@/lib/i18n'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
@@ -24,6 +25,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     useMapExpStore()
   const trackPoints = useGpsStore((s) => s.trackPoints)
   const [shareUrl, setShareUrl] = useState('')
+  const [mapImg, setMapImg] = useState<string | null>(null)
   const [rendering, setRendering] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const t = useT()
@@ -34,8 +36,17 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       const data = exportData()
       const url = generateShareUrl(data)
       setShareUrl(url)
+
+      // 색칠된 지도 스냅샷 렌더링 (광역 레벨)
+      const levelOf = (regionId: string): ExperienceGrade => {
+        const r = regions.find((x) => x.regionId === regionId)
+        return (r?.gyeonghyeonchi ?? r?.level ?? 0) as ExperienceGrade
+      }
+      setMapImg(null)
+      renderRegionMapImage(country as Country, levelOf).then(setMapImg)
     }
-  }, [isOpen, exportData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, exportData, country, regions])
 
   const handleCopy = async () => {
     try {
@@ -111,6 +122,14 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       <div className="space-y-4">
         <p className="text-muted text-sm">{t('share.desc')}</p>
 
+        {/* 지도 미리보기 (이미지 카드에 들어가는 색칠 지도) */}
+        {mapImg && (
+          <div className="rounded-lg border border-line bg-[#f5f3ec] p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={mapImg} alt="" className="w-full h-auto max-h-56 object-contain" />
+          </div>
+        )}
+
         <div className="flex gap-2">
           <input
             type="text"
@@ -176,6 +195,16 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
               {t(country === 'japan' ? 'common.japan' : 'common.korea')}
             </div>
           </div>
+
+          {/* 색칠된 지도 (비교의 핵심) */}
+          {mapImg && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={mapImg}
+              alt=""
+              style={{ width: '100%', height: 'auto', display: 'block', marginBottom: 18 }}
+            />
+          )}
 
           {/* 레벨 */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
