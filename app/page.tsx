@@ -11,7 +11,7 @@ import RegionList from '@/components/region/RegionList'
 import RegionModal from '@/components/region/RegionModal'
 import StatsPanel from '@/components/stats/StatsPanel'
 import BadgePanel from '@/components/stats/BadgePanel'
-import TokyoMunicipalityModal from '@/components/region/TokyoMunicipalityModal'
+import MunicipalityManagerModal from '@/components/region/MunicipalityManagerModal'
 import GpsManager from '@/components/gps/GpsManager'
 import LevelUpWatcher from '@/components/common/LevelUpWatcher'
 import BottomNav, { MobileTab } from '@/components/layout/BottomNav'
@@ -119,7 +119,7 @@ function HomeContent() {
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-md text-sm font-medium text-muted border border-line bg-card hover:text-ink hover:bg-paper transition-colors"
             >
               <Icon name="building" size={15} />
-              도쿄 시정촌 관리
+              시·군·구 관리
             </button>
           </div>
 
@@ -149,7 +149,7 @@ function HomeContent() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-medium text-ink border border-line bg-card active:bg-paper"
                 >
                   <Icon name="building" size={16} />
-                  도쿄 시정촌 관리
+                  시·군·구 일괄 관리
                 </button>
               </div>
             </div>
@@ -186,7 +186,7 @@ function HomeContent() {
       )}
 
       {/* Tokyo Municipality Modal */}
-      <TokyoMunicipalityModal isOpen={showTokyoModal} onClose={() => setShowTokyoModal(false)} />
+      <MunicipalityManagerModal isOpen={showTokyoModal} onClose={() => setShowTokyoModal(false)} />
     </>
   )
 }

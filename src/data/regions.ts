@@ -80,7 +80,6 @@ export const KOREA_REGIONS: RegionMetadata[] = [
   // 광역시
   { id: 'busan', name: '부산광역시', nameEn: 'Busan', nameLocal: '부산광역시', country: 'korea', type: 'province' },
   { id: 'daegu', name: '대구광역시', nameEn: 'Daegu', nameLocal: '대구광역시', country: 'korea', type: 'province' },
-  { id: 'gwangju', name: '광주광역시', nameEn: 'Gwangju', nameLocal: '광주광역시', country: 'korea', type: 'province' },
   { id: 'daejeon', name: '대전광역시', nameEn: 'Daejeon', nameLocal: '대전광역시', country: 'korea', type: 'province' },
   { id: 'ulsan', name: '울산광역시', nameEn: 'Ulsan', nameLocal: '울산광역시', country: 'korea', type: 'province' },
   { id: 'sejong', name: '세종특별자치시', nameEn: 'Sejong', nameLocal: '세종특별자치시', country: 'korea', type: 'province' },
@@ -90,7 +89,8 @@ export const KOREA_REGIONS: RegionMetadata[] = [
   { id: 'chungbuk', name: '충청북도', nameEn: 'Chungcheongbuk-do', nameLocal: '충청북도', country: 'korea', type: 'province' },
   { id: 'chungnam', name: '충청남도', nameEn: 'Chungcheongnam-do', nameLocal: '충청남도', country: 'korea', type: 'province' },
   { id: 'jeonbuk', name: '전북특별자치도', nameEn: 'Jeonbuk', nameLocal: '전북특별자치도', country: 'korea', type: 'province' },
-  { id: 'jeonnam', name: '전라남도', nameEn: 'Jeollanam-do', nameLocal: '전라남도', country: 'korea', type: 'province' },
+  // 2026-07-01 광주광역시 + 전라남도 통합 출범
+  { id: 'jeonnamgwangju', name: '전남광주통합특별시', nameEn: 'Jeonnam-Gwangju', nameLocal: '전남광주통합특별시', country: 'korea', type: 'province' },
   { id: 'gyeongbuk', name: '경상북도', nameEn: 'Gyeongsangbuk-do', nameLocal: '경상북도', country: 'korea', type: 'province' },
   { id: 'gyeongnam', name: '경상남도', nameEn: 'Gyeongsangnam-do', nameLocal: '경상남도', country: 'korea', type: 'province' },
   { id: 'jeju', name: '제주특별자치도', nameEn: 'Jeju', nameLocal: '제주특별자치도', country: 'korea', type: 'province' },
