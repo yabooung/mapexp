@@ -5,11 +5,13 @@ import ShareModal from '@/components/share/ShareModal'
 import SettingsModal from '@/components/common/SettingsModal'
 import Icon from '@/components/common/Icon'
 import LanguageSwitcher from '@/components/common/LanguageSwitcher'
+import { useMapExpStore } from '@/store'
 import { useT } from '@/lib/i18n'
 
 export default function Header() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const { country, setCountry } = useMapExpStore()
   const t = useT()
 
   return (
@@ -33,6 +35,28 @@ export default function Header() {
             </div>
 
             <div className="flex items-center gap-1 sm:gap-1.5">
+              {/* 국가 전환 (모든 화면 크기에서 노출) */}
+              <div className="inline-flex rounded-md border border-line bg-card p-0.5">
+                {(
+                  [
+                    ['japan', 'JP'],
+                    ['korea', 'KR'],
+                  ] as const
+                ).map(([c, label]) => (
+                  <button
+                    key={c}
+                    onClick={() => setCountry(c)}
+                    className={`px-2 py-1 rounded-[4px] text-[11px] font-bold tracking-wide transition-colors ${
+                      country === c ? 'bg-ink text-paper' : 'text-muted hover:text-ink'
+                    }`}
+                    aria-label={t(c === 'japan' ? 'common.japan' : 'common.korea')}
+                    title={t(c === 'japan' ? 'common.japan' : 'common.korea')}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
               {/* 언어 전환 */}
               <LanguageSwitcher />
 
