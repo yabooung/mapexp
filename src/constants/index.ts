@@ -5,7 +5,7 @@ export * from './regions'
  * 애플리케이션 상수
  */
 export const APP_NAME = 'MAPEXP'
-export const APP_VERSION = '1.0.0'
+export const APP_VERSION = '1.2.0'
 export const APP_DESCRIPTION = '일본/한국 지역 경험치 맵'
 
 /**
