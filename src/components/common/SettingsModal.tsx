@@ -2,6 +2,7 @@
 
 import { useRef } from 'react'
 import { useMapExpStore } from '@/store'
+import { useGpsStore } from '@/store/gps'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
 import toast from 'react-hot-toast'
@@ -13,7 +14,19 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { exportData, importData, clearAllRegions } = useMapExpStore()
+  const autoDetectVisit = useGpsStore((s) => s.autoDetectVisit)
+  const setAutoDetectVisit = useGpsStore((s) => s.setAutoDetectVisit)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAutoDetectToggle = () => {
+    const next = !autoDetectVisit
+    setAutoDetectVisit(next)
+    if (next) {
+      toast.success('자동 방문 감지가 켜졌습니다. 새 지역 진입 시 자동으로 기록됩니다.')
+    } else {
+      toast('자동 방문 감지가 꺼졌습니다.', { icon: '📴' })
+    }
+  }
 
   // 데이터 내보내기 (JSON 다운로드)
   const handleExport = () => {
@@ -92,6 +105,40 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       }
     >
       <div className="space-y-6">
+        {/* GPS 설정 */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">
+            GPS 위치 서비스
+          </h3>
+          <label className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-gray-900">🛰️ 자동 방문 감지</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                새 지역에 진입하면 자동으로 &lsquo;통과(1)&rsquo; 기록을 남깁니다. (앱이 열려 있는 동안)
+              </p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={autoDetectVisit}
+              onClick={(e) => {
+                e.preventDefault()
+                handleAutoDetectToggle()
+              }}
+              className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${
+                autoDetectVisit ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  autoDetectVisit ? 'translate-x-5' : ''
+                }`}
+              />
+            </button>
+          </label>
+        </div>
+
+        <div className="border-t border-gray-200"></div>
+
         {/* 데이터 백업/복원 */}
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">

@@ -9,6 +9,8 @@ import { REGION_ID_MAP } from '@/constants/regions'
 import { LABEL_OVERRIDES } from '@/constants/label_overrides'
 import type { GeoJsonObject, Feature, FeatureCollection } from 'geojson'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
+import GpsLayer from './GpsLayer'
+import GpsControls from './GpsControls'
 
 interface MapViewProps {
   onRegionClick: (regionId: string) => void
@@ -64,6 +66,20 @@ const BoundaryTileLayer = ({ url, boundary, attribution }: { url: string, bounda
 
 import { geoContains } from 'd3-geo'
 
+/** 컨테이너 크기 변경 시 Leaflet 리사이즈 (탭 전환/모바일 회전 대응) */
+const AutoResize = () => {
+  const map = useMap()
+  useEffect(() => {
+    const container = map.getContainer()
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize()
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [map])
+  return null
+}
+
 const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLevel: (level: 'prefecture' | 'municipality') => void, setViewPrefecture: (id: string | null) => void, baseGeoData: GeoJsonObject | null }) => {
   const baseGeoDataRef = useRef(baseGeoData)
   
@@ -87,7 +103,7 @@ const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLe
           
           // Dynamic Detection: Find which prefecture is in the center
           const center = map.getCenter()
-          const centerPoint = [center.lng, center.lat] // GeoJSON is [lng, lat]
+          const centerPoint: [number, number] = [center.lng, center.lat] // GeoJSON is [lng, lat]
           
           const currentData = baseGeoDataRef.current
           if (currentData && (currentData as any).features) {
@@ -161,6 +177,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
   const [tileLanguage, setTileLanguage] = useState<TileLanguage>('local') // 기본값: 현지어(영어/현지어)
   const [mapLevel, setMapLevel] = useState<'prefecture' | 'municipality'>('prefecture')
   const [viewPrefectureId, setViewPrefectureId] = useState<string | null>(null) // ID of the prefecture to show details for
+  const [panelOpen, setPanelOpen] = useState(false) // 모바일: 범례/컨트롤 패널 토글
 
   // Smart Inheritance Logic:
   // Identify which prefectures have "Detailed" data (at least one child municipality is tracked).
@@ -600,10 +617,9 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         maxZoom={18}
         maxBounds={mapBounds as [[number, number], [number, number]]}
         maxBoundsViscosity={0.5} 
-        style={{ 
-            width: '100%', 
-            height: '100%', 
-            minHeight: '600px',
+        style={{
+            width: '100%',
+            height: '100%',
             backgroundColor: '#aad3df'
         }}
         className="z-0"
@@ -662,6 +678,10 @@ export default function MapView({ onRegionClick }: MapViewProps) {
              />
         )}
         <ZoomHandler setMapLevel={setMapLevel} setViewPrefecture={setViewPrefectureId} baseGeoData={baseGeoData} />
+        <AutoResize />
+
+        {/* GPS: 현재 위치 마커 + 트랙 폴리라인 */}
+        <GpsLayer />
         
         {/* Custom Labels: Only show if mode is 'custom' */}
         {labelMode === 'custom' && regionLabels.map((label) => (
@@ -687,8 +707,22 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         ))}
       </MapContainer>
 
+      {/* GPS 컨트롤 (내 위치, 트랙 기록, 현재 지역 배너) */}
+      <GpsControls onRegionClick={onRegionClick} />
+
+      {/* 모바일: 패널 토글 버튼 */}
+      <button
+        onClick={() => setPanelOpen(!panelOpen)}
+        className={`sm:hidden absolute bottom-20 right-4 z-[1001] w-11 h-11 rounded-full shadow-lg flex items-center justify-center text-lg transition-all active:scale-90 ${
+          panelOpen ? 'bg-blue-600 text-white' : 'bg-white/95 backdrop-blur text-gray-700'
+        }`}
+        aria-label="지도 설정"
+      >
+        {panelOpen ? '✕' : '🎛️'}
+      </button>
+
       {/* Controls */}
-      <div className={`absolute bottom-4 right-4 bg-white/90 backdrop-blur rounded-lg shadow-lg p-3 text-xs z-[1000] max-w-[200px]`}>
+      <div className={`${panelOpen ? 'block' : 'hidden'} sm:block absolute bottom-[8.5rem] right-4 sm:bottom-4 bg-white/90 backdrop-blur rounded-lg shadow-lg p-3 text-xs z-[1000] max-w-[200px] max-h-[55%] overflow-y-auto`}>
         <div className="flex flex-col gap-2 mb-3">
             <button
               onClick={cycleLabelMode}

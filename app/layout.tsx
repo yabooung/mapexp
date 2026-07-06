@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,8 +18,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MAPEXP - 일본/한국 지역 경험치 맵",
-  description: "일본 47개 도도부현과 한국 17개 시도의 방문 경험을 기록하고 시각화하는 웹 애플리케이션",
+  title: "MAPEXP - 지역 경험치 맵",
+  description: "방문한 지역을 기록하고 경험치를 쌓는 지도 서비스. GPS로 이동 경로를 추적하고 새 지역 방문을 자동으로 기록하세요.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MAPEXP",
+  },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#4F46E5",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -31,14 +50,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="flex flex-col min-h-screen">
+        <div className="flex flex-col h-dvh lg:h-auto lg:min-h-screen">
           <Header />
-          <main className="flex-1 bg-gray-50">
+          <main className="flex-1 min-h-0 overflow-hidden lg:overflow-visible bg-gray-50">
             {children}
           </main>
-          <Footer />
+          <div className="hidden lg:block">
+            <Footer />
+          </div>
         </div>
-        <Toaster position="top-right" />
+        <Toaster position="top-center" containerStyle={{ top: 64 }} />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

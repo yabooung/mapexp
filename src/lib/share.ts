@@ -1,5 +1,5 @@
 import LZString from 'lz-string'
-import { MapExpData } from '@/types'
+import { MapExpData, ExperienceGrade } from '@/types'
 
 /**
  * 공유 데이터 타입 (최소화)
@@ -17,7 +17,7 @@ export const generateShareUrl = (data: MapExpData): string => {
   // 데이터 축소
   const shareData: ShareData = {
     c: data.country === 'japan' ? 'j' : 'k',
-    r: data.regions.map(r => `${r.regionId}:${r.level}`)
+    r: data.regions.map(r => `${r.regionId}:${r.gyeonghyeonchi ?? r.level ?? 0}`)
   }
 
   // JSON -> 문자열 -> 압축
@@ -48,9 +48,12 @@ export const parseShareUrl = (compressed: string): Partial<MapExpData> | null =>
         const [regionId, levelStr] = str.split(':')
         const level = parseInt(levelStr)
         
+        const safeLevel = (isNaN(level) ? 0 : level) as ExperienceGrade
+
         return {
           regionId,
-          level: isNaN(level) ? 0 : level,
+          gyeonghyeonchi: safeLevel,
+          level: safeLevel,
           updatedAt: new Date().toISOString()
         }
       })

@@ -69,3 +69,80 @@ path:focus {
   font-family: var(--font-geist-sans), sans-serif;
   user-select: none;
 }
+
+/* GPS 현재 위치 마커 */
+.gps-location-marker {
+  background: transparent;
+  border: none;
+}
+
+.gps-pulse-wrapper {
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+
+.gps-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  background: #3b82f6;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+
+.gps-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  background: rgba(59, 130, 246, 0.4);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: gps-pulse-anim 2s ease-out infinite;
+  z-index: 1;
+}
+
+@keyframes gps-pulse-anim {
+  0% {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.4);
+    opacity: 0;
+  }
+}
+
+/* 레벨업 축하 애니메이션 */
+@keyframes levelup-bounce {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-levelup {
+  animation: levelup-bounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 모바일 하단 탭 safe area */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

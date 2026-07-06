@@ -48,6 +48,19 @@ export default function StatsPanel() {
             <p className="text-sm text-gray-600 mb-1">시스템 레벨</p>
             <p className="text-4xl font-bold text-indigo-600">Lv.{systemLevel}</p>
             <p className="text-xs text-indigo-400 mt-1">총 경현치: {totalGyeonghyeonchi}</p>
+
+            {/* 다음 레벨까지 진행 바 */}
+            <div className="mt-3">
+              <div className="w-full bg-indigo-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-indigo-400 to-indigo-600 h-full transition-all duration-700"
+                  style={{ width: `${(totalGyeonghyeonchi % 10) * 10}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-indigo-400 mt-1.5">
+                Lv.{systemLevel + 1}까지 {10 - (totalGyeonghyeonchi % 10)} 경현치
+              </p>
+            </div>
           </div>
 
           {/* 방문 지역 수 */}
