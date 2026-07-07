@@ -8,7 +8,10 @@
 일본의 [経県値](https://uub.jp/kkn/)(경현치) 개념을 바탕으로, 한국인용·시정촌 정밀도·GPS 도장으로 재해석했습니다.
 
 <p align="center">
-  <img src="docs/screenshots/desktop.png" width="800" alt="데스크톱 화면">
+  <img src="docs/screenshots/desktop.png" width="800" alt="일본 지도 화면">
+</p>
+<p align="center">
+  <img src="docs/screenshots/desktop-korea.png" width="800" alt="한국 지도 화면">
 </p>
 
 <p align="center">

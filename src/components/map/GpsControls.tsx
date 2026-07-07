@@ -138,8 +138,8 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
             <button
               onClick={handleClearTrack}
               className="ml-0.5 text-faint hover:text-seal transition-colors"
-              aria-label="경로 삭제"
-              title="경로 삭제"
+              aria-label={t('gps.trackClear')}
+              title={t('gps.trackClear')}
             >
               <Icon name="x" size={12} />
             </button>
@@ -154,8 +154,8 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
               ? 'bg-seal border-seal text-white'
               : 'bg-card border-line text-muted hover:text-ink'
           }`}
-          aria-label={isTracking ? '경로 기록 정지' : '경로 기록 시작'}
-          title={isTracking ? '경로 기록 정지' : '경로 기록 시작'}
+          aria-label={t('gps.trackAria')}
+          title={t('gps.trackAria')}
         >
           {isTracking ? <Icon name="pause" size={16} /> : <Icon name="route" size={18} />}
         </button>
@@ -170,8 +170,8 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
                 ? 'bg-card border-ink text-ink'
                 : 'bg-card border-line text-muted hover:text-ink'
           }`}
-          aria-label="내 위치"
-          title={!watchEnabled ? '내 위치 켜기' : followMode ? '위치 추적 끄기' : '내 위치로 이동'}
+          aria-label={t('gps.locateAria')}
+          title={t('gps.locateAria')}
         >
           {status === 'locating' ? (
             <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
