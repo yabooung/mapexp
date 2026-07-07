@@ -10,6 +10,7 @@ import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters, type Country } from '@/lib/geo'
 import { renderRegionMapImage } from '@/lib/mapSnapshot'
 import { useT, useLang, levelLabel, I18nKey } from '@/lib/i18n'
+import { ev } from '@/lib/analytics'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
 import Icon from '@/components/common/Icon'
@@ -44,6 +45,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       }
       setMapImg(null)
       renderRegionMapImage(country as Country, levelOf).then(setMapImg)
+      ev('share_open', { country })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, exportData, country, regions])
@@ -51,6 +53,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl)
+      ev('share_copy')
       toast.success(t('share.copied'))
     } catch (err) {
       toast.error(t('share.copyFail'))
@@ -83,6 +86,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       a.href = canvas.toDataURL('image/png')
       a.download = `mapexp-${new Date().toISOString().slice(0, 10)}.png`
       a.click()
+      ev('image_card_save', { country })
       toast.success(t('share.imageDone'))
     } catch (err) {
       console.error(err)

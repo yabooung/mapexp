@@ -8,6 +8,7 @@ import { TOTAL_REGIONS } from '@/constants'
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters } from '@/lib/geo'
 import { tNow, useT, I18nKey } from '@/lib/i18n'
+import { ev } from '@/lib/analytics'
 
 /**
  * 레벨업/뱃지 달성 감지 워처
@@ -45,6 +46,7 @@ export default function LevelUpWatcher() {
     // 레벨업 감지
     if (level > prevLevelRef.current) {
       setCelebration(level)
+      ev('level_up', { level })
       setTimeout(() => setCelebration(null), 2500)
     }
     prevLevelRef.current = level

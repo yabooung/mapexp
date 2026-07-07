@@ -93,6 +93,22 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   // 데이터 초기화
   const handleReset = () => {
     if (confirm(t('settings.resetConfirm'))) {
+      // 안전장치: 초기화 직전 자동으로 백업 JSON을 다운로드해 실수로 인한 손실 방지
+      try {
+        const data = exportData()
+        if (data.regions.length > 0) {
+          const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `mapexp-backup-${new Date().toISOString().slice(0, 10)}.json`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+        }
+      } catch {
+        // 백업 실패해도 초기화는 진행
+      }
       clearAllRegions()
       toast.success(t('settings.resetDone'))
       onClose()
