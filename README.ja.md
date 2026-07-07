@@ -8,15 +8,18 @@
 日本の[経県値](https://uub.jp/kkn/)の概念をもとに、市区町村単位の精度とGPSスタンプで再構成しました。
 
 <p align="center">
-  <img src="docs/screenshots/desktop.png" width="800" alt="デスクトップ画面">
+  <img src="docs/screenshots/desktop.ja.png" width="800" alt="日本地図の画面">
+</p>
+<p align="center">
+  <img src="docs/screenshots/desktop-korea.ja.png" width="800" alt="韓国地図の画面">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/mobile-map.png" width="240" alt="GPSによる現在地域の検知">
+  <img src="docs/screenshots/mobile-map.ja.png" width="240" alt="GPSによる現在地域の検知">
   &nbsp;
-  <img src="docs/screenshots/mobile-stats.png" width="240" alt="統計とスタンプ帳">
+  <img src="docs/screenshots/mobile-stats.ja.png" width="240" alt="統計とスタンプ帳">
   &nbsp;
-  <img src="docs/screenshots/share-card.png" width="240" alt="共有用画像カード">
+  <img src="docs/screenshots/share-card.ja.png" width="240" alt="共有用画像カード">
 </p>
 
 ## 主な機能

@@ -8,15 +8,18 @@ Covers Japan's 47 prefectures & 1,897 municipalities and Korea's 16 provinces & 
 Based on Japan's [経県値 (Keikenchi)](https://uub.jp/kkn/) concept, reimagined with municipality-level precision and GPS stamping.
 
 <p align="center">
-  <img src="docs/screenshots/desktop.png" width="800" alt="Desktop view">
+  <img src="docs/screenshots/desktop.en.png" width="800" alt="Japan map view">
+</p>
+<p align="center">
+  <img src="docs/screenshots/desktop-korea.en.png" width="800" alt="Korea map view">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/mobile-map.png" width="240" alt="GPS region detection">
+  <img src="docs/screenshots/mobile-map.en.png" width="240" alt="GPS region detection">
   &nbsp;
-  <img src="docs/screenshots/mobile-stats.png" width="240" alt="Stats & stamp book">
+  <img src="docs/screenshots/mobile-stats.en.png" width="240" alt="Stats & stamp book">
   &nbsp;
-  <img src="docs/screenshots/share-card.png" width="240" alt="Shareable image card">
+  <img src="docs/screenshots/share-card.en.png" width="240" alt="Shareable image card">
 </p>
 
 ## Features

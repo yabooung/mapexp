@@ -108,6 +108,7 @@ const STRINGS = {
   'gps.quickToast': ['{label} — 접지 도장을 찍었습니다', 'Landed stamp at {label}', '{label} — 接地スタンプを押しました'],
   'gps.passToast': ['{label} — 통과 도장이 찍혔습니다', 'Passed stamp at {label}', '{label} — 通過スタンプが押されました'],
   'gps.trackAria': ['경로 기록', 'Track recording', 'ルート記録'],
+  'gps.trackClear': ['경로 삭제', 'Clear track', 'ルート削除'],
   'gps.locateAria': ['내 위치', 'My location', '現在地'],
   'gps.notSupported': ['이 브라우저는 위치 서비스를 지원하지 않습니다.', 'Geolocation is not supported in this browser.', 'このブラウザは位置情報に対応していません。'],
   'gps.denied': ['위치 권한이 거부되었습니다.', 'Location permission denied.', '位置情報の許可が拒否されました。'],
