@@ -51,6 +51,14 @@ export default function Footer() {
             OpenStreetMap
           </a>
         </p>
+
+        {/* 경현치(経県値) 개념 원조 크레딧 - 経県値는 uub.jp의 등록상표 */}
+        <p className="mt-1.5 text-[11px] text-faint">
+          {t('footer.concept')}{' '}
+          <a href="https://uub.jp/kkn/" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted">
+            都道府県市区町村 (uub.jp)
+          </a>
+        </p>
       </div>
     </footer>
   )
