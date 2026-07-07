@@ -53,7 +53,7 @@ export default async function OgImage() {
           MAPEXP
         </div>
         <div style={{ display: 'flex', fontSize: 40, fontWeight: 600, color: '#26231c', marginTop: 12 }}>
-          나의 경현치 지도
+          나의 여행 도장 지도
         </div>
         <div style={{ display: 'flex', fontSize: 26, color: '#7c766a', marginTop: 20 }}>
           지나가고, 내리고, 걷고, 묵은 자리마다 도장이 쌓입니다

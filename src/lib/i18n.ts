@@ -11,7 +11,8 @@ const LANG_INDEX: Record<Lang, number> = { ko: 0, en: 1, ja: 2 }
 
 const STRINGS = {
   // 공통 / 헤더 / 내비게이션
-  'app.subtitle': ['일본·한국 경현치 지도', 'Japan & Korea Keikenchi Map', '日本・韓国 経県値マップ'],
+  // 용어는 언어별 현지화: KR=도장(직관), JA=経県値(원조 문화·검색성), EN=stamps
+  'app.subtitle': ['일본·한국 여행 도장', 'Japan & Korea travel stamps', '日本・韓国 経県値マップ'],
   'nav.map': ['지도', 'Map', '地図'],
   'nav.list': ['리스트', 'List', 'リスト'],
   'nav.stats': ['통계', 'Stats', '統計'],
@@ -32,7 +33,8 @@ const STRINGS = {
   'level.3': ['방문', 'Visited', '訪問'],
   'level.4': ['숙박', 'Stayed', '宿泊'],
   'level.5': ['거주', 'Lived', '居住'],
-  'level.term': ['경현치', 'Keikenchi', '経県値'],
+  // 각 지역 도장의 등급 (툴팁·지도 범례). JA는 경현치 문화 인지를 위해 経県値 유지
+  'level.term': ['등급', 'Grade', '経県値'],
   // 등급 한 글자 (카드 도장용)
   'level.short.0': ['미', '·', '未'],
   'level.short.1': ['통', 'P', '通'],
@@ -42,7 +44,7 @@ const STRINGS = {
   'level.short.5': ['거', 'R', '住'],
 
   // 페이지 (데스크톱)
-  'page.title': ['나의 경현치 지도', 'My Keikenchi Map', 'わたしの経県値マップ'],
+  'page.title': ['나의 여행 도장', 'My Travel Stamps', 'わたしの経県値マップ'],
   'page.tagline': [
     '지나가고, 내리고, 걷고, 묵은 자리마다 도장이 쌓입니다',
     'Every pass, stop, walk, and stay leaves a stamp',
@@ -58,11 +60,11 @@ const STRINGS = {
 
   // 통계
   'stats.travelerLevel': ['여행자 레벨', 'Traveler Level', '旅行者レベル'],
-  'stats.exp': ['경현치 {n}', 'EXP {n}', '経県値 {n}'],
+  'stats.exp': ['도장 {n}점', '{n} pts', '経県値 {n}'],
   'stats.toNext': ['/ 다음 레벨까지 {n}', '/ {n} to next level', '/ 次のレベルまで {n}'],
   'stats.visited': ['방문 지역', 'Visited', '訪問地域'],
   'stats.completion': ['달성률', 'Completion', '達成率'],
-  'stats.distribution': ['경현치 분포', 'Distribution', '経県値分布'],
+  'stats.distribution': ['도장 분포', 'Distribution', '経県値分布'],
   'stats.progress': ['진행도', 'Progress', '進行度'],
   'stats.regions': ['{a} / {b} 지역', '{a} / {b} regions', '{a} / {b} 地域'],
   'stats.points': ['{n}점', '{n}pt', '{n}点'],
@@ -147,7 +149,7 @@ const STRINGS = {
   'list.noResult': ["'{q}'에 해당하는 지역이 없습니다", "No regions match '{q}'", '「{q}」に該当する地域がありません'],
 
   // 지역 상세 모달
-  'region.levelLabel': ['경험치 레벨', 'Experience level', '経験値レベル'],
+  'region.levelLabel': ['도장 등급', 'Stamp grade', '経県値レベル'],
   'region.levelDesc.0': ['미경현 (스친 적도 없다) - 0점', 'Never been (0 pt)', '未経県 (かすったこともない) - 0点'],
   'region.levelDesc.1': ['통과했다 (철도/차 통과, 배 기항. 항공기 제외) - 1점', 'Passed through by rail/car/ship (1 pt)', '通過した (鉄道・車・船。航空機は除く) - 1点'],
   'region.levelDesc.2': ['내렸다 (환승이나 휴게소 휴식 등) - 2점', 'Set foot (transfer, rest stop) (2 pt)', '降り立った (乗換や休憩など) - 2点'],
@@ -224,7 +226,7 @@ const STRINGS = {
   'share.copied': ['공유 링크가 복사되었습니다!', 'Link copied!', 'リンクをコピーしました！'],
   'share.copyFail': ['링크 복사에 실패했습니다.', 'Copy failed.', 'コピーに失敗しました。'],
   'share.native': ['공유하기', 'Share…', '共有…'],
-  'share.shareText': ['내 경현치 지도를 확인해보세요!', 'Check out my Keikenchi map!', '私の経県値マップを見てください！'],
+  'share.shareText': ['내 여행 도장 지도를 확인해보세요!', 'Check out my travel stamp map!', '私の経県値マップを見てください！'],
   'share.image': ['이미지 카드 저장', 'Save image card', '画像カードを保存'],
   'share.imageDone': ['이미지 카드를 저장했습니다!', 'Image saved!', '画像を保存しました！'],
   'share.imageFail': ['이미지 생성에 실패했습니다.', 'Image generation failed.', '画像の生成に失敗しました。'],
@@ -244,7 +246,7 @@ const STRINGS = {
   'viewer.exited': ['내 지도로 돌아왔습니다', 'Back to your map', '自分の地図に戻りました'],
 
   // 온보딩
-  'onboard.title': ['경현치 지도에 오신 것을 환영합니다', 'Welcome to your Keikenchi map', '経県値マップへようこそ'],
+  'onboard.title': ['여행 도장 지도에 오신 것을 환영합니다', 'Welcome to your travel stamp map', '経県値マップへようこそ'],
   'onboard.tap': [
     '지도의 지역을 탭하면 도장이 찍힙니다 (탭할 때마다 미답→통과→접지→방문→숙박→거주)',
     'Tap a region to stamp it — each tap cycles the level (Passed → Landed → Visited → Stayed → Lived)',
@@ -269,6 +271,11 @@ const STRINGS = {
     '記録と位置情報は端末内にのみ保存されます',
   ],
   'footer.sources': ['지도 데이터 출처:', 'Map data:', '地図データ出典:'],
+  'footer.concept': [
+    "'경현치(経県値)' 개념 원조",
+    'Based on the 経県値 concept by',
+    '「経県値Ⓡ」の概念元',
+  ],
 
   // 레벨업
   'levelup.title': ['Level Up', 'Level Up', 'Level Up'],
