@@ -44,6 +44,7 @@ function HomeContent() {
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
   const [view, setView] = useState<MobileTab>('map')
   const [showTokyoModal, setShowTokyoModal] = useState(false)
+  const [showBothMaps, setShowBothMaps] = useState(false)
   const t = useT()
   const lang = useLang()
   // 기초 지역 용어는 보고 있는 국가를 따름 (일본=시정촌, 한국=시군구)
@@ -179,7 +180,11 @@ function HomeContent() {
             <div className="bg-card lg:rounded-[10px] lg:border lg:border-line overflow-hidden relative flex-1 min-h-0 lg:h-[calc(100vh-270px)] lg:min-h-[600px]">
               {/* 지도는 항상 마운트 유지 (탭 전환 시 상태 보존) */}
               <div className={`${view === 'list' ? 'hidden' : 'block'} h-full`}>
-                <MapView onRegionClick={handleRegionClick} />
+                <MapView
+                  onRegionClick={handleRegionClick}
+                  showBoth={showBothMaps}
+                  onToggleBoth={() => setShowBothMaps((v) => !v)}
+                />
                 {/* 첫 방문 온보딩 (한 번만 표시, 공유 열람 중에는 숨김) */}
                 {!isViewer && <OnboardingHint />}
               </div>

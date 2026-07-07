@@ -215,6 +215,7 @@ const STRINGS = {
   'map.tileKo': ['한국어', 'Korean', '韓国語'],
   'map.tileJa': ['일본어', 'Japanese', '日本語'],
   'map.baseTiles': ['배경 지도', 'Base map', '背景地図'],
+  'map.both': ['양국 지도', 'Both countries', '日韓を同時'],
   'map.settingsAria': ['지도 설정', 'Map settings', '地図設定'],
   'map.loading': ['지도를 불러오는 중...', 'Loading map…', '地図を読み込み中…'],
   'map.loadFailed': ['지도 데이터를 불러오지 못했습니다', "Couldn't load map data", '地図データを読み込めませんでした'],
