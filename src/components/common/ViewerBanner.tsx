@@ -3,6 +3,7 @@
 import toast from 'react-hot-toast'
 import { useMapExpStore } from '@/store'
 import { useT } from '@/lib/i18n'
+import { ev } from '@/lib/analytics'
 import Icon from '@/components/common/Icon'
 
 /**
@@ -28,6 +29,7 @@ export default function ViewerBanner() {
           <button
             onClick={() => {
               adoptSharedMap()
+              ev('viewer_adopt')
               toast.success(t('viewer.adopted'))
             }}
             className="px-2.5 py-1 rounded-md bg-white/15 hover:bg-white/25 text-[12px] font-semibold transition-colors"

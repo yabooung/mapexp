@@ -16,6 +16,8 @@ import GpsManager from '@/components/gps/GpsManager'
 import LevelUpWatcher from '@/components/common/LevelUpWatcher'
 import OnboardingHint from '@/components/common/OnboardingHint'
 import ViewerBanner from '@/components/common/ViewerBanner'
+import StoragePersist from '@/components/common/StoragePersist'
+import { ev } from '@/lib/analytics'
 import BottomNav, { MobileTab } from '@/components/layout/BottomNav'
 import Icon from '@/components/common/Icon'
 import { useT, useLang, muniTerm } from '@/lib/i18n'
@@ -65,6 +67,7 @@ function HomeContent() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })
+        ev('viewer_open', { country: data.country || 'japan' })
         toast.success(t('viewer.loaded'))
       } else {
         toast.error(t('viewer.invalid'))
@@ -84,9 +87,10 @@ function HomeContent() {
 
   return (
     <>
-      {/* 헤드리스: GPS 추적 + 레벨업 감지 */}
+      {/* 헤드리스: GPS 추적 + 레벨업 감지 + 저장소 영속화 */}
       <GpsManager />
       {!isViewer && <LevelUpWatcher />}
+      <StoragePersist />
 
       {/* 공유 지도 열람 모드 배너 */}
       <ViewerBanner />

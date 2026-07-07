@@ -7,6 +7,7 @@ import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { trackDistanceMeters, formatDistance } from '@/lib/geo'
 import Icon from '@/components/common/Icon'
 import { useT, useLang, levelLabel, regionDisplayName } from '@/lib/i18n'
+import { ev } from '@/lib/analytics'
 import { getRegionMetadata } from '@/data/regions'
 
 interface GpsControlsProps {
@@ -55,6 +56,7 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
     if (!watchEnabled) {
       setWatchEnabled(true)
       setFollowMode(true)
+      ev('gps_on')
       toast(t('gps.locating'), { duration: 2000 })
     } else if (!followMode) {
       setFollowMode(true)
