@@ -18,6 +18,9 @@ import { useT, tNow, I18nKey } from '@/lib/i18n'
 
 interface MapViewProps {
   onRegionClick: (regionId: string) => void
+  /** 양국(일본+한국) 지도를 동시에 표시 */
+  showBoth?: boolean
+  onToggleBoth?: () => void
 }
 
 interface RegionLabel {
@@ -64,6 +67,18 @@ const BoundaryTileLayer = ({ url, boundary, attribution }: { url: string, bounda
     }
   }, [map, url, boundary, attribution])
   
+  return null
+}
+
+/** 양국 동시 표시 시 일본+한국이 모두 보이도록 뷰를 맞춘다 */
+const FitBoth = ({ active }: { active: boolean }) => {
+  const map = useMap()
+  useEffect(() => {
+    if (active) {
+      // 오키나와~홋카이도, 한국 전체를 포함하는 동아시아 범위
+      map.fitBounds([[26.0, 122.0], [46.5, 146.5]], { padding: [16, 16] })
+    }
+  }, [active, map])
   return null
 }
 
@@ -162,16 +177,20 @@ const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLe
   return null
 }
 
-export default function MapView({ onRegionClick }: MapViewProps) {
+export default function MapView({ onRegionClick, showBoth = false, onToggleBoth }: MapViewProps) {
   const { country: storeCountry, getRegionById, addRegion, updateRegion, settings, regions } = useMapExpStore()
   const country = storeCountry as Country
+  const otherCountry: Country = country === 'japan' ? 'korea' : 'japan'
   const [baseGeoData, setBaseGeoData] = useState<GeoJsonObject | null>(null)
   const [baseCountry, setBaseCountry] = useState<string | null>(null)
+  // 양국 동시 표시: 반대 국가의 광역 지도 (읽기·클릭만, 시정촌 오버레이 없음)
+  const [secondaryGeoData, setSecondaryGeoData] = useState<FeatureCollection | null>(null)
 
   // 성능/안정성: 데이터 변경 시 레이어를 재마운트하지 않고 setStyle로 갱신한다.
   // (재마운트 방식은 클릭 직후 레이어가 파괴되어 연속 클릭·줌 중 클릭이 유실되던 원인)
   const baseLayerRef = useRef<L.GeoJSON | null>(null)
   const overlayLayerRef = useRef<L.GeoJSON | null>(null)
+  const secondaryLayerRef = useRef<L.GeoJSON | null>(null)
 
   const [overlayGeoData, setOverlayGeoData] = useState<GeoJsonObject | null>(null)
   const [boundary, setBoundary] = useState<GeoJsonObject | null>(null)
@@ -342,6 +361,33 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [country, mapLevel, viewPrefectureId, baseGeoData, retryKey])
 
+  // 양국 동시 표시: 반대 국가 광역 데이터 로드 (geo.ts 공용 로더 - ID 주입·캐싱)
+  useEffect(() => {
+    if (!showBoth) {
+      setSecondaryGeoData(null)
+      return
+    }
+    let cancelled = false
+    loadPrefectures(otherCountry).then((fc) => {
+      if (!cancelled) setSecondaryGeoData(fc)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [showBoth, otherCountry])
+
+  // 타일 클리핑 경계: 양국 표시 중이면 두 나라 경계를 합친다
+  const effectiveBoundary = useMemo(() => {
+    if (showBoth && boundary && secondaryGeoData) {
+      const b = boundary as FeatureCollection
+      return {
+        type: 'FeatureCollection',
+        features: [...(b.features ?? []), ...secondaryGeoData.features],
+      } as unknown as GeoJsonObject
+    }
+    return boundary
+  }, [showBoth, boundary, secondaryGeoData])
+
   // 항상 최신 스타일 함수를 참조하기 위한 ref
   // (레이어 이벤트 핸들러의 스테일 클로저 문제 방지)
   const baseStyleRef = useRef<(f?: Feature) => PathOptions>(() => ({}))
@@ -509,6 +555,7 @@ export default function MapView({ onRegionClick }: MapViewProps) {
     muniStyleRef.current = getMunicipalityStyle
     baseLayerRef.current?.setStyle((f) => baseStyleRef.current(f as Feature))
     overlayLayerRef.current?.setStyle((f) => muniStyleRef.current(f as Feature))
+    secondaryLayerRef.current?.setStyle((f) => baseStyleRef.current(f as Feature))
   })
 
   const onEachMunicipalityFeature = (feature: Feature, layer: Layer) => {
@@ -549,12 +596,14 @@ export default function MapView({ onRegionClick }: MapViewProps) {
       }
   }
 
-  const mapCenter = country === 'japan' ? [36.5, 138.0] : [36.5, 127.5]
-  const mapZoom = country === 'japan' ? 5 : 7
-  
-  const mapBounds = country === 'japan'
+  const mapCenter = showBoth ? [36.5, 133.5] : country === 'japan' ? [36.5, 138.0] : [36.5, 127.5]
+  const mapZoom = showBoth ? 5 : country === 'japan' ? 5 : 7
+
+  const mapBounds = showBoth
     ? [[15.0, 110.0], [55.0, 160.0]]
-    : [[30.0, 120.0], [43.0, 135.0]]
+    : country === 'japan'
+      ? [[15.0, 110.0], [55.0, 160.0]]
+      : [[30.0, 120.0], [43.0, 135.0]]
 
   if (!baseGeoData) {
     return (
@@ -582,10 +631,10 @@ export default function MapView({ onRegionClick }: MapViewProps) {
   return (
     <div className="w-full h-full rounded-lg overflow-hidden shadow-lg relative bg-white">
       <MapContainer
-        key={`${country}-${settings.mapMode}`}
+        key={`${country}-${settings.mapMode}-${showBoth}`}
         center={mapCenter as [number, number]}
         zoom={mapZoom}
-        minZoom={country === 'japan' ? 3 : 5}
+        minZoom={showBoth ? 3 : country === 'japan' ? 3 : 5}
         maxZoom={18}
         maxBounds={mapBounds as [[number, number], [number, number]]}
         maxBoundsViscosity={0.5} 
@@ -601,9 +650,10 @@ export default function MapView({ onRegionClick }: MapViewProps) {
         touchZoom={true}
       >
         {showTiles && (
-          boundary ? (
+          effectiveBoundary ? (
               <BoundaryTileLayer
-                boundary={boundary}
+                key={showBoth ? 'boundary-both' : 'boundary-single'}
+                boundary={effectiveBoundary}
                 attribution={TILE_ATTRIBUTION}
                 url={getTileUrl(labelMode)}
               />
@@ -637,6 +687,17 @@ export default function MapView({ onRegionClick }: MapViewProps) {
           onEachFeature={onEachFeature}
         />
 
+        {/* 양국 동시 표시: 반대 국가 광역 레이어 (시정촌 오버레이 없음, 클릭·색칠만) */}
+        {showBoth && secondaryGeoData && (
+             <GeoJSON
+                ref={secondaryLayerRef}
+                key={`secondary-${otherCountry}`}
+                data={secondaryGeoData}
+                style={getRegionStyle}
+                onEachFeature={onEachFeature}
+             />
+        )}
+
         {/* Overlay Layer (Municipalities) - Only if zoomed in */}
         {overlayGeoData && (
              <GeoJSON
@@ -647,6 +708,9 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                 onEachFeature={onEachMunicipalityFeature}
              />
         )}
+
+        {/* 양국 뷰 맞춤 */}
+        <FitBoth active={showBoth} />
         <ZoomHandler setMapLevel={setMapLevel} setViewPrefecture={setViewPrefectureId} baseGeoData={baseGeoData} />
         <AutoResize />
 
@@ -720,6 +784,18 @@ export default function MapView({ onRegionClick }: MapViewProps) {
                <span className="text-muted">{t('map.baseTiles')}</span>
                <span className="font-semibold">{showTiles ? t('map.on') : t('map.off')}</span>
             </button>
+
+            {onToggleBoth && (
+              <button
+                onClick={onToggleBoth}
+                className={`w-full py-1.5 px-2.5 rounded-md border font-medium flex items-center justify-between transition-colors ${
+                  showBoth ? 'bg-ink text-paper border-ink' : 'border-line text-ink hover:bg-paper'
+                }`}
+              >
+                 <span className={showBoth ? 'text-paper/70' : 'text-muted'}>{t('map.both')}</span>
+                 <span className="font-semibold">{showBoth ? t('map.on') : t('map.off')}</span>
+              </button>
+            )}
         </div>
 
         <div className="text-[10px] font-semibold tracking-[0.08em] text-muted uppercase mb-2">{t('level.term')}</div>
