@@ -347,8 +347,8 @@ export function muniTerm(country: 'japan' | 'korea', lang: Lang): string {
 export function regionDisplayName(meta: RegionMetadata, lang: Lang): string {
   if (lang === 'ko') return meta.name
   if (lang === 'en') return meta.nameEn
-  // ja: 일본 지역은 현지어(일본어), 한국 지역은 로마자
-  return meta.country === 'japan' ? meta.nameLocal : meta.nameEn
+  // ja: 일본 지역은 현지어(일본어), 한국 지역은 한자 표기+가나 (없으면 로마자 폴백)
+  return meta.country === 'japan' ? meta.nameLocal : (meta.nameJa ?? meta.nameEn)
 }
 
 /** 지도 지명 표시 언어 (auto = UI 언어 따름). 지도 위 지명(툴팁/라벨) 전용 */

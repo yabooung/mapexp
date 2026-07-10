@@ -40,6 +40,7 @@ interface MapViewProps {
 interface RegionLabelNames {
   nameEn?: string
   nameKo?: string
+  nameJa?: string
 }
 
 interface RegionLabel extends RegionLabelNames {
@@ -227,11 +228,11 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   // 지도 지명 언어 (auto = UI 언어 따름) - 툴팁/라벨 전용
   const mapLang = useMapLang()
 
-  // 라벨 표시명: 지도 언어별 선택 (ja는 일본=원어 한자, 한국=로마자 / 없으면 원어 폴백)
+  // 라벨 표시명: 지도 언어별 선택 (ja는 한국 지역이면 한자+가나, 없으면 원어 폴백)
   const labelText = (l: RegionLabel) =>
     mapLang === 'ko' ? (l.nameKo ?? l.name)
     : mapLang === 'en' ? (l.nameEn ?? l.name)
-    : country === 'korea' ? (l.nameEn ?? l.name) : l.name
+    : (l.nameJa ?? l.name)
 
   // 타일 URL (CARTO Voyager - 무료 사용 가능한 합법 타일만 사용)
   const getTileUrl = (mode: LabelMode) =>
@@ -334,6 +335,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
           name: muniName,
           nameEn: muniDisplayName(country, props, muniName, 'en'),
           nameKo: muniDisplayName(country, props, muniName, 'ko'),
+          nameJa: muniDisplayName(country, props, muniName, 'ja'),
           position,
         })
       })
@@ -351,7 +353,14 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
           position = [centroid[1], centroid[0]]
         }
         const meta = getRegionMetadata(id)
-        labels.push({ id, name: props.name as string, nameKo: meta?.name, nameEn: meta?.nameEn, position })
+        labels.push({
+          id,
+          name: props.name as string,
+          nameKo: meta?.name,
+          nameEn: meta?.nameEn,
+          nameJa: meta ? regionDisplayName(meta, 'ja') : undefined,
+          position,
+        })
       })
       setRegionLabels(labels)
     }

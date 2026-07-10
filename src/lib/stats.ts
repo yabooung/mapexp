@@ -51,6 +51,22 @@ export function countryGradeCounts(regions: RegionExp[], c: Country): Record<Exp
 /** 점수 → 여행자 레벨 (스토어 getSystemLevel과 동일 공식) */
 export const levelFromScore = (score: number) => 1 + Math.floor(score / 10)
 
+/** 국가별 기초 지역(시정촌/시군구) 점수 합계·개수 */
+export function muniStats(regions: RegionExp[], c: Country) {
+  let score = 0
+  let count = 0
+  for (const r of regions) {
+    if (!r.regionId.includes('_')) continue
+    const parent = r.regionId.split('_')[0]
+    if (!isRegionOfCountry(parent, c)) continue
+    const lvl = r.gyeonghyeonchi ?? r.level ?? 0
+    if (lvl <= 0) continue
+    score += lvl
+    count++
+  }
+  return { score, count }
+}
+
 export interface RegionScoreRow {
   id: string
   country: Country
