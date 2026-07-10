@@ -277,10 +277,9 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   // react-leaflet GeoJSON은 data 변경을 반영하지 않으므로 버전을 올려 key로 리마운트한다.
   const [overlayV, setOverlayV] = useState(0)
   useEffect(() => {
-    if (!showMuniLayer) {
-      setOverlayGeoData(null)
-      return
-    }
+    // 국가 전환/토글 시 이전 데이터를 먼저 비워 스테일 렌더 방지
+    setOverlayGeoData(null)
+    if (!showMuniLayer) return
     let cancelled = false
     ;(async () => {
       try {
@@ -341,7 +340,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
         })
       })
       setRegionLabels(labels)
-    } else if (baseGeoData && (baseGeoData as FeatureCollection).type === 'FeatureCollection') {
+    } else if (baseGeoData && baseCountry === country && (baseGeoData as FeatureCollection).type === 'FeatureCollection') {
       const labels: RegionLabel[] = []
       ;(baseGeoData as FeatureCollection).features.forEach((feat) => {
         const props = feat.properties as Record<string, string | null>
@@ -365,14 +364,13 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
       })
       setRegionLabels(labels)
     }
-  }, [showMuniLayer, mapLevel, viewPrefectureId, overlayGeoData, baseGeoData, country])
+  }, [showMuniLayer, mapLevel, viewPrefectureId, overlayGeoData, baseGeoData, baseCountry, country])
 
   // 양국 동시 표시: 반대 국가 광역 데이터 로드 (geo.ts 공용 로더 - ID 주입·캐싱)
+  // 국가 전환 시 스테일 데이터가 새 key로 박제되지 않도록 즉시 비운다
   useEffect(() => {
-    if (!showBoth) {
-      setSecondaryGeoData(null)
-      return
-    }
+    setSecondaryGeoData(null)
+    if (!showBoth) return
     let cancelled = false
     loadPrefectures(otherCountry).then((fc) => {
       if (!cancelled) setSecondaryGeoData(fc)
@@ -672,11 +670,13 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
           )
         )}
         
-        {/* Base Layer (Prefectures) - 기초 표시 중에는 전국이 시정촌으로 보이므로 광역 색칠은 숨긴다 */}
-        {!showMuniLayer && (
+        {/* Base Layer (Prefectures) - 기초 표시 중에는 전국이 시정촌으로 보이므로 광역 색칠은 숨긴다.
+            주의: 국가 전환 직후 baseGeoData는 아직 이전 국가 데이터 → 일치할 때만 렌더
+            (react-leaflet GeoJSON은 data 변경을 반영하지 않으므로 스테일 데이터가 박제됨) */}
+        {!showMuniLayer && baseCountry === country && (
           <GeoJSON
             ref={baseLayerRef}
-            key={`base-${country}`}
+            key={`base-${baseCountry}`}
             data={baseGeoData as FeatureCollection}
             // 생성 시에는 현재 렌더의 신선한 클로저를 사용 (ref는 이 시점에 아직 이전 렌더 값)
             style={getRegionStyle}
@@ -707,9 +707,9 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
         )}
 
         {/* 기초 표시 중 광역 경계선 (비인터랙티브 - 맥락용, 시정촌 툴팁을 방해하지 않음) */}
-        {showMuniLayer && baseGeoData && (
+        {showMuniLayer && baseGeoData && baseCountry === country && (
              <GeoJSON
-                key={`prefline-${country}`}
+                key={`prefline-${baseCountry}`}
                 data={baseGeoData as FeatureCollection}
                 style={{ fill: false, color: 'rgba(38, 35, 28, 0.45)', weight: 1.2, interactive: false }}
              />
