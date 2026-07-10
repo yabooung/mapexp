@@ -9,7 +9,7 @@ import { ExperienceGrade, RegionExp } from '@/types'
 import { countryStats, countryGradeCounts, levelFromScore } from '@/lib/stats'
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters, type Country } from '@/lib/geo'
-import { renderRegionMapImage } from '@/lib/mapSnapshot'
+import { renderRegionMapImage, renderMunicipalityMapImage } from '@/lib/mapSnapshot'
 import { useT, useLang, levelLabel, I18nKey } from '@/lib/i18n'
 import { ev } from '@/lib/analytics'
 import Modal from '@/components/common/Modal'
@@ -24,6 +24,8 @@ interface ShareModalProps {
 
 /** 카드에 담을 지도 범위 */
 type CardScope = 'japan' | 'korea' | 'both'
+/** 지도 상세도: 광역(현/시도) / 기초(시정촌/시군구) / 둘다 */
+type CardDetail = 'pref' | 'muni' | 'bothDetail'
 
 const levelOfFor = (regions: RegionExp[]) => (regionId: string): ExperienceGrade => {
   const r = regions.find((x) => x.regionId === regionId)
@@ -35,7 +37,9 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
   const trackPoints = useGpsStore((s) => s.trackPoints)
   const [shareUrl, setShareUrl] = useState('')
   const [mapImgs, setMapImgs] = useState<{ japan: string | null; korea: string | null }>({ japan: null, korea: null })
+  const [muniImgs, setMuniImgs] = useState<{ japan: string | null; korea: string | null }>({ japan: null, korea: null })
   const [scope, setScope] = useState<CardScope>('japan')
+  const [detail, setDetail] = useState<CardDetail>('pref')
   const [rendering, setRendering] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const t = useT()
@@ -60,6 +64,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       // 색칠된 지도 스냅샷 렌더링: 활성 국가 + (기록이 있으면) 반대 국가
       const levelOf = levelOfFor(regions)
       setMapImgs({ japan: null, korea: null })
+      setMuniImgs({ japan: null, korea: null })
       const wantJapan = country === 'japan' || countryStats(regions, 'japan').visited > 0
       const wantKorea = country === 'korea' || countryStats(regions, 'korea').visited > 0
       if (wantJapan) renderRegionMapImage('japan', levelOf).then((img) => setMapImgs((m) => ({ ...m, japan: img })))
@@ -69,10 +74,23 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       const j = countryStats(regions, 'japan')
       const k = countryStats(regions, 'korea')
       setScope(j.visited > 0 && k.visited > 0 ? 'both' : (country as Country))
+      setDetail('pref')
       ev('share_open', { country })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, exportData, country, regions])
+
+  // 기초 지도 이미지는 무겁기 때문에(전국 시정촌 GeoJSON) 필요할 때만 렌더
+  useEffect(() => {
+    if (!isOpen || detail === 'pref') return
+    const levelOf = levelOfFor(regions)
+    const need: Country[] = scope === 'both' ? ['japan', 'korea'] : [scope]
+    need.forEach((c) => {
+      if (muniImgs[c]) return
+      renderMunicipalityMapImage(c, levelOf).then((img) => setMuniImgs((m) => (m[c] ? m : { ...m, [c]: img })))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, detail, scope])
 
   const handleCopy = async () => {
     try {
@@ -172,13 +190,31 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
 
   const countryLabel = (c: Country) => t(c === 'japan' ? 'common.japan' : 'common.korea')
   const headerLabel = scope === 'both' ? `${countryLabel('japan')} × ${countryLabel('korea')}` : countryLabel(scope)
-  const scopeImgs: Array<{ c: Country; img: string | null; s: typeof jpStats }> =
-    scope === 'both'
-      ? [
-          { c: 'japan', img: mapImgs.japan, s: jpStats },
-          { c: 'korea', img: mapImgs.korea, s: krStats },
-        ]
-      : [{ c: scope, img: mapImgs[scope], s: scope === 'japan' ? jpStats : krStats }]
+
+  // 카드 지도 슬롯: 스코프 × 상세도 조합
+  // - 양국: 국가별 지도 2장 (광역 or 기초) + 국가 캡션
+  // - 단일 + 둘다: 광역/기초 2장 + 상세도 캡션
+  // - 단일: 1장
+  interface MapSlot { key: string; img: string | null; caption?: string }
+  const mapSlots: MapSlot[] = (() => {
+    const imgsOf = (d: 'pref' | 'muni') => (d === 'pref' ? mapImgs : muniImgs)
+    if (scope === 'both') {
+      const d = detail === 'muni' ? 'muni' : 'pref'
+      return (['japan', 'korea'] as Country[]).map((c) => ({
+        key: `${c}-${d}`,
+        img: imgsOf(d)[c],
+        caption: `${countryLabel(c)}  ${t('stats.exp', { n: (c === 'japan' ? jpStats : krStats).score })} · ${(c === 'japan' ? jpStats : krStats).visited}/${(c === 'japan' ? jpStats : krStats).total}`,
+      }))
+    }
+    if (detail === 'bothDetail') {
+      return [
+        { key: `${scope}-pref`, img: mapImgs[scope], caption: t('share.detailPref') },
+        { key: `${scope}-muni`, img: muniImgs[scope], caption: t('share.detailMuni') },
+      ]
+    }
+    return [{ key: `${scope}-${detail}`, img: detail === 'muni' ? muniImgs[scope] : mapImgs[scope] }]
+  })()
+  const multiMap = mapSlots.length > 1
 
   return (
     <Modal
@@ -200,34 +236,62 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       <div className="space-y-4">
         <p className="text-muted text-sm">{t('share.desc')}</p>
 
-        {/* 지도 범위 선택: 일본 / 한국 / 양국 */}
-        <div className="flex items-center p-0.5 rounded-full border border-line bg-paper w-fit">
-          {(['japan', 'korea', 'both'] as CardScope[]).map((s) => (
-            <button
-              key={s}
-              onClick={() => scopeEnabled[s] && setScope(s)}
-              disabled={!scopeEnabled[s]}
-              className={`px-3 py-1 rounded-full text-[13px] font-medium transition-colors ${
-                scope === s
-                  ? 'bg-ink text-paper'
-                  : scopeEnabled[s]
-                    ? 'text-muted hover:text-ink'
-                    : 'text-faint cursor-not-allowed'
-              }`}
-            >
-              {s === 'both' ? t('share.scopeBoth') : countryLabel(s)}
-            </button>
-          ))}
+        {/* 지도 범위 선택: 일본 / 한국 / 양국 + 상세도: 광역 / 기초 / 둘다 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center p-0.5 rounded-full border border-line bg-paper w-fit">
+            {(['japan', 'korea', 'both'] as CardScope[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => {
+                  if (!scopeEnabled[s]) return
+                  setScope(s)
+                  if (s === 'both' && detail === 'bothDetail') setDetail('pref')
+                }}
+                disabled={!scopeEnabled[s]}
+                className={`px-3 py-1 rounded-full text-[13px] font-medium transition-colors ${
+                  scope === s
+                    ? 'bg-ink text-paper'
+                    : scopeEnabled[s]
+                      ? 'text-muted hover:text-ink'
+                      : 'text-faint cursor-not-allowed'
+                }`}
+              >
+                {s === 'both' ? t('share.scopeBoth') : countryLabel(s)}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center p-0.5 rounded-full border border-line bg-paper w-fit">
+            {(['pref', 'muni', 'bothDetail'] as CardDetail[]).map((d) => {
+              const enabled = d !== 'bothDetail' || scope !== 'both' // 양국+둘다(4장)는 비활성
+              return (
+                <button
+                  key={d}
+                  onClick={() => enabled && setDetail(d)}
+                  disabled={!enabled}
+                  className={`px-3 py-1 rounded-full text-[13px] font-medium transition-colors ${
+                    detail === d
+                      ? 'bg-ink text-paper'
+                      : enabled
+                        ? 'text-muted hover:text-ink'
+                        : 'text-faint cursor-not-allowed'
+                  }`}
+                >
+                  {t(d === 'pref' ? 'share.detailPref' : d === 'muni' ? 'share.detailMuni' : 'share.detailBoth')}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* 지도 미리보기 (이미지 카드에 들어가는 색칠 지도) */}
-        <div className={`rounded-lg border border-line bg-[#f5f3ec] p-2 ${scope === 'both' ? 'grid grid-cols-2 gap-1' : ''}`}>
-          {scopeImgs.map(({ c, img }) =>
+        <div className={`rounded-lg border border-line bg-[#f5f3ec] p-2 ${multiMap ? 'grid grid-cols-2 gap-1' : ''}`}>
+          {mapSlots.map(({ key, img }) =>
             img ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img key={c} src={img} alt="" className="w-full h-auto max-h-56 object-contain" />
+              <img key={key} src={img} alt="" className="w-full h-auto max-h-56 object-contain" />
             ) : (
-              <div key={c} className="h-32 flex items-center justify-center">
+              <div key={key} className="h-32 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-seal" />
               </div>
             ),
@@ -300,29 +364,28 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             </div>
           </div>
 
-          {/* 색칠된 지도 (비교의 핵심) — 양국이면 두 지도 나란히 + 국가별 캡션 */}
-          {scope === 'both' ? (
+          {/* 색칠된 지도 (비교의 핵심) — 2장이면 나란히 + 캡션, 1장이면 전폭 */}
+          {multiMap ? (
             <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-              {scopeImgs.map(({ c, img, s }) => (
-                <div key={c} style={{ flex: 1, minWidth: 0 }}>
+              {mapSlots.map(({ key, img, caption }) => (
+                <div key={key} style={{ flex: 1, minWidth: 0 }}>
                   {img && (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={img} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
                   )}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, justifyContent: 'center' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>{countryLabel(c)}</span>
-                    <span style={{ fontSize: 11, color: '#7c766a' }}>
-                      {t('stats.exp', { n: s.score })} · {s.visited}/{s.total}
-                    </span>
-                  </div>
+                  {caption && (
+                    <div style={{ fontSize: 11, color: '#7c766a', marginTop: 6, textAlign: 'center', fontWeight: 600 }}>
+                      {caption}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           ) : (
-            scopeImgs[0]?.img && (
+            mapSlots[0]?.img && (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
-                src={scopeImgs[0].img!}
+                src={mapSlots[0].img!}
                 alt=""
                 style={{ width: '100%', height: 'auto', display: 'block', marginBottom: 18 }}
               />
