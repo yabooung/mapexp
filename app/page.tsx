@@ -177,7 +177,8 @@ function HomeContent() {
               view === 'stats' ? 'hidden lg:block' : 'flex flex-col'
             } flex-1 min-h-0 lg:col-span-3 h-full`}
           >
-            <div className="bg-card lg:rounded-[10px] lg:border lg:border-line overflow-hidden relative flex-1 min-h-0 lg:h-[calc(100vh-270px)] lg:min-h-[600px]">
+            {/* lg:flex-none: 사이드바(지역별 점수 등)가 길어져도 지도가 화면 아래로 늘어나지 않게 고정 */}
+            <div className="bg-card lg:rounded-[10px] lg:border lg:border-line overflow-hidden relative flex-1 lg:flex-none min-h-0 lg:h-[calc(100vh-270px)] lg:min-h-[600px]">
               {/* 지도는 항상 마운트 유지 (탭 전환 시 상태 보존) */}
               <div className={`${view === 'list' ? 'hidden' : 'block'} h-full`}>
                 <MapView
