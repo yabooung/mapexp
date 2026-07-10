@@ -14,7 +14,11 @@ import GpsControls from './GpsControls'
 import Icon from '@/components/common/Icon'
 import { municipalityName, PREF_KANJI_BY_ID, loadPrefectures, featureContainsPoint, type Country } from '@/lib/geo'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
-import { useT, tNow, I18nKey } from '@/lib/i18n'
+import { useT, tNow, muniTerm, I18nKey, type Lang } from '@/lib/i18n'
+import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
+import toast from 'react-hot-toast'
+
+const currentLang = (): Lang => (useMapExpStore.getState().settings.language ?? 'ko') as Lang
 
 interface MapViewProps {
   onRegionClick: (regionId: string) => void
@@ -23,7 +27,12 @@ interface MapViewProps {
   onToggleBoth?: () => void
 }
 
-interface RegionLabel {
+interface RegionLabelNames {
+  nameEn?: string
+  nameKo?: string
+}
+
+interface RegionLabel extends RegionLabelNames {
   id: string
   name: string
   position: [number, number] // [lat, lng]
@@ -200,9 +209,18 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   const [labelMode, setLabelMode] = useState<LabelMode>('native') // Default to native for Japan focus
   const [mapLevel, setMapLevel] = useState<'prefecture' | 'municipality'>('prefecture')
   const [viewPrefectureId, setViewPrefectureId] = useState<string | null>(null) // ID of the prefecture to show details for
+  // 시정촌 표시 모드: 켜면 줌인 시 기초 지역 색칠을 보여준다 (읽기 전용 - 수정은 관리 모달에서만)
+  const [showMuniLayer, setShowMuniLayer] = useState(true)
   const [panelOpen, setPanelOpen] = useState(false) // 모바일: 범례/컨트롤 패널 토글
   const [retryKey, setRetryKey] = useState(0) // 지도 데이터 로드 실패 시 재시도
   const t = useT()
+  const lang = (settings.language ?? 'ko') as Lang
+
+  // 라벨 표시명: 언어별 선택 (ja는 일본=원어 한자, 한국=로마자 / 없으면 원어 폴백)
+  const labelText = (l: RegionLabel) =>
+    lang === 'ko' ? (l.nameKo ?? l.name)
+    : lang === 'en' ? (l.nameEn ?? l.name)
+    : country === 'korea' ? (l.nameEn ?? l.name) : l.name
 
   // Smart Inheritance Logic:
   // Identify which prefectures have "Detailed" data (at least one child municipality is tracked).
@@ -252,8 +270,8 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
              }
         }
 
-        // 2. Load Overlay Data (기초: 시정촌/시군구) - On Demand
-        if (mapLevel === 'municipality' && viewPrefectureId) {
+        // 2. Load Overlay Data (기초: 시정촌/시군구) - On Demand (표시 모드가 켜진 경우만)
+        if (mapLevel === 'municipality' && viewPrefectureId && showMuniLayer) {
              let url = country === 'japan'
                  ? '/geojson/japan-municipalities.json'
                  : '/geojson/korea-municipalities.json'
@@ -264,6 +282,8 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
              }
 
              if (url) {
+                 // 일본 시정촌 다국어 이름 사전 (라벨/툴팁 표시용)
+                 const jpNames = country === 'japan' ? await loadJpMuniNames() : null
                  const response = await fetch(url)
                  if (response.ok) {
                     const json = await response.json()
@@ -316,7 +336,18 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
                                  const centroid = geoCentroid(feat)
                                  position = [centroid[1], centroid[0]]
                              }
-                             labels.push({ id: genId, name: muniName, position })
+                             // 라벨 다국어: 일본은 코드 사전, 한국은 name_eng
+                             let nameEn: string | undefined
+                             let nameKo: string | undefined
+                             if (country === 'japan') {
+                                 const entry = jpNames?.[feat.properties?.N03_007 as string]
+                                 nameEn = entry?.e
+                                 nameKo = entry?.k
+                             } else {
+                                 nameEn = feat.properties?.name_eng as string | undefined
+                                 nameKo = muniName
+                             }
+                             labels.push({ id: genId, name: muniName, nameEn, nameKo, position })
                          })
 
                          setOverlayGeoData(filtered)
@@ -359,7 +390,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
 
     loadGeoData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [country, mapLevel, viewPrefectureId, baseGeoData, retryKey])
+  }, [country, mapLevel, viewPrefectureId, baseGeoData, retryKey, showMuniLayer])
 
   // 양국 동시 표시: 반대 국가 광역 데이터 로드 (geo.ts 공용 로더 - ID 주입·캐싱)
   useEffect(() => {
@@ -463,6 +494,9 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
 
     // 즉시 반영 (스토어 갱신 → 효과에서 전체 재스타일도 수행되지만, 클릭 피드백은 바로)
     e.target.setStyle(styleRef.current(feature))
+    // 툴팁은 열릴 때만 내용을 만들므로, 떠 있는 동안 탭하면 이전 등급이 보인다 → 즉시 갱신
+    const regionName = (feature.properties?.name_ko || feature.properties?.name) as string
+    ;(e.target as L.Path).setTooltipContent(buildTooltip(regionId, regionName))
   }
 
   const onEachFeature = (feature: Feature, layer: Layer) => {
@@ -558,20 +592,34 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
     secondaryLayerRef.current?.setStyle((f) => baseStyleRef.current(f as Feature))
   })
 
+  // 전체맵의 시정촌 레이어는 읽기 전용 - 수정은 '시정촌/시군구 관리' 모달에서만.
+  // 탭하면 이름·등급 툴팁만 보여주고, 세션당 1회 편집 위치 안내 토스트를 띄운다.
+  const muniHintShownRef = useRef(false)
   const onEachMunicipalityFeature = (feature: Feature, layer: Layer) => {
     if (!feature.properties?.id) return
 
     const regionId = feature.properties.id as string
-    const regionName = feature.properties.name_ko || feature.properties.name
+    const regionName = (feature.properties.name_ko || feature.properties.name) as string
 
-    layer.bindTooltip(() => buildTooltip(regionId, regionName), {
-      permanent: false,
-      direction: 'top',
-      className: 'region-tooltip',
-    })
+    // 열릴 때마다 현재 언어로 표시명 해석 (일본: 한자/로마자/한글, 한국: 한글/로마자)
+    layer.bindTooltip(
+      () => buildTooltip(regionId, muniDisplayName(country, feature.properties, regionName, currentLang())),
+      {
+        permanent: false,
+        direction: 'top',
+        className: 'region-tooltip',
+      },
+    )
 
     layer.on({
-        click: (e: LeafletMouseEvent) => cycleLevelOnClick(e, regionId, muniStyleRef, feature),
+        click: (e: LeafletMouseEvent) => {
+            e.originalEvent.preventDefault()
+            if (!muniHintShownRef.current) {
+                muniHintShownRef.current = true
+                const lang = (useMapExpStore.getState().settings.language ?? 'ko') as Lang
+                toast(tNow('map.muniReadOnly', { term: muniTerm(country, lang) }))
+            }
+        },
         mouseover: (e: LeafletMouseEvent) => {
             const target = e.target
             target.setStyle({ weight: 2, color: '#666', fillOpacity: 0.2 })
@@ -673,8 +721,8 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
               ...baseGeoData!,
               features: (baseGeoData! as FeatureCollection).features.filter(f => {
                    const fid = f.properties?.id
-                   // Hide if this is the active view prefecture
-                   if (viewPrefectureId && fid) {
+                   // Hide if this is the active view prefecture (시정촌 표시가 켜진 경우만)
+                   if (showMuniLayer && viewPrefectureId && fid) {
                        if (fid === viewPrefectureId) return false
                        if (viewPrefectureId === '13' && fid === 'tokyo') return false
                        if (viewPrefectureId === 'tokyo' && fid === '13') return false
@@ -698,8 +746,8 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
              />
         )}
 
-        {/* Overlay Layer (Municipalities) - Only if zoomed in */}
-        {overlayGeoData && (
+        {/* Overlay Layer (Municipalities) - Only if zoomed in. 읽기 전용 표시 */}
+        {showMuniLayer && overlayGeoData && (
              <GeoJSON
                 ref={overlayLayerRef}
                 key={`overlay-${country}-${viewPrefectureId}`}
@@ -717,8 +765,10 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
         {/* GPS: 현재 위치 마커 + 트랙 폴리라인 */}
         <GpsLayer />
         
-        {/* Custom Labels: Only show if mode is 'custom' */}
-        {labelMode === 'custom' && regionLabels.map((label) => (
+        {/* Custom Labels: 커스텀 모드이거나, 시정촌 표시 중(색칠이 타일 지명을 가리므로 라벨 '끔'만 아니면) */}
+        {(labelMode === 'custom' ||
+          (labelMode !== 'none' && showMuniLayer && mapLevel === 'municipality' && !!overlayGeoData)) &&
+         regionLabels.map((label) => (
           <Marker
             key={label.id}
             position={label.position}
@@ -733,7 +783,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
                 white-space: nowrap;
                 transform: translate(-50%, -50%);
                 pointer-events: none;
-              ">${label.name}</div>`,
+              ">${labelText(label)}</div>`,
               iconSize: [0, 0],
               iconAnchor: [0, 0]
             })}
@@ -783,6 +833,16 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
             >
                <span className="text-muted">{t('map.baseTiles')}</span>
                <span className="font-semibold">{showTiles ? t('map.on') : t('map.off')}</span>
+            </button>
+
+            <button
+              onClick={() => setShowMuniLayer(!showMuniLayer)}
+              className={`w-full py-1.5 px-2.5 rounded-md border font-medium flex items-center justify-between transition-colors ${
+                showMuniLayer ? 'bg-ink text-paper border-ink' : 'border-line text-ink hover:bg-paper'
+              }`}
+            >
+               <span className={showMuniLayer ? 'text-paper/70' : 'text-muted'}>{t('map.muniLayer')}</span>
+               <span className="font-semibold">{showMuniLayer ? t('map.on') : t('map.off')}</span>
             </button>
 
             {onToggleBoth && (

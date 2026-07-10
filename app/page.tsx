@@ -155,7 +155,7 @@ function HomeContent() {
             } lg:block lg:col-span-1 lg:p-0 lg:h-auto lg:overflow-visible lg:pb-0`}
           >
             <div className="space-y-4">
-              <StatsPanel />
+              <StatsPanel showBoth={showBothMaps} />
               <BadgePanel />
               {/* 모바일 전용: 국가/도쿄 관리 */}
               <div className="lg:hidden space-y-3">

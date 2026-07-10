@@ -207,7 +207,12 @@ const STRINGS = {
   'muni.viewMap': ['지도', 'Map', '地図'],
   'muni.mapHint': ['지도에서 지역을 눌러 레벨을 바꾸세요', 'Tap a region on the map to change its level', '地図の地域をタップしてレベルを変更'],
 
+  // 공유 카드 범위
+  'share.scopeBoth': ['양국', 'Both', '両国'],
+
   // 지도 패널
+  'map.muniLayer': ['기초 지역', 'Municipalities', '市区町村'],
+  'map.muniReadOnly': ['{term} 수정은 "{term} 관리"에서 할 수 있어요', 'Edit records in "Manage {term}"', '{term}の記録は「{term}管理」で編集できます'],
   'map.label': ['라벨', 'Labels', 'ラベル'],
   'map.labelCustom': ['직접 표시', 'Custom', '独自表示'],
   'map.labelNative': ['지도 원본', 'Map default', '地図標準'],

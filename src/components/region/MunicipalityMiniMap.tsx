@@ -10,6 +10,8 @@ import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
+import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
+import type { Lang } from '@/lib/i18n'
 
 interface Props {
   country: Country
@@ -79,7 +81,10 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
     let cancelled = false
     setIsLoading(true)
     setGeo(null)
-    loadMunicipalities(country).then((fc) => {
+    Promise.all([
+      loadMunicipalities(country),
+      country === 'japan' ? loadJpMuniNames() : Promise.resolve(null), // 툴팁 표시명 사전
+    ]).then(([fc]) => {
       if (cancelled) return
       if (!fc) {
         setIsLoading(false)
@@ -145,7 +150,14 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
     const id = feature.properties?.id as string | undefined
     const name = feature.properties?.name as string | undefined
     if (!id) return
-    if (name) layer.bindTooltip(name, { direction: 'top', className: 'region-tooltip', sticky: true })
+    if (name)
+      layer.bindTooltip(
+        () => {
+          const lang = (useMapExpStore.getState().settings.language ?? 'ko') as Lang
+          return muniDisplayName(country, feature.properties, name, lang)
+        },
+        { direction: 'top', className: 'region-tooltip', sticky: true },
+      )
     layer.on({
       click: (e: LeafletMouseEvent) => {
         e.originalEvent.preventDefault()
