@@ -203,6 +203,9 @@ const STRINGS = {
   'muni.markAllConfirm': ["{name}의 기초 지역을 모두 '방문'으로 표시할까요?", "Mark all municipalities in {name} as visited?", '{name}の市区町村をすべて「訪問」にしますか？'],
   'muni.resetConfirm': ['{name}의 기초 지역 기록을 모두 초기화할까요?', 'Reset all municipality records in {name}?', '{name}の市区町村の記録をすべてリセットしますか？'],
   'muni.selectAria': ['광역 지역 선택', 'Select prefecture', '都道府県を選択'],
+  'muni.viewList': ['목록', 'List', 'リスト'],
+  'muni.viewMap': ['지도', 'Map', '地図'],
+  'muni.mapHint': ['지도에서 지역을 눌러 레벨을 바꾸세요', 'Tap a region on the map to change its level', '地図の地域をタップしてレベルを変更'],
 
   // 지도 패널
   'map.label': ['라벨', 'Labels', 'ラベル'],
