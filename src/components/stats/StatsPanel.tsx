@@ -4,15 +4,22 @@ import { useState, useEffect } from 'react'
 import { useMapExpStore } from '@/store'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS, TOTAL_REGIONS } from '@/constants'
+import { countryStats, countryGradeCounts, levelFromScore } from '@/lib/stats'
+import type { Country } from '@/lib/geo'
 import Card from '@/components/common/Card'
 import { useT, useLang, levelLabel } from '@/lib/i18n'
+
+interface StatsPanelProps {
+  /** 양국 지도 뷰가 켜져 있으면 두 나라 통계를 함께 보여준다 */
+  showBoth?: boolean
+}
 
 /**
  * 통계 패널
  */
-export default function StatsPanel() {
+export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
   const [mounted, setMounted] = useState(false)
-  const { country, getTotalGyeonghyeonchi, getSystemLevel, getVisitedCount, getCompletionRate, getGyeonghyeonchiCounts } =
+  const { country, regions, getTotalGyeonghyeonchi, getSystemLevel, getVisitedCount, getCompletionRate, getGyeonghyeonchiCounts } =
     useMapExpStore()
   const t = useT()
   const lang = useLang()
@@ -21,14 +28,36 @@ export default function StatsPanel() {
     setMounted(true)
   }, [])
 
-  const totalGyeonghyeonchi = getTotalGyeonghyeonchi()
-  const systemLevel = getSystemLevel()
-  const visitedCount = getVisitedCount()
-  const completionRate = getCompletionRate()
-  const valCounts = getGyeonghyeonchiCounts()
-  const totalRegions = TOTAL_REGIONS[country]
-
   if (!mounted) return null // Prevent hydration mismatch
+
+  // 양국 뷰: 두 나라를 합산해 계산 (한 나라만 볼 때는 스토어 게터 = 현재 국가)
+  const jp = countryStats(regions, 'japan')
+  const kr = countryStats(regions, 'korea')
+
+  const totalGyeonghyeonchi = showBoth ? jp.score + kr.score : getTotalGyeonghyeonchi()
+  const systemLevel = showBoth ? levelFromScore(totalGyeonghyeonchi) : getSystemLevel()
+  const visitedCount = showBoth ? jp.visited + kr.visited : getVisitedCount()
+  const totalRegions = showBoth ? jp.total + kr.total : TOTAL_REGIONS[country]
+  const completionRate = showBoth
+    ? (totalRegions > 0 ? Math.round((visitedCount / totalRegions) * 100) : 0)
+    : getCompletionRate()
+
+  const valCounts: Record<ExperienceGrade, number> = showBoth
+    ? (() => {
+        const a = countryGradeCounts(regions, 'japan')
+        const b = countryGradeCounts(regions, 'korea')
+        const merged = { ...a }
+        ;([0, 1, 2, 3, 4, 5] as ExperienceGrade[]).forEach((l) => {
+          merged[l] = a[l] + b[l]
+        })
+        return merged
+      })()
+    : getGyeonghyeonchiCounts()
+
+  const countryRows: Array<{ c: Country; label: string; s: typeof jp }> = [
+    { c: 'japan', label: t('common.japan'), s: jp },
+    { c: 'korea', label: t('common.korea'), s: kr },
+  ]
 
   return (
     <div className="space-y-4">
@@ -36,7 +65,10 @@ export default function StatsPanel() {
       <Card>
         {/* 시스템 레벨 */}
         <div className="flex items-baseline justify-between">
-          <span className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">{t('stats.travelerLevel')}</span>
+          <span className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">
+            {t('stats.travelerLevel')}
+            {showBoth && <span className="ml-1.5 normal-case tracking-normal">· {t('common.japan')} × {t('common.korea')}</span>}
+          </span>
           <span className="text-xs text-muted tabular-nums">{t('stats.exp', { n: totalGyeonghyeonchi })}</span>
         </div>
         <div className="mt-1 flex items-baseline gap-2">
@@ -53,19 +85,42 @@ export default function StatsPanel() {
         </div>
 
         {/* 방문/달성률 */}
-        <div className="mt-5 grid grid-cols-2 divide-x divide-line border-t border-line pt-4">
-          <div className="pr-4">
-            <p className="text-xs text-muted">{t('stats.visited')}</p>
-            <p className="mt-0.5 text-xl font-bold text-ink tabular-nums">
-              {visitedCount}
-              <span className="text-sm font-medium text-faint"> / {totalRegions}</span>
-            </p>
+        {showBoth ? (
+          <div className="mt-5 space-y-2.5 border-t border-line pt-4">
+            {countryRows.map(({ c, label, s }) => (
+              <div key={c} className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-ink w-12 shrink-0">{label}</span>
+                <span className="text-sm text-ink tabular-nums">
+                  {s.visited}
+                  <span className="text-faint"> / {s.total}</span>
+                </span>
+                <span className="flex-1 h-1 bg-paper rounded-full overflow-hidden">
+                  <span
+                    className="block h-full rounded-full bg-seal"
+                    style={{ width: `${s.completion}%` }}
+                  />
+                </span>
+                <span className="text-xs text-muted tabular-nums w-16 text-right">
+                  {t('stats.exp', { n: s.score })}
+                </span>
+              </div>
+            ))}
           </div>
-          <div className="pl-4">
-            <p className="text-xs text-muted">{t('stats.completion')}</p>
-            <p className="mt-0.5 text-xl font-bold text-ink tabular-nums">{completionRate}%</p>
+        ) : (
+          <div className="mt-5 grid grid-cols-2 divide-x divide-line border-t border-line pt-4">
+            <div className="pr-4">
+              <p className="text-xs text-muted">{t('stats.visited')}</p>
+              <p className="mt-0.5 text-xl font-bold text-ink tabular-nums">
+                {visitedCount}
+                <span className="text-sm font-medium text-faint"> / {totalRegions}</span>
+              </p>
+            </div>
+            <div className="pl-4">
+              <p className="text-xs text-muted">{t('stats.completion')}</p>
+              <p className="mt-0.5 text-xl font-bold text-ink tabular-nums">{completionRate}%</p>
+            </div>
           </div>
-        </div>
+        )}
       </Card>
 
       {/* 레벨별 분포 */}

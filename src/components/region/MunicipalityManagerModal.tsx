@@ -9,6 +9,7 @@ import { EXP_COLORS } from '@/constants'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { getRegionsByCountry } from '@/data/regions'
 import { loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
+import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
 import { useT, useLang, regionDisplayName, muniTerm, I18nKey } from '@/lib/i18n'
 import Icon, { IconName } from '@/components/common/Icon'
 
@@ -26,7 +27,8 @@ interface MunicipalityManagerModalProps {
 
 interface MuniItem {
   id: string
-  name: string
+  name: string // 원어 (ID·분류용 - 일본: 한자, 한국: 한글)
+  display: string // 현재 언어 표시명
   level: ExperienceGrade
 }
 
@@ -80,6 +82,7 @@ export default function MunicipalityManagerModal({
       try {
         const fc = await loadMunicipalities(country as Country)
         if (!fc) return
+        if (country === 'japan') await loadJpMuniNames() // 표시명 사전
 
         const items: MuniItem[] = []
         const seen = new Set<string>()
@@ -103,10 +106,10 @@ export default function MunicipalityManagerModal({
           seen.add(genId)
           const exp = getRegionById(genId)
           const level = exp?.gyeonghyeonchi ?? (exp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
-          items.push({ id: genId, name, level })
+          items.push({ id: genId, name, display: muniDisplayName(country as Country, props, name, lang), level })
         })
 
-        items.sort((a, b) => a.name.localeCompare(b.name))
+        items.sort((a, b) => a.display.localeCompare(b.display))
         setMunicipalities(items)
       } catch (e) {
         console.error('Failed to load municipality data', e)
@@ -115,7 +118,7 @@ export default function MunicipalityManagerModal({
       }
     }
     loadData()
-  }, [isOpen, prefectureId, country, regions, getRegionById])
+  }, [isOpen, prefectureId, country, regions, getRegionById, lang])
 
   // 클릭 = 레벨 순환 (0→5→0)
   const handleCycle = (muni: MuniItem) => {
@@ -171,7 +174,8 @@ export default function MunicipalityManagerModal({
   const filteredMunis = useMemo(() => {
     let items = activeTab === 'all' ? municipalities : categories[activeTab].items
     if (search.trim()) {
-      items = items.filter((m) => m.name.includes(search.trim()))
+      const q = search.trim().toLowerCase()
+      items = items.filter((m) => m.name.toLowerCase().includes(q) || m.display.toLowerCase().includes(q))
     }
     return items
   }, [municipalities, categories, activeTab, search])
@@ -341,7 +345,7 @@ export default function MunicipalityManagerModal({
                     className={`group flex items-center gap-2 p-2 pr-2.5 rounded-lg border text-left transition-all active:scale-[0.98] bg-card ${
                       isUnvisited ? 'border-line hover:border-faint' : 'border-line hover:border-seal/50'
                     }`}
-                    title={`${muni.name} — ${t('muni.cycleHint')}`}
+                    title={`${muni.display} — ${t('muni.cycleHint')}`}
                   >
                     {/* 한 글자 도장 */}
                     <span
@@ -362,7 +366,7 @@ export default function MunicipalityManagerModal({
 
                     <span className="flex-1 min-w-0">
                       <span className={`block text-[13px] font-bold truncate leading-tight ${isUnvisited ? 'text-muted' : 'text-ink'}`}>
-                        {muni.name}
+                        {muni.display}
                       </span>
                       {/* 진행 점 */}
                       <span className="flex gap-[2.5px] mt-1">

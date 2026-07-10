@@ -5,8 +5,8 @@ import { useMapExpStore } from '@/store'
 import { useGpsStore } from '@/store/gps'
 import { generateShareUrl } from '@/lib/share'
 import { TOTAL_REGIONS, EXP_COLORS } from '@/constants'
-import { isRegionOfCountry } from '@/constants/regions'
 import { ExperienceGrade, RegionExp } from '@/types'
+import { countryStats, countryGradeCounts, levelFromScore } from '@/lib/stats'
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters, type Country } from '@/lib/geo'
 import { renderRegionMapImage } from '@/lib/mapSnapshot'
@@ -22,18 +22,8 @@ interface ShareModalProps {
   onClose: () => void
 }
 
-/** 국가별 점수·방문수 (광역만, 시정촌/시군구 롤업 제외) */
-function countryStats(regions: RegionExp[], c: Country) {
-  let score = 0
-  let visited = 0
-  for (const r of regions) {
-    if (r.regionId.includes('_') || !isRegionOfCountry(r.regionId, c)) continue
-    const lvl = r.gyeonghyeonchi ?? r.level ?? 0
-    score += lvl
-    if (lvl > 0) visited++
-  }
-  return { score, visited, total: TOTAL_REGIONS[c] }
-}
+/** 카드에 담을 지도 범위 */
+type CardScope = 'japan' | 'korea' | 'both'
 
 const levelOfFor = (regions: RegionExp[]) => (regionId: string): ExperienceGrade => {
   const r = regions.find((x) => x.regionId === regionId)
@@ -41,37 +31,44 @@ const levelOfFor = (regions: RegionExp[]) => (regionId: string): ExperienceGrade
 }
 
 export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
-  const { exportData, country, regions, getTotalGyeonghyeonchi, getSystemLevel, getVisitedCount, getCompletionRate, getGyeonghyeonchiCounts } =
-    useMapExpStore()
+  const { exportData, country, regions } = useMapExpStore()
   const trackPoints = useGpsStore((s) => s.trackPoints)
   const [shareUrl, setShareUrl] = useState('')
-  const [mapImg, setMapImg] = useState<string | null>(null)
-  const [otherMapImg, setOtherMapImg] = useState<string | null>(null)
+  const [mapImgs, setMapImgs] = useState<{ japan: string | null; korea: string | null }>({ japan: null, korea: null })
+  const [scope, setScope] = useState<CardScope>('japan')
   const [rendering, setRendering] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const t = useT()
   const lang = useLang()
 
-  // 양국 기록이 모두 있으면 카드에 두 지도를 나란히 담는다 (이 앱의 정체성)
-  const otherCountry: Country = country === 'japan' ? 'korea' : 'japan'
-  const myStats = countryStats(regions, country as Country)
-  const otherStats = countryStats(regions, otherCountry)
-  const hasBoth = myStats.visited > 0 && otherStats.visited > 0
+  const jpStats = countryStats(regions, 'japan')
+  const krStats = countryStats(regions, 'korea')
+  const hasBoth = jpStats.visited > 0 && krStats.visited > 0
+
+  // 스코프별 선택 가능 여부: 기록 있는 나라 + 현재 보고 있는 나라
+  const scopeEnabled: Record<CardScope, boolean> = {
+    japan: jpStats.visited > 0 || country === 'japan',
+    korea: krStats.visited > 0 || country === 'korea',
+    both: hasBoth,
+  }
 
   useEffect(() => {
     if (isOpen) {
       const data = exportData()
-      const url = generateShareUrl(data)
-      setShareUrl(url)
+      setShareUrl(generateShareUrl(data))
 
-      // 색칠된 지도 스냅샷 렌더링 (광역 레벨)
+      // 색칠된 지도 스냅샷 렌더링: 활성 국가 + (기록이 있으면) 반대 국가
       const levelOf = levelOfFor(regions)
-      setMapImg(null)
-      setOtherMapImg(null)
-      renderRegionMapImage(country as Country, levelOf).then(setMapImg)
-      if (countryStats(regions, otherCountry).visited > 0) {
-        renderRegionMapImage(otherCountry, levelOf).then(setOtherMapImg)
-      }
+      setMapImgs({ japan: null, korea: null })
+      const wantJapan = country === 'japan' || countryStats(regions, 'japan').visited > 0
+      const wantKorea = country === 'korea' || countryStats(regions, 'korea').visited > 0
+      if (wantJapan) renderRegionMapImage('japan', levelOf).then((img) => setMapImgs((m) => ({ ...m, japan: img })))
+      if (wantKorea) renderRegionMapImage('korea', levelOf).then((img) => setMapImgs((m) => ({ ...m, korea: img })))
+
+      // 기본 스코프: 양국 기록이 있으면 양국, 아니면 현재 국가
+      const j = countryStats(regions, 'japan')
+      const k = countryStats(regions, 'korea')
+      setScope(j.visited > 0 && k.visited > 0 ? 'both' : (country as Country))
       ev('share_open', { country })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,7 +130,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       a.href = canvas.toDataURL('image/png')
       a.download = `mapexp-${new Date().toISOString().slice(0, 10)}.png`
       a.click()
-      ev('image_card_save', { country })
+      ev('image_card_save', { country, scope })
       toast.success(t('share.imageDone'))
     } catch (err) {
       console.error(err)
@@ -143,15 +140,45 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     }
   }
 
-  // 카드용 통계
-  const systemLevel = getSystemLevel()
-  const totalExp = getTotalGyeonghyeonchi()
-  const visitedCount = getVisitedCount()
-  const completionRate = getCompletionRate()
-  const counts = getGyeonghyeonchiCounts()
-  const totalRegions = TOTAL_REGIONS[country]
+  // ── 스코프별 카드 통계 ──
   const trackKm = trackDistanceMeters(trackPoints) / 1000
-  const achievedBadges = computeBadges(regions, totalRegions, trackKm, country).filter((b) => b.achieved)
+  const singleCountry: Country = scope === 'both' ? (country as Country) : scope
+  const singleStats = scope === 'japan' ? jpStats : scope === 'korea' ? krStats : null
+
+  const cardScore = scope === 'both' ? jpStats.score + krStats.score : singleStats!.score
+  const cardLevel = levelFromScore(cardScore)
+  const cardVisited = scope === 'both' ? jpStats.visited + krStats.visited : singleStats!.visited
+  const cardTotal = scope === 'both' ? jpStats.total + krStats.total : singleStats!.total
+  const cardCompletion = cardTotal > 0 ? Math.round((cardVisited / cardTotal) * 100) : 0
+
+  const counts: Record<ExperienceGrade, number> = (() => {
+    if (scope !== 'both') return countryGradeCounts(regions, scope)
+    const a = countryGradeCounts(regions, 'japan')
+    const b = countryGradeCounts(regions, 'korea')
+    const merged = { ...a }
+    ;([0, 1, 2, 3, 4, 5] as ExperienceGrade[]).forEach((l) => { merged[l] = a[l] + b[l] })
+    return merged
+  })()
+
+  const achievedBadges = (() => {
+    if (scope !== 'both') {
+      return computeBadges(regions, TOTAL_REGIONS[scope], trackKm, scope).filter((b) => b.achieved)
+    }
+    const jp = computeBadges(regions, TOTAL_REGIONS.japan, trackKm, 'japan').filter((b) => b.achieved)
+    const kr = computeBadges(regions, TOTAL_REGIONS.korea, trackKm, 'korea').filter((b) => b.achieved)
+    const seen = new Set<string>()
+    return [...jp, ...kr].filter((b) => (seen.has(b.id) ? false : (seen.add(b.id), true)))
+  })()
+
+  const countryLabel = (c: Country) => t(c === 'japan' ? 'common.japan' : 'common.korea')
+  const headerLabel = scope === 'both' ? `${countryLabel('japan')} × ${countryLabel('korea')}` : countryLabel(scope)
+  const scopeImgs: Array<{ c: Country; img: string | null; s: typeof jpStats }> =
+    scope === 'both'
+      ? [
+          { c: 'japan', img: mapImgs.japan, s: jpStats },
+          { c: 'korea', img: mapImgs.korea, s: krStats },
+        ]
+      : [{ c: scope, img: mapImgs[scope], s: scope === 'japan' ? jpStats : krStats }]
 
   return (
     <Modal
@@ -173,17 +200,39 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       <div className="space-y-4">
         <p className="text-muted text-sm">{t('share.desc')}</p>
 
+        {/* 지도 범위 선택: 일본 / 한국 / 양국 */}
+        <div className="flex items-center p-0.5 rounded-full border border-line bg-paper w-fit">
+          {(['japan', 'korea', 'both'] as CardScope[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => scopeEnabled[s] && setScope(s)}
+              disabled={!scopeEnabled[s]}
+              className={`px-3 py-1 rounded-full text-[13px] font-medium transition-colors ${
+                scope === s
+                  ? 'bg-ink text-paper'
+                  : scopeEnabled[s]
+                    ? 'text-muted hover:text-ink'
+                    : 'text-faint cursor-not-allowed'
+              }`}
+            >
+              {s === 'both' ? t('share.scopeBoth') : countryLabel(s)}
+            </button>
+          ))}
+        </div>
+
         {/* 지도 미리보기 (이미지 카드에 들어가는 색칠 지도) */}
-        {mapImg && (
-          <div className={`rounded-lg border border-line bg-[#f5f3ec] p-2 ${hasBoth && otherMapImg ? 'grid grid-cols-2 gap-1' : ''}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={mapImg} alt="" className="w-full h-auto max-h-56 object-contain" />
-            {hasBoth && otherMapImg && (
+        <div className={`rounded-lg border border-line bg-[#f5f3ec] p-2 ${scope === 'both' ? 'grid grid-cols-2 gap-1' : ''}`}>
+          {scopeImgs.map(({ c, img }) =>
+            img ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={otherMapImg} alt="" className="w-full h-auto max-h-56 object-contain" />
-            )}
-          </div>
-        )}
+              <img key={c} src={img} alt="" className="w-full h-auto max-h-56 object-contain" />
+            ) : (
+              <div key={c} className="h-32 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-seal" />
+              </div>
+            ),
+          )}
+        </div>
 
         <div className="flex gap-2">
           <input
@@ -247,24 +296,21 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
               <div style={{ fontSize: 11, color: '#7c766a' }}>{t('page.title')}</div>
             </div>
             <div style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: '#7c766a' }}>
-              {hasBoth
-                ? `${t('common.japan')} × ${t('common.korea')}`
-                : t(country === 'japan' ? 'common.japan' : 'common.korea')}
+              {headerLabel}
             </div>
           </div>
 
-          {/* 색칠된 지도 (비교의 핵심) — 양국 기록이 있으면 두 지도를 나란히 */}
-          {hasBoth && otherMapImg && mapImg ? (
+          {/* 색칠된 지도 (비교의 핵심) — 양국이면 두 지도 나란히 + 국가별 캡션 */}
+          {scope === 'both' ? (
             <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-              {[
-                { img: country === 'japan' ? mapImg : otherMapImg, c: 'japan' as const, s: country === 'japan' ? myStats : otherStats },
-                { img: country === 'japan' ? otherMapImg : mapImg, c: 'korea' as const, s: country === 'japan' ? otherStats : myStats },
-              ].map(({ img, c, s }) => (
+              {scopeImgs.map(({ c, img, s }) => (
                 <div key={c} style={{ flex: 1, minWidth: 0 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  {img && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={img} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  )}
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, justifyContent: 'center' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>{t(c === 'japan' ? 'common.japan' : 'common.korea')}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{countryLabel(c)}</span>
                     <span style={{ fontSize: 11, color: '#7c766a' }}>
                       {t('stats.exp', { n: s.score })} · {s.visited}/{s.total}
                     </span>
@@ -273,10 +319,10 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
               ))}
             </div>
           ) : (
-            mapImg && (
+            scopeImgs[0]?.img && (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
-                src={mapImg}
+                src={scopeImgs[0].img!}
                 alt=""
                 style={{ width: '100%', height: 'auto', display: 'block', marginBottom: 18 }}
               />
@@ -285,9 +331,9 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
 
           {/* 레벨 */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontSize: 52, fontWeight: 700, lineHeight: 1 }}>{systemLevel}</span>
+            <span style={{ fontSize: 52, fontWeight: 700, lineHeight: 1 }}>{cardLevel}</span>
             <span style={{ fontSize: 14, color: '#7c766a' }}>{t('stats.travelerLevel')}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 13, color: '#7c766a' }}>{t('stats.exp', { n: totalExp })}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 13, color: '#7c766a' }}>{t('stats.exp', { n: cardScore })}</span>
           </div>
 
           {/* 방문/달성률 */}
@@ -295,12 +341,12 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             <div>
               <div style={{ fontSize: 11, color: '#7c766a' }}>{t('stats.visited')}</div>
               <div style={{ fontSize: 22, fontWeight: 700 }}>
-                {visitedCount}<span style={{ fontSize: 13, color: '#a8a294' }}> / {totalRegions}</span>
+                {cardVisited}<span style={{ fontSize: 13, color: '#a8a294' }}> / {cardTotal}</span>
               </div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: '#7c766a' }}>{t('stats.completion')}</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{completionRate}%</div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>{cardCompletion}%</div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: '#7c766a' }}>{t('badges.title')}</div>
@@ -317,7 +363,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
                 <span
                   key={lvl}
                   style={{
-                    width: `${(count / totalRegions) * 100}%`,
+                    width: `${(count / cardTotal) * 100}%`,
                     backgroundColor: lvl === 0 ? '#e3dfd3' : EXP_COLORS[lvl],
                   }}
                 />
