@@ -73,27 +73,27 @@ export const JAPAN_REGIONS: RegionMetadata[] = [
  */
 export const KOREA_REGIONS: RegionMetadata[] = [
   // 수도권
-  { id: 'seoul', name: '서울특별시', nameEn: 'Seoul', nameLocal: '서울특별시', country: 'korea', type: 'province' },
-  { id: 'incheon', name: '인천광역시', nameEn: 'Incheon', nameLocal: '인천광역시', country: 'korea', type: 'province' },
-  { id: 'gyeonggi', name: '경기도', nameEn: 'Gyeonggi-do', nameLocal: '경기도', country: 'korea', type: 'province' },
+  { id: 'seoul', name: '서울특별시', nameEn: 'Seoul', nameLocal: '서울특별시', nameJa: 'ソウル特別市', country: 'korea', type: 'province' },
+  { id: 'incheon', name: '인천광역시', nameEn: 'Incheon', nameLocal: '인천광역시', nameJa: '仁川広域市(インチョン)', country: 'korea', type: 'province' },
+  { id: 'gyeonggi', name: '경기도', nameEn: 'Gyeonggi-do', nameLocal: '경기도', nameJa: '京畿道(キョンギド)', country: 'korea', type: 'province' },
 
   // 광역시
-  { id: 'busan', name: '부산광역시', nameEn: 'Busan', nameLocal: '부산광역시', country: 'korea', type: 'province' },
-  { id: 'daegu', name: '대구광역시', nameEn: 'Daegu', nameLocal: '대구광역시', country: 'korea', type: 'province' },
-  { id: 'daejeon', name: '대전광역시', nameEn: 'Daejeon', nameLocal: '대전광역시', country: 'korea', type: 'province' },
-  { id: 'ulsan', name: '울산광역시', nameEn: 'Ulsan', nameLocal: '울산광역시', country: 'korea', type: 'province' },
-  { id: 'sejong', name: '세종특별자치시', nameEn: 'Sejong', nameLocal: '세종특별자치시', country: 'korea', type: 'province' },
+  { id: 'busan', name: '부산광역시', nameEn: 'Busan', nameLocal: '부산광역시', nameJa: '釜山広域市(プサン)', country: 'korea', type: 'province' },
+  { id: 'daegu', name: '대구광역시', nameEn: 'Daegu', nameLocal: '대구광역시', nameJa: '大邱広域市(テグ)', country: 'korea', type: 'province' },
+  { id: 'daejeon', name: '대전광역시', nameEn: 'Daejeon', nameLocal: '대전광역시', nameJa: '大田広域市(テジョン)', country: 'korea', type: 'province' },
+  { id: 'ulsan', name: '울산광역시', nameEn: 'Ulsan', nameLocal: '울산광역시', nameJa: '蔚山広域市(ウルサン)', country: 'korea', type: 'province' },
+  { id: 'sejong', name: '세종특별자치시', nameEn: 'Sejong', nameLocal: '세종특별자치시', nameJa: '世宗特別自治市(セジョン)', country: 'korea', type: 'province' },
 
   // 도
-  { id: 'gangwon', name: '강원특별자치도', nameEn: 'Gangwon-do', nameLocal: '강원특별자치도', country: 'korea', type: 'province' },
-  { id: 'chungbuk', name: '충청북도', nameEn: 'Chungcheongbuk-do', nameLocal: '충청북도', country: 'korea', type: 'province' },
-  { id: 'chungnam', name: '충청남도', nameEn: 'Chungcheongnam-do', nameLocal: '충청남도', country: 'korea', type: 'province' },
-  { id: 'jeonbuk', name: '전북특별자치도', nameEn: 'Jeonbuk', nameLocal: '전북특별자치도', country: 'korea', type: 'province' },
+  { id: 'gangwon', name: '강원특별자치도', nameEn: 'Gangwon-do', nameLocal: '강원특별자치도', nameJa: '江原特別自治道(カンウォン)', country: 'korea', type: 'province' },
+  { id: 'chungbuk', name: '충청북도', nameEn: 'Chungcheongbuk-do', nameLocal: '충청북도', nameJa: '忠清北道(チュンチョンプクト)', country: 'korea', type: 'province' },
+  { id: 'chungnam', name: '충청남도', nameEn: 'Chungcheongnam-do', nameLocal: '충청남도', nameJa: '忠清南道(チュンチョンナムド)', country: 'korea', type: 'province' },
+  { id: 'jeonbuk', name: '전북특별자치도', nameEn: 'Jeonbuk', nameLocal: '전북특별자치도', nameJa: '全北特別自治道(チョンブク)', country: 'korea', type: 'province' },
   // 2026-07-01 광주광역시 + 전라남도 통합 출범
-  { id: 'jeonnamgwangju', name: '전남광주통합특별시', nameEn: 'Jeonnam-Gwangju', nameLocal: '전남광주통합특별시', country: 'korea', type: 'province' },
-  { id: 'gyeongbuk', name: '경상북도', nameEn: 'Gyeongsangbuk-do', nameLocal: '경상북도', country: 'korea', type: 'province' },
-  { id: 'gyeongnam', name: '경상남도', nameEn: 'Gyeongsangnam-do', nameLocal: '경상남도', country: 'korea', type: 'province' },
-  { id: 'jeju', name: '제주특별자치도', nameEn: 'Jeju', nameLocal: '제주특별자치도', country: 'korea', type: 'province' },
+  { id: 'jeonnamgwangju', name: '전남광주통합특별시', nameEn: 'Jeonnam-Gwangju', nameLocal: '전남광주통합특별시', nameJa: '全南・光州特別市(チョンナム・クァンジュ)', country: 'korea', type: 'province' },
+  { id: 'gyeongbuk', name: '경상북도', nameEn: 'Gyeongsangbuk-do', nameLocal: '경상북도', nameJa: '慶尚北道(キョンサンプクト)', country: 'korea', type: 'province' },
+  { id: 'gyeongnam', name: '경상남도', nameEn: 'Gyeongsangnam-do', nameLocal: '경상남도', nameJa: '慶尚南道(キョンサンナムド)', country: 'korea', type: 'province' },
+  { id: 'jeju', name: '제주특별자치도', nameEn: 'Jeju', nameLocal: '제주특별자치도', nameJa: '済州特別自治道(チェジュ)', country: 'korea', type: 'province' },
 ]
 
 /**

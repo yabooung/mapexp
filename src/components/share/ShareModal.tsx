@@ -6,7 +6,7 @@ import { useGpsStore } from '@/store/gps'
 import { generateShareUrl } from '@/lib/share'
 import { TOTAL_REGIONS, EXP_COLORS } from '@/constants'
 import { ExperienceGrade, RegionExp } from '@/types'
-import { countryStats, countryGradeCounts, levelFromScore } from '@/lib/stats'
+import { countryStats, countryGradeCounts, levelFromScore, muniStats } from '@/lib/stats'
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters, type Country } from '@/lib/geo'
 import { renderRegionMapImage, renderMunicipalityMapImage } from '@/lib/mapSnapshot'
@@ -195,24 +195,35 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
   // - 양국: 국가별 지도 2장 (광역 or 기초) + 국가 캡션
   // - 단일 + 둘다: 광역/기초 2장 + 상세도 캡션
   // - 단일: 1장
+  // 국가별 기초(시정촌/시군구) 점수: 기초 지도 캡션용
+  const muniStatsOf = (c: Country) => muniStats(regions, c)
+
   interface MapSlot { key: string; img: string | null; caption?: string }
   const mapSlots: MapSlot[] = (() => {
     const imgsOf = (d: 'pref' | 'muni') => (d === 'pref' ? mapImgs : muniImgs)
     if (scope === 'both') {
       const d = detail === 'muni' ? 'muni' : 'pref'
-      return (['japan', 'korea'] as Country[]).map((c) => ({
-        key: `${c}-${d}`,
-        img: imgsOf(d)[c],
-        caption: `${countryLabel(c)}  ${t('stats.exp', { n: (c === 'japan' ? jpStats : krStats).score })} · ${(c === 'japan' ? jpStats : krStats).visited}/${(c === 'japan' ? jpStats : krStats).total}`,
-      }))
+      return (['japan', 'korea'] as Country[]).map((c) => {
+        const s = c === 'japan' ? jpStats : krStats
+        const cap =
+          d === 'muni'
+            ? `${countryLabel(c)}  ${t('stats.muniRow', { n: muniStatsOf(c).score, m: muniStatsOf(c).count })}`
+            : `${countryLabel(c)}  ${t('stats.exp', { n: s.score })} · ${s.visited}/${s.total}`
+        return { key: `${c}-${d}`, img: imgsOf(d)[c], caption: cap }
+      })
     }
     if (detail === 'bothDetail') {
+      const ms = muniStatsOf(scope)
       return [
-        { key: `${scope}-pref`, img: mapImgs[scope], caption: t('share.detailPref') },
-        { key: `${scope}-muni`, img: muniImgs[scope], caption: t('share.detailMuni') },
+        { key: `${scope}-pref`, img: mapImgs[scope], caption: `${t('share.detailPref')}  ${t('stats.exp', { n: scope === 'japan' ? jpStats.score : krStats.score })}` },
+        { key: `${scope}-muni`, img: muniImgs[scope], caption: `${t('share.detailMuni')}  ${t('stats.muniRow', { n: ms.score, m: ms.count })}` },
       ]
     }
-    return [{ key: `${scope}-${detail}`, img: detail === 'muni' ? muniImgs[scope] : mapImgs[scope] }]
+    if (detail === 'muni') {
+      const ms = muniStatsOf(scope)
+      return [{ key: `${scope}-muni`, img: muniImgs[scope], caption: t('stats.muniRow', { n: ms.score, m: ms.count }) }]
+    }
+    return [{ key: `${scope}-pref`, img: mapImgs[scope] }]
   })()
   const multiMap = mapSlots.length > 1
 

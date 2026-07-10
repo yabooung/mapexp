@@ -1,5 +1,8 @@
 import type { Country } from '@/lib/geo'
 import type { Lang } from '@/lib/i18n'
+import KR_MUNI_JA from '@/data/kr-muni-ja.json'
+
+const krMuniJa = KR_MUNI_JA as Record<string, { j: string; k: string }>
 
 /**
  * 시정촌/시군구 표시명 다국어화
@@ -40,6 +43,11 @@ export function muniDisplayName(country: Country, props: MuniProps, fallbackName
   if (!props) return fallbackName
   if (country === 'korea') {
     if (lang === 'ko') return (props.name as string) ?? fallbackName
+    if (lang === 'ja') {
+      // 일본어: 한자 표기 + 가타카나 발음 (일본 독자는 한국 한자 지명을 음독하므로 발음 병기)
+      const entry = props.code ? krMuniJa[(props.code as string)] : undefined
+      if (entry) return `${entry.j}(${entry.k})`
+    }
     return (props.name_eng as string) ?? fallbackName
   }
   if (lang === 'ja') return fallbackName
