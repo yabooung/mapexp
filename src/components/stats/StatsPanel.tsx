@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react'
 import { useMapExpStore } from '@/store'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS, TOTAL_REGIONS } from '@/constants'
-import { countryStats, countryGradeCounts, levelFromScore } from '@/lib/stats'
+import { countryStats, countryGradeCounts, levelFromScore, regionScoreRows } from '@/lib/stats'
 import type { Country } from '@/lib/geo'
+import { getRegionMetadata } from '@/data/regions'
 import Card from '@/components/common/Card'
-import { useT, useLang, levelLabel } from '@/lib/i18n'
+import { useT, useLang, levelLabel, regionDisplayName } from '@/lib/i18n'
 
 interface StatsPanelProps {
   /** 양국 지도 뷰가 켜져 있으면 두 나라 통계를 함께 보여준다 */
@@ -58,6 +59,11 @@ export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
     { c: 'japan', label: t('common.japan'), s: jp },
     { c: 'korea', label: t('common.korea'), s: kr },
   ]
+
+  // 지역별 점수 (방문 지역만): 광역 등급 + 산하 기초 지역 점수
+  const scoreRows = regionScoreRows(regions, showBoth ? ['japan', 'korea'] : [country as Country])
+  const muniTotalScore = scoreRows.reduce((s, r) => s + r.muniScore, 0)
+  const muniTotalCount = scoreRows.reduce((s, r) => s + r.muniCount, 0)
 
   return (
     <div className="space-y-4">
@@ -170,6 +176,42 @@ export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
           </span>
         </div>
       </Card>
+
+      {/* 지역별 점수 (방문 지역 + 기초 지역 점수) */}
+      {scoreRows.length > 0 && (
+        <Card>
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">{t('stats.regionScores')}</h3>
+            {muniTotalCount > 0 && (
+              <span className="text-xs text-muted tabular-nums">
+                {t('stats.muniTotal', { n: muniTotalScore, m: muniTotalCount })}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-0.5 max-h-72 overflow-y-auto pr-1">
+            {scoreRows.map((r) => {
+              const meta = getRegionMetadata(r.id)
+              const name = meta ? regionDisplayName(meta, lang) : r.id
+              return (
+                <div key={r.id} className="flex items-center gap-2 py-1">
+                  <span
+                    className="w-3 h-3 rounded-[3px] shrink-0 border border-black/10"
+                    style={{ backgroundColor: r.ownLevel > 0 ? EXP_COLORS[r.ownLevel] : 'var(--line)' }}
+                  />
+                  <span className="text-sm text-ink truncate">{name}</span>
+                  {r.ownLevel > 0 && (
+                    <span className="text-[11px] text-muted shrink-0">{levelLabel(r.ownLevel, lang)}</span>
+                  )}
+                  <span className="ml-auto text-xs text-muted tabular-nums shrink-0">
+                    {r.muniCount > 0 ? t('stats.muniRow', { n: r.muniScore, m: r.muniCount }) : t('stats.points', { n: r.ownLevel })}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
     </div>
   )
 }
