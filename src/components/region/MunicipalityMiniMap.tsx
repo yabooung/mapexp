@@ -81,6 +81,8 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
   const { getRegionById, addRegion, updateRegion } = useMapExpStore.getState()
   const mapLang = useMapLang()
   const [geo, setGeo] = useState<FeatureCollection | null>(null)
+  // react-leaflet GeoJSON은 data prop 변경을 반영하지 않음 → 버전으로 key를 바꿔 리마운트
+  const [geoV, setGeoV] = useState(0)
   const [labels, setLabels] = useState<MiniLabel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const layerRef = useRef<L.GeoJSON | null>(null)
@@ -138,6 +140,7 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
       })
 
       setGeo({ type: 'FeatureCollection', features })
+      setGeoV((v) => v + 1)
       setLabels(newLabels)
       setIsLoading(false)
     })
@@ -221,7 +224,7 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
         {geo && geo.features.length > 0 && (
           <GeoJSON
             ref={layerRef}
-            key={`${country}-${prefectureId}`}
+            key={`${country}-${geoV}`}
             data={geo}
             style={styleFor}
             onEachFeature={onEach}

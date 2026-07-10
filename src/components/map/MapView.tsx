@@ -12,7 +12,7 @@ import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import GpsLayer from './GpsLayer'
 import GpsControls from './GpsControls'
 import Icon from '@/components/common/Icon'
-import { municipalityName, PREF_KANJI_BY_ID, loadPrefectures, featureContainsPoint, type Country } from '@/lib/geo'
+import { municipalityName, loadPrefectures, loadMunicipalities, featureContainsPoint, type Country } from '@/lib/geo'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { useT, tNow, muniTerm, regionDisplayName, mapLangNow, useMapLang, I18nKey, type Lang } from '@/lib/i18n'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
@@ -24,6 +24,11 @@ const prefDisplayName = (regionId: string, fallback: string): string => {
   const meta = getRegionMetadata(regionId)
   return meta ? regionDisplayName(meta, mapLangNow()) : fallback
 }
+
+// 한국 시군구 코드 접두사 → 광역 ID (전국 오버레이의 부모 판정용)
+const KOREA_ID_BY_PROV_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(KOREA_PROV_CODE_BY_ID).map(([id, code]) => [code, id]),
+)
 
 interface MapViewProps {
   onRegionClick: (regionId: string) => void
@@ -243,151 +248,114 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
     setOverlayGeoData(null)
   }, [country])
 
-  // GeoJSON 데이터 로드
+  // 광역 GeoJSON 로드 (도도부현/시도) - geo.ts 공용 로더 (ID 주입 + 캐싱)
   useEffect(() => {
     const loadGeoData = async () => {
       setIsLoading(true)
       try {
-        // 1. Load Base Data (광역: 도도부현/시도) - geo.ts 공용 로더 (ID 주입 + 캐싱)
-        let base = baseGeoData as FeatureCollection | null
-        if (!base || baseCountry !== country) {
-             const fc = await loadPrefectures(country)
-             if (fc) {
-                 base = fc
-                 setBaseGeoData(fc)
-                 setBaseCountry(country)
-                 setBoundary(fc)
-             }
+        if (!(baseGeoData as FeatureCollection | null) || baseCountry !== country) {
+          const fc = await loadPrefectures(country)
+          if (fc) {
+            setBaseGeoData(fc)
+            setBaseCountry(country)
+            setBoundary(fc)
+          }
         }
-
-        // 2. Load Overlay Data (기초: 시정촌/시군구) - On Demand (표시 모드가 켜진 경우만)
-        if (mapLevel === 'municipality' && viewPrefectureId && showMuniLayer) {
-             let url = country === 'japan'
-                 ? '/geojson/japan-municipalities.json'
-                 : '/geojson/korea-municipalities.json'
-
-             // Tokyo (Use detailed separate file)
-             if (country === 'japan' && (viewPrefectureId === 'tokyo' || viewPrefectureId === '13')) {
-                 url = '/geojson/japan-detail/N03-21_13_210101.json'
-             }
-
-             if (url) {
-                 // 일본 시정촌 다국어 이름 사전 (라벨/툴팁 표시용)
-                 const jpNames = country === 'japan' ? await loadJpMuniNames() : null
-                 const response = await fetch(url)
-                 if (response.ok) {
-                    const json = await response.json()
-
-                     const labels: RegionLabel[] = []
-                     if (json.type === 'FeatureCollection') {
-                         const collection = json as FeatureCollection
-
-                         // 전국 파일에서는 현재 보고 있는 광역의 기초 지역만 추림 (성능)
-                         let features = collection.features
-                         if (country === 'japan') {
-                             const viewPrefKanji =
-                                 viewPrefectureId === '13' ? '東京都' : PREF_KANJI_BY_ID[viewPrefectureId] ?? null
-                             if (viewPrefKanji) {
-                                 features = features.filter(
-                                     (f: any) => !f.properties?.N03_001 || f.properties.N03_001 === viewPrefKanji,
-                                 )
-                             }
-                         } else {
-                             const provCode = KOREA_PROV_CODE_BY_ID[viewPrefectureId]
-                             if (provCode) {
-                                 features = features.filter((f: any) => f.properties?.code?.startsWith(provCode))
-                             }
-                         }
-                         const filtered: FeatureCollection = { ...collection, features }
-
-                         filtered.features.forEach((feat: any) => {
-                             let muniName: string
-                             let parentId: string
-
-                             if (country === 'japan') {
-                                 // 정령지정시 구는 시 이름 포함 (예: 札幌市中央区) - ID 충돌 방지
-                                 muniName = municipalityName(feat.properties)
-                                     || feat.properties?.name || feat.properties?.nam || 'Unknown'
-                                 const prefName = feat.properties?.N03_001
-                                 parentId = prefName && REGION_ID_MAP['japan'][prefName]
-                                     ? REGION_ID_MAP['japan'][prefName]
-                                     : viewPrefectureId
-                             } else {
-                                 muniName = feat.properties?.name || 'Unknown'
-                                 parentId = viewPrefectureId
-                             }
-                             const genId = `${parentId}_${muniName}`
-
-                             feat.properties = { ...feat.properties, id: genId, name: muniName, name_ko: muniName }
-
-                             let position: [number, number]
-                             if (LABEL_OVERRIDES[genId]) position = LABEL_OVERRIDES[genId]
-                             else {
-                                 const centroid = geoCentroid(feat)
-                                 position = [centroid[1], centroid[0]]
-                             }
-                             // 라벨 다국어: 일본은 코드 사전, 한국은 name_eng
-                             let nameEn: string | undefined
-                             let nameKo: string | undefined
-                             if (country === 'japan') {
-                                 const entry = jpNames?.[feat.properties?.N03_007 as string]
-                                 nameEn = entry?.e
-                                 nameKo = entry?.k
-                             } else {
-                                 nameEn = feat.properties?.name_eng as string | undefined
-                                 nameKo = muniName
-                             }
-                             labels.push({ id: genId, name: muniName, nameEn, nameKo, position })
-                         })
-
-                         setOverlayGeoData(filtered)
-                     } else {
-                         setOverlayGeoData(json)
-                     }
-                     setRegionLabels(labels)
-                  }
-              }
-         } else {
-             // Restore Base Labels (Prefectures)
-             // Data is ALREADY processed in Step 1, so we just build labels
-             if (baseGeoData && (baseGeoData as any).type === 'FeatureCollection') {
-                 setOverlayGeoData(null) // Clear overlay
-                 
-                 const labels: RegionLabel[] = []
-                 const collection = baseGeoData as FeatureCollection
-                 collection.features.forEach((feat: any) => {
-                     if (feat.properties?.id) {
-                          const id = feat.properties.id
-                          let position: [number, number]
-                          if (LABEL_OVERRIDES[id]) position = LABEL_OVERRIDES[id]
-                          else {
-                              const centroid = geoCentroid(feat)
-                              position = [centroid[1], centroid[0]]
-                          }
-                          const meta = getRegionMetadata(id)
-                          labels.push({
-                              id,
-                              name: feat.properties.name,
-                              nameKo: meta?.name,
-                              nameEn: meta?.nameEn,
-                              position,
-                          })
-                     }
-                 })
-                 setRegionLabels(labels)
-             }
-         }
-
       } catch (error) {
         console.error('Error loading map data:', error)
       } finally {
         setIsLoading(false)
       }
     }
-
     loadGeoData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [country, mapLevel, viewPrefectureId, baseGeoData, retryKey, showMuniLayer])
+  }, [country, baseGeoData, retryKey])
+
+  // 기초 지역 오버레이: 토글이 켜지면 줌과 무관하게 전국 시정촌/시군구를 통째로 렌더.
+  // react-leaflet GeoJSON은 data 변경을 반영하지 않으므로 버전을 올려 key로 리마운트한다.
+  const [overlayV, setOverlayV] = useState(0)
+  useEffect(() => {
+    if (!showMuniLayer) {
+      setOverlayGeoData(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        if (country === 'japan') await loadJpMuniNames() // 툴팁/라벨 표시명 사전
+        const fc = await loadMunicipalities(country)
+        if (cancelled || !fc) return
+
+        // 캐시된 원본을 변형하지 않도록 새 feature로 복사하며 ID 주입
+        const features: Feature[] = []
+        fc.features.forEach((f) => {
+          const props = f.properties as Record<string, string | null> | null
+          let muniName: string | null
+          let parentId: string | null | undefined
+          if (country === 'japan') {
+            muniName = municipalityName(props)
+            parentId = props?.N03_001 ? REGION_ID_MAP['japan'][props.N03_001] : null
+          } else {
+            muniName = props?.name ?? null
+            parentId = props?.code ? KOREA_ID_BY_PROV_CODE[props.code.slice(0, 2)] : null
+          }
+          if (!muniName || !parentId) return
+          const genId = `${parentId}_${muniName}`
+          features.push({ ...f, properties: { ...(f.properties as object), id: genId, name: muniName, name_ko: muniName } })
+        })
+        setOverlayGeoData({ type: 'FeatureCollection', features } as FeatureCollection)
+        setOverlayV((v) => v + 1)
+      } catch (error) {
+        console.error('Error loading municipality data:', error)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [country, showMuniLayer])
+
+  // 라벨 구성: 기초 표시 + 줌인 상태면 중앙 광역의 시정촌 라벨, 아니면 광역 라벨
+  useEffect(() => {
+    if (showMuniLayer && mapLevel === 'municipality' && viewPrefectureId && overlayGeoData) {
+      const labels: RegionLabel[] = []
+      ;(overlayGeoData as FeatureCollection).features.forEach((feat) => {
+        const props = feat.properties as Record<string, string | null>
+        const genId = props?.id as string | null
+        if (!genId || !genId.startsWith(`${viewPrefectureId}_`)) return
+        const muniName = props.name as string
+        let position: [number, number]
+        if (LABEL_OVERRIDES[genId]) position = LABEL_OVERRIDES[genId]
+        else {
+          const centroid = geoCentroid(feat)
+          position = [centroid[1], centroid[0]]
+        }
+        labels.push({
+          id: genId,
+          name: muniName,
+          nameEn: muniDisplayName(country, props, muniName, 'en'),
+          nameKo: muniDisplayName(country, props, muniName, 'ko'),
+          position,
+        })
+      })
+      setRegionLabels(labels)
+    } else if (baseGeoData && (baseGeoData as FeatureCollection).type === 'FeatureCollection') {
+      const labels: RegionLabel[] = []
+      ;(baseGeoData as FeatureCollection).features.forEach((feat) => {
+        const props = feat.properties as Record<string, string | null>
+        if (!props?.id) return
+        const id = props.id
+        let position: [number, number]
+        if (LABEL_OVERRIDES[id]) position = LABEL_OVERRIDES[id]
+        else {
+          const centroid = geoCentroid(feat)
+          position = [centroid[1], centroid[0]]
+        }
+        const meta = getRegionMetadata(id)
+        labels.push({ id, name: props.name as string, nameKo: meta?.name, nameEn: meta?.nameEn, position })
+      })
+      setRegionLabels(labels)
+    }
+  }, [showMuniLayer, mapLevel, viewPrefectureId, overlayGeoData, baseGeoData, country])
 
   // 양국 동시 표시: 반대 국가 광역 데이터 로드 (geo.ts 공용 로더 - ID 주입·캐싱)
   useEffect(() => {
@@ -563,7 +531,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   useEffect(() => {
     baseStyleRef.current = getRegionStyle
     muniStyleRef.current = getMunicipalityStyle
-    readOnlyRef.current = showMuniLayer && mapLevel === 'municipality'
+    readOnlyRef.current = showMuniLayer
     baseLayerRef.current?.setStyle((f) => baseStyleRef.current(f as Feature))
     overlayLayerRef.current?.setStyle((f) => muniStyleRef.current(f as Feature))
     secondaryLayerRef.current?.setStyle((f) => baseStyleRef.current(f as Feature))
@@ -660,6 +628,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
     <div className="w-full h-full rounded-lg overflow-hidden shadow-lg relative bg-white">
       <MapContainer
         key={`${country}-${settings.mapMode}-${showBoth}`}
+        preferCanvas={true} /* 전국 시정촌(1,897 폴리곤) 렌더 성능 */
         center={mapCenter as [number, number]}
         zoom={mapZoom}
         minZoom={showBoth ? 3 : country === 'japan' ? 3 : 5}
@@ -693,27 +662,17 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
           )
         )}
         
-        {/* Base Layer (Prefectures) - Always Visible */}
-        <GeoJSON
-          ref={baseLayerRef}
-          key={`base-${country}-${mapLevel}-${viewPrefectureId}`}
-          data={{
-              ...baseGeoData!,
-              features: (baseGeoData! as FeatureCollection).features.filter(f => {
-                   const fid = f.properties?.id
-                   // Hide if this is the active view prefecture (시정촌 표시가 켜진 경우만)
-                   if (showMuniLayer && viewPrefectureId && fid) {
-                       if (fid === viewPrefectureId) return false
-                       if (viewPrefectureId === '13' && fid === 'tokyo') return false
-                       if (viewPrefectureId === 'tokyo' && fid === '13') return false
-                   }
-                   return true
-              })
-          } as FeatureCollection}
-          // 생성 시에는 현재 렌더의 신선한 클로저를 사용 (ref는 이 시점에 아직 이전 렌더 값)
-          style={getRegionStyle}
-          onEachFeature={onEachFeature}
-        />
+        {/* Base Layer (Prefectures) - 기초 표시 중에는 전국이 시정촌으로 보이므로 광역 색칠은 숨긴다 */}
+        {!showMuniLayer && (
+          <GeoJSON
+            ref={baseLayerRef}
+            key={`base-${country}`}
+            data={baseGeoData as FeatureCollection}
+            // 생성 시에는 현재 렌더의 신선한 클로저를 사용 (ref는 이 시점에 아직 이전 렌더 값)
+            style={getRegionStyle}
+            onEachFeature={onEachFeature}
+          />
+        )}
 
         {/* 양국 동시 표시: 반대 국가 광역 레이어 (시정촌 오버레이 없음, 클릭·색칠만) */}
         {showBoth && secondaryGeoData && (
@@ -726,14 +685,23 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
              />
         )}
 
-        {/* Overlay Layer (Municipalities) - Only if zoomed in. 읽기 전용 표시 */}
+        {/* Overlay Layer (Municipalities) - 전국 기초 지역, 읽기 전용 표시 */}
         {showMuniLayer && overlayGeoData && (
              <GeoJSON
                 ref={overlayLayerRef}
-                key={`overlay-${country}-${viewPrefectureId}`}
+                key={`overlay-${country}-${overlayV}`}
                 data={overlayGeoData}
                 style={getMunicipalityStyle}
                 onEachFeature={onEachMunicipalityFeature}
+             />
+        )}
+
+        {/* 기초 표시 중 광역 경계선 (비인터랙티브 - 맥락용, 시정촌 툴팁을 방해하지 않음) */}
+        {showMuniLayer && baseGeoData && (
+             <GeoJSON
+                key={`prefline-${country}`}
+                data={baseGeoData as FeatureCollection}
+                style={{ fill: false, color: 'rgba(38, 35, 28, 0.45)', weight: 1.2, interactive: false }}
              />
         )}
 
@@ -817,8 +785,8 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
 
             <button
               onClick={() => {
-                  // 지명 언어 순환: 자동 → 한국어 → English → 日本語
-                  const order: Array<'auto' | Lang> = ['auto', 'ko', 'en', 'ja']
+                  // 지명 언어 순환: 자동 → 한국어 → 日本語 → English
+                  const order: Array<'auto' | Lang> = ['auto', 'ko', 'ja', 'en']
                   const cur = settings.mapLanguage ?? 'auto'
                   const next = order[(order.indexOf(cur) + 1) % order.length]
                   updateSettings({ mapLanguage: next })
