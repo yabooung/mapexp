@@ -2,10 +2,12 @@
 
 [한국어](README.md) · [English](README.en.md) · **日本語**
 
-訪れた地域ごとにスタンプを押して、旅の足あとを積み上げる地図サービス。
-日本の47都道府県・1,897市区町村と、韓国の16道市・250市郡区に対応しています。
+**▶ https://mapexp.vercel.app — インストール不要ですぐ使えます**
 
-日本の[経県値](https://uub.jp/kkn/)の概念をもとに、市区町村単位の精度とGPSスタンプで再構成しました。
+訪れた地域ごとにスタンプを押して、旅の足あとを積み上げる地図サービス。
+日本の47都道府県・1,897市区町村と、韓国の16道市・250市郡区を**ひとつの地図で**記録できます。
+
+日本の[経県値](https://uub.jp/kkn/)の概念をもとに、日韓両国の同時記録・市区町村単位の精度・GPSスタンプで再構成しました。
 
 <p align="center">
   <img src="docs/screenshots/desktop.ja.png" width="800" alt="日本地図の画面">
@@ -25,11 +27,14 @@
 ## 主な機能
 
 - **経県値の記録** — 地域をタップするたびにランクが変化：未踏(0) → 通過(1) → 接地(2) → 訪問(3) → 宿泊(4) → 居住(5)
+- **両国同時ビュー** — 日本と韓国の地図を一画面に表示し、合算レベル＋国別統計で記録
+- **市区町村単位** — 管理画面（リスト・ミニマップ）で市区町村ごとにスタンプ。「市区町村」トグルで全国を市区町村単位で表示
+- **地名の3言語対応** — 日本の市区町村はハングル・ローマ字（総務省の読みに基づく）、韓国の市郡区は漢字＋カタカナで表示。地名の言語はUI言語とは別に選択可能
 - **GPS** — 現在地域（都道府県＋市区町村）を自動検知、移動ルートの記録、訪問の自動記録
   - GPS認証記録は作成後に日時の編集・削除ができません（手動記録は過去日付を自由に入力可）
-- **ゲーム要素** — 旅行者レベル、漢字の落款スタンプ帳（バッジ12種）、レベルアップ演出
-- **共有** — 閲覧専用の共有リンク（受け取った人のデータは自動バックアップ）、色分け地図入りのSNS画像カード
-- **多言語** — 한국어 · English · 日本語
+- **ゲーム要素** — 旅行者レベル、漢字の落款スタンプ帳（バッジ12種）、地域別スコア・市区町村スコアの統計
+- **共有** — SNS画像カード（日本／韓国／両国 × 広域／市区町村／両方を選択）、モバイルでは画像ファイルをそのまま共有、閲覧専用の共有リンク
+- **多言語UI** — 한국어 · English · 日本語
 - **PWA** — ホーム画面への追加、地図データのオフラインキャッシュ
 - **プライバシー** — 記録と位置情報はすべて端末内にのみ保存（サーバー・ログインなし）
 
@@ -43,11 +48,14 @@ Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Leaflet (react-leaflet
 npm install
 npm run dev    # http://localhost:3000
 npm run build  # 本番ビルド
+
+# 日本の市区町村の多言語名データを再生成 (public/geojson/jp-muni-names.json)
+node scripts/gen-muni-names.mjs
 ```
 
 ## データ出典
 
-- 日本: [国土数値情報 N03](https://nlftp.mlit.go.jp/ksj/)（加工: [smartnews-smri/japan-topography](https://github.com/smartnews-smri/japan-topography)）
+- 日本: [国土数値情報 N03](https://nlftp.mlit.go.jp/ksj/)（加工: [smartnews-smri/japan-topography](https://github.com/smartnews-smri/japan-topography)）、市区町村の読み: 総務省 全国地方公共団体コード（[nojimage/local-gov-code-jp](https://github.com/nojimage/local-gov-code-jp)）
 - 韓国: 統計庁の行政区域（[southkorea/southkorea-maps](https://github.com/southkorea/southkorea-maps)）、2026年7月の再編を反映
 - 背景タイル: [CARTO](https://carto.com/attributions) / [OpenStreetMap](https://www.openstreetmap.org/copyright)
 
