@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import dynamic from 'next/dynamic'
 import { useMapExpStore } from '@/store'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
@@ -9,7 +10,12 @@ import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { getRegionsByCountry } from '@/data/regions'
 import { loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
 import { useT, useLang, regionDisplayName, muniTerm, I18nKey } from '@/lib/i18n'
-import Icon from '@/components/common/Icon'
+import Icon, { IconName } from '@/components/common/Icon'
+
+// 지도 뷰는 Leaflet(window 의존) → SSR 비활성화 후 필요할 때만 로드
+const MunicipalityMiniMap = dynamic(() => import('./MunicipalityMiniMap'), { ssr: false })
+
+type ViewMode = 'list' | 'map'
 
 interface MunicipalityManagerModalProps {
   isOpen: boolean
@@ -45,6 +51,7 @@ export default function MunicipalityManagerModal({
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabId>('all')
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
 
   const prefectures = useMemo(() => getRegionsByCountry(country), [country])
   const term = muniTerm(country, lang)
@@ -55,6 +62,7 @@ export default function MunicipalityManagerModal({
     setPrefectureId(initialPrefectureId || (country === 'japan' ? 'tokyo' : 'seoul'))
     setActiveTab('all')
     setSearch('')
+    setViewMode('list')
   }, [isOpen, initialPrefectureId, country])
 
   // 광역 변경 시 탭/검색 초기화
@@ -176,7 +184,7 @@ export default function MunicipalityManagerModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[1500] flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-card rounded-xl shadow-2xl w-full max-w-4xl max-h-[88vh] flex flex-col overflow-hidden">
+      <div className="bg-card rounded-xl shadow-2xl w-full max-w-4xl h-[88vh] max-h-[680px] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-3.5 sm:p-4 border-b border-line bg-paper">
           <div className="flex items-center justify-between gap-2 mb-3.5">
@@ -255,37 +263,68 @@ export default function MunicipalityManagerModal({
             </button>
           </div>
 
-          {/* 분류 탭 */}
+          {/* 뷰 전환 + 분류 탭 */}
           <div className="flex items-center gap-1.5 mt-3 overflow-x-auto pb-0.5">
-            {(
-              [
-                ['all', `${t('muni.all')} ${total}`],
-                ['ward', `${categories.ward.label} ${categories.ward.items.length}`],
-                ['city', `${categories.city.label} ${categories.city.items.length}`],
-                ['town', `${categories.town.label} ${categories.town.items.length}`],
-              ] as Array<[TabId, string]>
-            ).map(([tabId, label]) => (
-              <button
-                key={tabId}
-                onClick={() => setActiveTab(tabId)}
-                className={`px-3 py-1 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors border tabular-nums ${
-                  activeTab === tabId
-                    ? 'bg-ink text-paper border-ink'
-                    : 'bg-card text-muted border-line hover:text-ink'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-            <span className="ml-auto hidden md:inline text-[11px] text-faint whitespace-nowrap">
-              {t('muni.cycleHint')}
-            </span>
+            {/* 목록 / 지도 토글 */}
+            <div className="shrink-0 flex items-center p-0.5 rounded-full border border-line bg-card mr-1">
+              {(
+                [
+                  ['list', 'list', t('muni.viewList')],
+                  ['map', 'map', t('muni.viewMap')],
+                ] as Array<[ViewMode, IconName, string]>
+              ).map(([mode, icon, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-2.5 py-1 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors flex items-center gap-1 ${
+                    viewMode === mode ? 'bg-ink text-paper' : 'text-muted hover:text-ink'
+                  }`}
+                >
+                  <Icon name={icon} size={13} />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {viewMode === 'list' ? (
+              <>
+                {(
+                  [
+                    ['all', `${t('muni.all')} ${total}`],
+                    ['ward', `${categories.ward.label} ${categories.ward.items.length}`],
+                    ['city', `${categories.city.label} ${categories.city.items.length}`],
+                    ['town', `${categories.town.label} ${categories.town.items.length}`],
+                  ] as Array<[TabId, string]>
+                ).map(([tabId, label]) => (
+                  <button
+                    key={tabId}
+                    onClick={() => setActiveTab(tabId)}
+                    className={`px-3 py-1 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors border tabular-nums ${
+                      activeTab === tabId
+                        ? 'bg-ink text-paper border-ink'
+                        : 'bg-card text-muted border-line hover:text-ink'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <span className="ml-auto hidden md:inline text-[11px] text-faint whitespace-nowrap">
+                  {t('muni.cycleHint')}
+                </span>
+              </>
+            ) : (
+              <span className="ml-auto hidden sm:inline text-[11px] text-faint whitespace-nowrap">
+                {t('muni.mapHint')}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-paper">
-          {isLoading ? (
+        <div className={`flex-1 min-h-0 bg-paper ${viewMode === 'map' ? 'p-2.5 sm:p-3' : 'overflow-y-auto p-3 sm:p-4'}`}>
+          {viewMode === 'map' ? (
+            <MunicipalityMiniMap country={country as Country} prefectureId={prefectureId} />
+          ) : isLoading ? (
             <div className="flex flex-col items-center justify-center h-48 gap-3">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-seal"></div>
               <div className="text-muted text-sm">{t('muni.loading')}</div>
