@@ -220,8 +220,9 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   const [labelMode, setLabelMode] = useState<LabelMode>('native') // Default to native for Japan focus
   const [mapLevel, setMapLevel] = useState<'prefecture' | 'municipality'>('prefecture')
   const [viewPrefectureId, setViewPrefectureId] = useState<string | null>(null) // ID of the prefecture to show details for
-  // 시정촌 표시 모드: 켜면 줌인 시 기초 지역 색칠을 보여준다 (읽기 전용 - 수정은 관리 모달에서만)
-  const [showMuniLayer, setShowMuniLayer] = useState(true)
+  // 시정촌 표시 모드: 켜면 전국 기초 지역을 보여준다 (읽기 전용 - 수정은 관리 모달에서만)
+  // 기본 끔: 첫 방문자는 광역 탭-도장 흐름(온보딩 안내)이 바로 동작해야 한다
+  const [showMuniLayer, setShowMuniLayer] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false) // 모바일: 범례/컨트롤 패널 토글
   const [retryKey, setRetryKey] = useState(0) // 지도 데이터 로드 실패 시 재시도
   const t = useT()
