@@ -209,8 +209,13 @@ const STRINGS = {
 
   // 공유 카드 범위
   'share.scopeBoth': ['양국', 'Both', '両国'],
+  'share.detailPref': ['광역', 'Regions', '広域'],
+  'share.detailMuni': ['기초', 'Municipal', '市区町村'],
+  'share.detailBoth': ['둘다', 'Both', '両方'],
 
   // 지도 패널
+  'map.mapLang': ['지명 언어', 'Place names', '地名の言語'],
+  'map.langAuto': ['자동', 'Auto', '自動'],
   'map.muniLayer': ['기초 지역', 'Municipalities', '市区町村'],
   'map.muniReadOnly': ['{term} 수정은 "{term} 관리"에서 할 수 있어요', 'Edit records in "Manage {term}"', '{term}の記録は「{term}管理」で編集できます'],
   'map.label': ['라벨', 'Labels', 'ラベル'],
@@ -339,4 +344,19 @@ export function regionDisplayName(meta: RegionMetadata, lang: Lang): string {
   if (lang === 'en') return meta.nameEn
   // ja: 일본 지역은 현지어(일본어), 한국 지역은 로마자
   return meta.country === 'japan' ? meta.nameLocal : meta.nameEn
+}
+
+/** 지도 지명 표시 언어 (auto = UI 언어 따름). 지도 위 지명(툴팁/라벨) 전용 */
+export function mapLangNow(): Lang {
+  const s = useMapExpStore.getState().settings
+  const ml = s.mapLanguage ?? 'auto'
+  return (ml === 'auto' ? (s.language ?? 'ko') : ml) as Lang
+}
+
+/** 컴포넌트용 지도 지명 언어 훅 (설정 변경 시 리렌더) */
+export function useMapLang(): Lang {
+  return useMapExpStore((s) => {
+    const ml = s.settings.mapLanguage ?? 'auto'
+    return (ml === 'auto' ? (s.settings.language ?? 'ko') : ml) as Lang
+  })
 }

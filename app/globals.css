@@ -89,6 +89,24 @@ path:focus {
   user-select: none;
 }
 
+/* 미니맵(관리 모달) 시정촌 이름 라벨 - 투명 배경, 흰 외곽선 텍스트 */
+.muni-mini-label {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-family: var(--font-sans-kr), sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #333;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+  pointer-events: none;
+  user-select: none;
+}
+.muni-mini-label::before {
+  display: none;
+}
+
 /* GPS 현재 위치 마커 */
 .gps-location-marker {
   background: transparent;

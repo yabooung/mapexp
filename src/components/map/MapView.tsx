@@ -14,11 +14,16 @@ import GpsControls from './GpsControls'
 import Icon from '@/components/common/Icon'
 import { municipalityName, PREF_KANJI_BY_ID, loadPrefectures, featureContainsPoint, type Country } from '@/lib/geo'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
-import { useT, tNow, muniTerm, I18nKey, type Lang } from '@/lib/i18n'
+import { useT, tNow, muniTerm, regionDisplayName, mapLangNow, useMapLang, I18nKey, type Lang } from '@/lib/i18n'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
+import { getRegionMetadata } from '@/data/regions'
 import toast from 'react-hot-toast'
 
-const currentLang = (): Lang => (useMapExpStore.getState().settings.language ?? 'ko') as Lang
+/** 광역 지명: 지도 언어 설정에 따라 (메타데이터 없으면 GeoJSON 원어 폴백) */
+const prefDisplayName = (regionId: string, fallback: string): string => {
+  const meta = getRegionMetadata(regionId)
+  return meta ? regionDisplayName(meta, mapLangNow()) : fallback
+}
 
 interface MapViewProps {
   onRegionClick: (regionId: string) => void
@@ -187,7 +192,7 @@ const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLe
 }
 
 export default function MapView({ onRegionClick, showBoth = false, onToggleBoth }: MapViewProps) {
-  const { country: storeCountry, getRegionById, addRegion, updateRegion, settings, regions } = useMapExpStore()
+  const { country: storeCountry, getRegionById, addRegion, updateRegion, updateSettings, settings } = useMapExpStore()
   const country = storeCountry as Country
   const otherCountry: Country = country === 'japan' ? 'korea' : 'japan'
   const [baseGeoData, setBaseGeoData] = useState<GeoJsonObject | null>(null)
@@ -214,29 +219,14 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   const [panelOpen, setPanelOpen] = useState(false) // 모바일: 범례/컨트롤 패널 토글
   const [retryKey, setRetryKey] = useState(0) // 지도 데이터 로드 실패 시 재시도
   const t = useT()
-  const lang = (settings.language ?? 'ko') as Lang
+  // 지도 지명 언어 (auto = UI 언어 따름) - 툴팁/라벨 전용
+  const mapLang = useMapLang()
 
-  // 라벨 표시명: 언어별 선택 (ja는 일본=원어 한자, 한국=로마자 / 없으면 원어 폴백)
+  // 라벨 표시명: 지도 언어별 선택 (ja는 일본=원어 한자, 한국=로마자 / 없으면 원어 폴백)
   const labelText = (l: RegionLabel) =>
-    lang === 'ko' ? (l.nameKo ?? l.name)
-    : lang === 'en' ? (l.nameEn ?? l.name)
+    mapLang === 'ko' ? (l.nameKo ?? l.name)
+    : mapLang === 'en' ? (l.nameEn ?? l.name)
     : country === 'korea' ? (l.nameEn ?? l.name) : l.name
-
-  // Smart Inheritance Logic:
-  // Identify which prefectures have "Detailed" data (at least one child municipality is tracked).
-  // If a prefecture has detailed data, we DISABLE top-down inheritance (Blanket Mode) for that prefecture.
-  const parentsWithDetails = useMemo(() => {
-      const parents = new Set<string>()
-      regions.forEach(r => {
-          if (r.regionId.includes('_')) {
-              const [parentId] = r.regionId.split('_')
-              parents.add(parentId)
-          }
-      })
-      return parents
-  }, [regions])
-
-
 
   // 타일 URL (CARTO Voyager - 무료 사용 가능한 합법 타일만 사용)
   const getTileUrl = (mode: LabelMode) =>
@@ -374,7 +364,14 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
                               const centroid = geoCentroid(feat)
                               position = [centroid[1], centroid[0]]
                           }
-                          labels.push({ id, name: feat.properties.name, position })
+                          const meta = getRegionMetadata(id)
+                          labels.push({
+                              id,
+                              name: feat.properties.name,
+                              nameKo: meta?.name,
+                              nameEn: meta?.nameEn,
+                              position,
+                          })
                      }
                  })
                  setRegionLabels(labels)
@@ -423,6 +420,8 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   // (레이어 이벤트 핸들러의 스테일 클로저 문제 방지)
   const baseStyleRef = useRef<(f?: Feature) => PathOptions>(() => ({}))
   const muniStyleRef = useRef<(f?: Feature) => PathOptions>(() => ({}))
+  // 기초 지역 표시 중에는 지도 전체가 읽기 전용 (광역 탭 수정도 금지)
+  const readOnlyRef = useRef(false)
 
   // 지역 스타일
   // 주의: interactive:false를 반환하는 분기를 두면 안 된다.
@@ -482,6 +481,12 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
       return
     }
 
+    // 기초 지역 표시 중에는 광역 탭도 수정 금지 (구경만) - 안내 1회
+    if (readOnlyRef.current) {
+      showMuniHintOnce()
+      return
+    }
+
     const currentExp = useMapExpStore.getState().getRegionById(regionId)
     const currentVal = currentExp?.gyeonghyeonchi ?? (currentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
     const nextVal = (currentVal >= GyeongHyeonChi.RESIDED ? GyeongHyeonChi.UNVISITED : currentVal + 1) as ExperienceGrade
@@ -496,16 +501,17 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
     e.target.setStyle(styleRef.current(feature))
     // 툴팁은 열릴 때만 내용을 만들므로, 떠 있는 동안 탭하면 이전 등급이 보인다 → 즉시 갱신
     const regionName = (feature.properties?.name_ko || feature.properties?.name) as string
-    ;(e.target as L.Path).setTooltipContent(buildTooltip(regionId, regionName))
+    ;(e.target as L.Path).setTooltipContent(buildTooltip(regionId, prefDisplayName(regionId, regionName)))
   }
 
   const onEachFeature = (feature: Feature, layer: Layer) => {
     if (!feature.properties?.id) return
 
     const regionId = feature.properties.id as string
-    const regionName = feature.properties.name_ko || feature.properties.name
+    const regionName = (feature.properties.name_ko || feature.properties.name) as string
 
-    layer.bindTooltip(() => buildTooltip(regionId, regionName), {
+    // 열릴 때마다 지도 언어 설정으로 광역 지명 해석 (시정촌과 언어 통일)
+    layer.bindTooltip(() => buildTooltip(regionId, prefDisplayName(regionId, regionName)), {
       permanent: false,
       direction: 'top',
       className: 'region-tooltip',
@@ -524,60 +530,30 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
     })
   }
 
+  // 시정촌은 자기 기록만 표시한다 - 부모 광역 색 상속 없음.
+  // (상속하면 광역만 기록한 경우 모든 시정촌이 칠해져 어디를 실제로 갔는지 안 보임)
   const getMunicipalityStyle = (feature?: Feature): PathOptions => {
-        // Filter: Only show style if VISITED. Otherwise transparent.
         if (!feature?.properties?.id) return { fillOpacity: 0, opacity: 0 }
         const regionId = feature.properties.id as string
         const regionExp = getRegionById(regionId)
         const gyeonghyeonchi = regionExp?.gyeonghyeonchi ?? (regionExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
-        
+
         if (gyeonghyeonchi === GyeongHyeonChi.UNVISITED) {
-            // Unvisited: Check Parent Prefecture Level for Inheritance
-            let parentLevel = GyeongHyeonChi.UNVISITED
-
-            // genId가 `${parentId}_${muniName}` 형태이므로 접두사로 부모 판별 (국가 무관)
-            const parentId = regionId.includes('_') ? regionId.split('_')[0] : ''
-            
-            // Determine Parent Level
-            if (parentId) {
-                // CRITICAL: Check for "Detailed Mode"
-                // If this parent has ANY child recorded in store, we disable blanket inheritance.
-                // User wants explicit control in that case.
-                if (!parentsWithDetails.has(parentId)) {
-                    const parentExp = getRegionById(parentId)
-                    parentLevel = parentExp?.gyeonghyeonchi ?? (parentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
-                }
-            }
-            
-            if (parentLevel > GyeongHyeonChi.UNVISITED) {
-                // Inherit Parent Color!
-                return {
-                    fillColor: EXP_COLORS[parentLevel],
-                    fillOpacity: 0.7, // Same opacity as visited to blend in
-                    color: '#fff', // White border to distinguish boundaries
-                    weight: 0.5,
-                    interactive: true 
-                }
-            } else {
-               // Fallthrough
-            }
-
-            // Totally Unvisited (Parent is also unvisited)
-            return { 
-                fillOpacity: 0, 
-                color: '#666', 
-                weight: 0.5, 
+            return {
+                fillOpacity: 0,
+                color: '#666',
+                weight: 0.5,
                 dashArray: '2',
-                interactive: true 
+                interactive: true
             }
         }
-        
+
         // Visited: Show Color
         const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
         return {
             fillColor: EXP_COLORS[gyeonghyeonchi],
             fillOpacity: 0.7,
-            color: EXP_COLORS[gyeonghyeonchi], // Border matches 
+            color: EXP_COLORS[gyeonghyeonchi], // Border matches
             weight: isResided ? 2.5 : 1.5,
         }
   }
@@ -587,6 +563,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   useEffect(() => {
     baseStyleRef.current = getRegionStyle
     muniStyleRef.current = getMunicipalityStyle
+    readOnlyRef.current = showMuniLayer && mapLevel === 'municipality'
     baseLayerRef.current?.setStyle((f) => baseStyleRef.current(f as Feature))
     overlayLayerRef.current?.setStyle((f) => muniStyleRef.current(f as Feature))
     secondaryLayerRef.current?.setStyle((f) => baseStyleRef.current(f as Feature))
@@ -595,6 +572,13 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   // 전체맵의 시정촌 레이어는 읽기 전용 - 수정은 '시정촌/시군구 관리' 모달에서만.
   // 탭하면 이름·등급 툴팁만 보여주고, 세션당 1회 편집 위치 안내 토스트를 띄운다.
   const muniHintShownRef = useRef(false)
+  const showMuniHintOnce = () => {
+    if (muniHintShownRef.current) return
+    muniHintShownRef.current = true
+    const lang = (useMapExpStore.getState().settings.language ?? 'ko') as Lang
+    toast(tNow('map.muniReadOnly', { term: muniTerm(country, lang) }))
+  }
+
   const onEachMunicipalityFeature = (feature: Feature, layer: Layer) => {
     if (!feature.properties?.id) return
 
@@ -603,7 +587,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
 
     // 열릴 때마다 현재 언어로 표시명 해석 (일본: 한자/로마자/한글, 한국: 한글/로마자)
     layer.bindTooltip(
-      () => buildTooltip(regionId, muniDisplayName(country, feature.properties, regionName, currentLang())),
+      () => buildTooltip(regionId, muniDisplayName(country, feature.properties, regionName, mapLangNow())),
       {
         permanent: false,
         direction: 'top',
@@ -614,11 +598,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
     layer.on({
         click: (e: LeafletMouseEvent) => {
             e.originalEvent.preventDefault()
-            if (!muniHintShownRef.current) {
-                muniHintShownRef.current = true
-                const lang = (useMapExpStore.getState().settings.language ?? 'ko') as Lang
-                toast(tNow('map.muniReadOnly', { term: muniTerm(country, lang) }))
-            }
+            showMuniHintOnce()
         },
         mouseover: (e: LeafletMouseEvent) => {
             const target = e.target
@@ -833,6 +813,24 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
             >
                <span className="text-muted">{t('map.baseTiles')}</span>
                <span className="font-semibold">{showTiles ? t('map.on') : t('map.off')}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                  // 지명 언어 순환: 자동 → 한국어 → English → 日本語
+                  const order: Array<'auto' | Lang> = ['auto', 'ko', 'en', 'ja']
+                  const cur = settings.mapLanguage ?? 'auto'
+                  const next = order[(order.indexOf(cur) + 1) % order.length]
+                  updateSettings({ mapLanguage: next })
+              }}
+              className="w-full py-1.5 px-2.5 rounded-md border border-line font-medium flex items-center justify-between text-ink hover:bg-paper transition-colors"
+            >
+               <span className="text-muted">{t('map.mapLang')}</span>
+               <span className="font-semibold">
+                 {(settings.mapLanguage ?? 'auto') === 'auto'
+                   ? t('map.langAuto')
+                   : settings.mapLanguage === 'ko' ? '한국어' : settings.mapLanguage === 'en' ? 'English' : '日本語'}
+               </span>
             </button>
 
             <button

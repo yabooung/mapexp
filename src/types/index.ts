@@ -19,6 +19,7 @@ export interface MapExpData {
 export interface UserSettings {
   theme: 'light' | 'dark' | 'auto' // 테마
   language: 'ko' | 'en' | 'ja' // 언어
+  mapLanguage?: 'auto' | 'ko' | 'en' | 'ja' // 지도 지명 표시 언어 (auto = UI 언어 따름)
   defaultCountry: 'japan' | 'korea' // 기본 국가
   showLegend: boolean // 범례 표시
   showStats: boolean // 통계 표시

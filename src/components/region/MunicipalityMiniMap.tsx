@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, GeoJSON, useMap } from 'react-leaflet'
+import { MapContainer, GeoJSON, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import { geoCentroid } from 'd3-geo'
 import type { Feature, FeatureCollection } from 'geojson'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import { useMapExpStore } from '@/store'
@@ -11,7 +12,7 @@ import { EXP_COLORS } from '@/constants'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
-import type { Lang } from '@/lib/i18n'
+import { mapLangNow, useMapLang } from '@/lib/i18n'
 
 interface Props {
   country: Country
@@ -67,20 +68,29 @@ const FitToData = ({ data }: { data: FeatureCollection | null }) => {
  * - 선택된 광역의 기초 지역만 렌더 (MunicipalityManagerModal과 동일한 ID 규약)
  * - 지역 클릭 = 레벨 순환(0→5→0), 목록 뷰와 완전히 동일한 스토어를 조작
  */
+interface MiniLabel {
+  id: string
+  name: string
+  props: Record<string, unknown>
+  position: [number, number]
+}
+
 export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
   // selector 없이 구독 → 레벨 변경 시 리렌더되어 아래 재스타일 effect가 돈다
   useMapExpStore()
   const { getRegionById, addRegion, updateRegion } = useMapExpStore.getState()
+  const mapLang = useMapLang()
   const [geo, setGeo] = useState<FeatureCollection | null>(null)
+  const [labels, setLabels] = useState<MiniLabel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const layerRef = useRef<L.GeoJSON | null>(null)
   const styleRef = useRef<(f?: Feature) => PathOptions>(() => ({}))
 
   // 선택 광역의 기초 지역 추출 (모달 목록과 동일한 필터/ID)
+  // 주의: 이전 지도를 지우지 않고 새 데이터로 교체한다 (광역 넘길 때 빈 화면 깜빡임 방지)
   useEffect(() => {
     let cancelled = false
     setIsLoading(true)
-    setGeo(null)
     Promise.all([
       loadMunicipalities(country),
       country === 'japan' ? loadJpMuniNames() : Promise.resolve(null), // 툴팁 표시명 사전
@@ -91,6 +101,8 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
         return
       }
       const features: Feature[] = []
+      // 라벨은 id당 1개 - 가장 큰 폴리곤(본체) 위에만 (섬 분리 폴리곤 중복 방지)
+      const labelCandidates = new Map<string, { feat: Feature; size: number; name: string }>()
       fc.features.forEach((f) => {
         const props = f.properties as Record<string, string | null> | null
         let name: string | null = null
@@ -105,9 +117,28 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
         if (!name) return
         const id = `${prefectureId}_${name}`
         // 섬 등 분리 폴리곤은 같은 id로 그대로 둔다(렌더는 각각, 색은 동일)
-        features.push({ ...f, properties: { ...(f.properties as object), id, name } })
+        const feat: Feature = { ...f, properties: { ...(f.properties as object), id, name } }
+        features.push(feat)
+
+        // 대략적 크기: bounding box 면적
+        try {
+          const b = L.geoJSON(feat).getBounds()
+          const size = Math.abs(b.getEast() - b.getWest()) * Math.abs(b.getNorth() - b.getSouth())
+          const cur = labelCandidates.get(id)
+          if (!cur || size > cur.size) labelCandidates.set(id, { feat, size, name })
+        } catch { /* 지오메트리 오류 무시 */ }
       })
+
+      const newLabels: MiniLabel[] = []
+      labelCandidates.forEach(({ feat, name }, id) => {
+        const c = geoCentroid(feat)
+        if (Number.isFinite(c[0]) && Number.isFinite(c[1])) {
+          newLabels.push({ id, name, props: feat.properties as Record<string, unknown>, position: [c[1], c[0]] })
+        }
+      })
+
       setGeo({ type: 'FeatureCollection', features })
+      setLabels(newLabels)
       setIsLoading(false)
     })
     return () => {
@@ -152,10 +183,7 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
     if (!id) return
     if (name)
       layer.bindTooltip(
-        () => {
-          const lang = (useMapExpStore.getState().settings.language ?? 'ko') as Lang
-          return muniDisplayName(country, feature.properties, name, lang)
-        },
+        () => muniDisplayName(country, feature.properties, name, mapLangNow()),
         { direction: 'top', className: 'region-tooltip', sticky: true },
       )
     layer.on({
@@ -199,6 +227,20 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
             onEachFeature={onEach}
           />
         )}
+        {/* 시정촌 이름 라벨 (id당 1개, 본체 폴리곤 중심) */}
+        {labels.map((l) => (
+          <Marker
+            key={l.id}
+            position={l.position}
+            interactive={false}
+            icon={L.divIcon({
+              className: 'muni-mini-label',
+              html: `<div style="transform: translate(-50%, -50%); white-space: nowrap; text-align: center;">${muniDisplayName(country, l.props, l.name, mapLang)}</div>`,
+              iconSize: [0, 0],
+              iconAnchor: [0, 0],
+            })}
+          />
+        ))}
         <FitToData data={geo} />
       </MapContainer>
     </div>

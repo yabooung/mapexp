@@ -29,6 +29,7 @@ export function municipalityName(props: Record<string, string | null> | null): s
   if (!props) return null
   const muni = props.N03_004
   if (!muni) return null
+  if (muni === '所属未定地') return null // 무주지(소속 미정) - 기록 대상 아님
   const city = props.N03_003
   if (city && city.endsWith('市')) return `${city}${muni}`
   return muni
