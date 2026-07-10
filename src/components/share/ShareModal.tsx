@@ -5,7 +5,8 @@ import { useMapExpStore } from '@/store'
 import { useGpsStore } from '@/store/gps'
 import { generateShareUrl } from '@/lib/share'
 import { TOTAL_REGIONS, EXP_COLORS } from '@/constants'
-import { ExperienceGrade } from '@/types'
+import { isRegionOfCountry } from '@/constants/regions'
+import { ExperienceGrade, RegionExp } from '@/types'
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters, type Country } from '@/lib/geo'
 import { renderRegionMapImage } from '@/lib/mapSnapshot'
@@ -21,16 +22,41 @@ interface ShareModalProps {
   onClose: () => void
 }
 
+/** 국가별 점수·방문수 (광역만, 시정촌/시군구 롤업 제외) */
+function countryStats(regions: RegionExp[], c: Country) {
+  let score = 0
+  let visited = 0
+  for (const r of regions) {
+    if (r.regionId.includes('_') || !isRegionOfCountry(r.regionId, c)) continue
+    const lvl = r.gyeonghyeonchi ?? r.level ?? 0
+    score += lvl
+    if (lvl > 0) visited++
+  }
+  return { score, visited, total: TOTAL_REGIONS[c] }
+}
+
+const levelOfFor = (regions: RegionExp[]) => (regionId: string): ExperienceGrade => {
+  const r = regions.find((x) => x.regionId === regionId)
+  return (r?.gyeonghyeonchi ?? r?.level ?? 0) as ExperienceGrade
+}
+
 export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
   const { exportData, country, regions, getTotalGyeonghyeonchi, getSystemLevel, getVisitedCount, getCompletionRate, getGyeonghyeonchiCounts } =
     useMapExpStore()
   const trackPoints = useGpsStore((s) => s.trackPoints)
   const [shareUrl, setShareUrl] = useState('')
   const [mapImg, setMapImg] = useState<string | null>(null)
+  const [otherMapImg, setOtherMapImg] = useState<string | null>(null)
   const [rendering, setRendering] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const t = useT()
   const lang = useLang()
+
+  // 양국 기록이 모두 있으면 카드에 두 지도를 나란히 담는다 (이 앱의 정체성)
+  const otherCountry: Country = country === 'japan' ? 'korea' : 'japan'
+  const myStats = countryStats(regions, country as Country)
+  const otherStats = countryStats(regions, otherCountry)
+  const hasBoth = myStats.visited > 0 && otherStats.visited > 0
 
   useEffect(() => {
     if (isOpen) {
@@ -39,12 +65,13 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       setShareUrl(url)
 
       // 색칠된 지도 스냅샷 렌더링 (광역 레벨)
-      const levelOf = (regionId: string): ExperienceGrade => {
-        const r = regions.find((x) => x.regionId === regionId)
-        return (r?.gyeonghyeonchi ?? r?.level ?? 0) as ExperienceGrade
-      }
+      const levelOf = levelOfFor(regions)
       setMapImg(null)
+      setOtherMapImg(null)
       renderRegionMapImage(country as Country, levelOf).then(setMapImg)
+      if (countryStats(regions, otherCountry).visited > 0) {
+        renderRegionMapImage(otherCountry, levelOf).then(setOtherMapImg)
+      }
       ev('share_open', { country })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,27 +88,47 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     }
   }
 
-  // 모바일 네이티브 공유 시트
+  // 카드 DOM → 캔버스 (저장/공유 공용)
+  const renderCardCanvas = async () => {
+    if (!cardRef.current) return null
+    const html2canvas = (await import('html2canvas')).default
+    return html2canvas(cardRef.current, { scale: 2, backgroundColor: null, logging: false })
+  }
+
+  // 모바일 네이티브 공유 시트 — 이미지 파일을 실어 X/인스타에 카드가 그대로 올라가게.
+  // 파일 공유 미지원(구형 브라우저 등)이면 링크 공유로 폴백.
   const canNativeShare = typeof navigator !== 'undefined' && 'share' in navigator
   const handleNativeShare = async () => {
+    if (rendering) return
+    setRendering(true)
     try {
-      await navigator.share({ title: 'MAPEXP', text: t('share.shareText'), url: shareUrl })
+      const canvas = await renderCardCanvas()
+      const blob = canvas
+        ? await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+        : null
+      const files = blob ? [new File([blob], 'mapexp.png', { type: 'image/png' })] : []
+      const withImage = files.length > 0 && !!navigator.canShare?.({ files })
+
+      await navigator.share(
+        withImage
+          ? { title: 'MAPEXP', text: `${t('share.shareText')} ${shareUrl}`, files }
+          : { title: 'MAPEXP', text: t('share.shareText'), url: shareUrl },
+      )
+      ev('share_native', { country, image: withImage })
     } catch {
       // 사용자가 취소한 경우 등 - 무시
+    } finally {
+      setRendering(false)
     }
   }
 
   // SNS용 이미지 카드 저장 (html2canvas로 카드 DOM 캡처)
   const handleSaveImage = async () => {
-    if (!cardRef.current || rendering) return
+    if (rendering) return
     setRendering(true)
     try {
-      const html2canvas = (await import('html2canvas')).default
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 2,
-        backgroundColor: null,
-        logging: false,
-      })
+      const canvas = await renderCardCanvas()
+      if (!canvas) return
       const a = document.createElement('a')
       a.href = canvas.toDataURL('image/png')
       a.download = `mapexp-${new Date().toISOString().slice(0, 10)}.png`
@@ -128,9 +175,13 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
 
         {/* 지도 미리보기 (이미지 카드에 들어가는 색칠 지도) */}
         {mapImg && (
-          <div className="rounded-lg border border-line bg-[#f5f3ec] p-2">
+          <div className={`rounded-lg border border-line bg-[#f5f3ec] p-2 ${hasBoth && otherMapImg ? 'grid grid-cols-2 gap-1' : ''}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={mapImg} alt="" className="w-full h-auto max-h-56 object-contain" />
+            {hasBoth && otherMapImg && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={otherMapImg} alt="" className="w-full h-auto max-h-56 object-contain" />
+            )}
           </div>
         )}
 
@@ -196,18 +247,40 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
               <div style={{ fontSize: 11, color: '#7c766a' }}>{t('page.title')}</div>
             </div>
             <div style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: '#7c766a' }}>
-              {t(country === 'japan' ? 'common.japan' : 'common.korea')}
+              {hasBoth
+                ? `${t('common.japan')} × ${t('common.korea')}`
+                : t(country === 'japan' ? 'common.japan' : 'common.korea')}
             </div>
           </div>
 
-          {/* 색칠된 지도 (비교의 핵심) */}
-          {mapImg && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={mapImg}
-              alt=""
-              style={{ width: '100%', height: 'auto', display: 'block', marginBottom: 18 }}
-            />
+          {/* 색칠된 지도 (비교의 핵심) — 양국 기록이 있으면 두 지도를 나란히 */}
+          {hasBoth && otherMapImg && mapImg ? (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+              {[
+                { img: country === 'japan' ? mapImg : otherMapImg, c: 'japan' as const, s: country === 'japan' ? myStats : otherStats },
+                { img: country === 'japan' ? otherMapImg : mapImg, c: 'korea' as const, s: country === 'japan' ? otherStats : myStats },
+              ].map(({ img, c, s }) => (
+                <div key={c} style={{ flex: 1, minWidth: 0 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 6, justifyContent: 'center' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{t(c === 'japan' ? 'common.japan' : 'common.korea')}</span>
+                    <span style={{ fontSize: 11, color: '#7c766a' }}>
+                      {t('stats.exp', { n: s.score })} · {s.visited}/{s.total}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            mapImg && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={mapImg}
+                alt=""
+                style={{ width: '100%', height: 'auto', display: 'block', marginBottom: 18 }}
+              />
+            )
           )}
 
           {/* 레벨 */}
