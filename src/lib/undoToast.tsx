@@ -30,26 +30,26 @@ export function showLevelUndoToast(
         <span className="text-sm whitespace-nowrap">
           {name} · <b>{levelLabel(next, lang)}</b>
         </span>
+        <button
+          onClick={() => {
+            useMapExpStore.getState().updateRegion(regionId, { gyeonghyeonchi: prev })
+            toast.dismiss(tk.id)
+          }}
+          className="shrink-0 text-xs font-semibold text-muted hover:text-ink underline underline-offset-2 whitespace-nowrap transition-colors"
+        >
+          {tNow('common.undo')}
+        </button>
         {opts?.onMuni && (
           <button
             onClick={() => {
               toast.dismiss(tk.id)
               opts.onMuni!()
             }}
-            className="shrink-0 px-2 py-1 rounded-full bg-seal text-white text-xs font-bold whitespace-nowrap"
+            className="shrink-0 px-3 py-1.5 rounded-full bg-seal text-white text-xs font-bold whitespace-nowrap hover:bg-seal-hover transition-colors"
           >
             {tNow('undo.muni')}
           </button>
         )}
-        <button
-          onClick={() => {
-            useMapExpStore.getState().updateRegion(regionId, { gyeonghyeonchi: prev })
-            toast.dismiss(tk.id)
-          }}
-          className="shrink-0 text-xs font-bold text-seal underline underline-offset-2 whitespace-nowrap"
-        >
-          {tNow('common.undo')}
-        </button>
       </span>
     ),
     {

@@ -148,8 +148,8 @@ export default function RegionModal({
       <div className="space-y-6">
         {/* 레벨 선택 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            {t('region.levelLabel')} <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-ink mb-3">
+            {t('region.levelLabel')} <span className="text-seal">*</span>
           </label>
           <div className="space-y-2">
             {Object.values(ExpLevel)
@@ -184,7 +184,7 @@ export default function RegionModal({
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-muted mt-1">
                         {t(`region.levelDesc.${lvNum}` as I18nKey)}
                       </p>
                     </div>
@@ -219,34 +219,34 @@ export default function RegionModal({
           </div>
         )}
 
-        <div className="border-t border-gray-200 my-2"></div>
+        <div className="border-t border-line my-2"></div>
 
         {/* 방문 기록 관리 (New) */}
         <VisitList visits={visits} onChange={setVisits} />
 
         {/* 기존 메모/날짜 입력 (레거시 - 필요하다면 유지하지만, 방문 기록으로 대체 권장) */}
         {(visits.length === 0) && (
-          <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-gray-500">
+          <div className="mt-4 p-3 bg-paper rounded text-xs text-muted">
             <p>{t('region.visitTip')}</p>
           </div>
         )}
 
         {/* 방문일 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-ink mb-2">
             {t('region.visitDate')}
           </label>
           <input
             type="date"
             value={visitDate}
             onChange={(e) => setVisitDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 bg-card border border-line rounded-md text-ink focus:outline-none focus:border-ink"
           />
         </div>
 
         {/* 메모 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-ink mb-2">
             {t('region.memo')}
           </label>
           <textarea
@@ -254,10 +254,10 @@ export default function RegionModal({
             onChange={(e) => setMemo(e.target.value)}
             rows={4}
             maxLength={500}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 bg-card border border-line rounded-md text-ink focus:outline-none focus:border-ink"
             placeholder={t('region.memoPlaceholder')}
           />
-          <p className="text-xs text-gray-500 mt-1 text-right">
+          <p className="text-xs text-muted mt-1 text-right">
             {memo.length} / 500
           </p>
         </div>
