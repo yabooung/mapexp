@@ -28,6 +28,15 @@ export function showLevelUndoToast(regionId: string, name: string, prev: Experie
         </button>
       </span>
     ),
-    { id: `undo-${regionId}`, duration: 3500 },
+    {
+      // 고정 id: 연속으로 여러 지역을 탭해도 토스트가 쌓이지 않고
+      // 마지막 도장 하나만 갱신 표시 (실행취소도 마지막 탭 대상)
+      id: 'undo-stamp',
+      duration: 3500,
+      // 지도 중앙을 가리지 않게 하단에서 표시 - 연속으로 탭하며 편집하는 흐름 유지
+      // (모바일 하단 탭과 겹치지 않는 오프셋은 .undo-toast CSS에서)
+      position: 'bottom-center',
+      className: 'undo-toast',
+    },
   )
 }

@@ -45,6 +45,13 @@ body {
   word-break: keep-all; /* 한국어 어절 단위 줄바꿈 ("내보내/기" 같은 중간 절단 방지) */
 }
 
+/* 도장 실행취소 토스트: 모바일 하단 탭 바(64px) 위로 띄운다 */
+@media (max-width: 1023px) {
+  .undo-toast {
+    margin-bottom: 76px !important;
+  }
+}
+
 /* Leaflet 지도 스타일 커스터마이징 */
 .leaflet-container {
   font-family: inherit;
