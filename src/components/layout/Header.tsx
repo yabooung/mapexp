@@ -60,10 +60,10 @@ export default function Header() {
               {/* 언어 전환 */}
               <LanguageSwitcher />
 
-              {/* 공유 버튼 */}
+              {/* 공유 버튼 - 언어별 텍스트 폭 차이로 헤더가 흔들리지 않게 최소 폭 고정 */}
               <button
                 onClick={() => setIsShareModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-ink text-paper rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 min-w-[5.25rem] sm:min-w-[5.75rem] bg-ink text-paper rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
               >
                 <Icon name="share" size={15} />
                 {t('common.share')}
