@@ -42,7 +42,8 @@ function HomeContent() {
 
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
   const [view, setView] = useState<MobileTab>('map')
-  const [showTokyoModal, setShowTokyoModal] = useState(false)
+  // 기초 지역(시정촌/시군구) 도장 모달 - prefId가 있으면 해당 광역으로 열림
+  const [muniModal, setMuniModal] = useState<{ open: boolean; prefId?: string }>({ open: false })
   const [showBothMaps, setShowBothMaps] = useState(false)
   const t = useT()
   const lang = useLang()
@@ -144,7 +145,7 @@ function HomeContent() {
             </div>
 
             <button
-              onClick={() => setShowTokyoModal(true)}
+              onClick={() => setMuniModal({ open: true })}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-md text-sm font-medium text-muted border border-line bg-card hover:text-ink hover:bg-paper transition-colors"
             >
               <Icon name="building" size={15} />
@@ -171,7 +172,7 @@ function HomeContent() {
               {/* 모바일 전용: 기초 지역 관리 (국가 전환은 헤더 JP/KR 토글) */}
               <div className="lg:hidden space-y-3">
                 <button
-                  onClick={() => setShowTokyoModal(true)}
+                  onClick={() => setMuniModal({ open: true })}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-medium text-ink border border-line bg-card active:bg-paper"
                 >
                   <Icon name="building" size={16} />
@@ -195,6 +196,7 @@ function HomeContent() {
                   onRegionClick={handleRegionClick}
                   showBoth={showBothMaps}
                   onToggleBoth={() => setShowBothMaps((v) => !v)}
+                  onOpenMuniManager={() => setMuniModal({ open: true })}
                 />
                 {/* 첫 방문 온보딩 (한 번만 표시, 공유 열람 중에는 숨김) */}
                 {!isViewer && <OnboardingHint />}
@@ -215,11 +217,23 @@ function HomeContent() {
 
       {/* 지역 상세 모달 */}
       {selectedRegionId && (
-        <RegionModal isOpen={!!selectedRegionId} onClose={handleCloseModal} regionId={selectedRegionId} />
+        <RegionModal
+          isOpen={!!selectedRegionId}
+          onClose={handleCloseModal}
+          regionId={selectedRegionId}
+          onOpenMunis={(prefId) => {
+            setSelectedRegionId(null)
+            setMuniModal({ open: true, prefId })
+          }}
+        />
       )}
 
-      {/* Tokyo Municipality Modal */}
-      <MunicipalityManagerModal isOpen={showTokyoModal} onClose={() => setShowTokyoModal(false)} />
+      {/* 기초 지역(시정촌/시군구) 도장 모달 */}
+      <MunicipalityManagerModal
+        isOpen={muniModal.open}
+        initialPrefectureId={muniModal.prefId}
+        onClose={() => setMuniModal({ open: false })}
+      />
     </>
   )
 }

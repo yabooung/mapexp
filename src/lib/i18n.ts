@@ -82,6 +82,9 @@ const STRINGS = {
 
   // 도장첩 (뱃지)
   'badges.title': ['도장첩', 'Stamp Book', 'スタンプ帳'],
+  'badges.viewGrid': ['도장', 'Stamps', '判'],
+  'badges.viewList': ['리스트', 'List', 'リスト'],
+  'badges.achieved': ['달성', 'Done', '達成'],
   'badge.first-step.name': ['첫 발자국', 'First Step', '初めの一歩'],
   'badge.first-step.desc': ['첫 지역 기록하기', 'Record your first region', '最初の地域を記録する'],
   'badge.explorer.name': ['탐험가', 'Explorer', '探検家'],
@@ -292,17 +295,32 @@ const STRINGS = {
   'viewer.adopted': ['이 지도를 내 지도로 저장했습니다', 'Saved as your map', '自分の地図として保存しました'],
   'viewer.exited': ['내 지도로 돌아왔습니다', 'Back to your map', '自分の地図に戻りました'],
 
-  // 온보딩
+  // 온보딩 (첫 방문 웰컴 모달: 언어 선택 + 간단 매뉴얼)
   'onboard.title': ['여행 도장 지도에 오신 것을 환영합니다', 'Welcome to your travel stamp map', '経県値マップへようこそ'],
   'onboard.tap': [
-    '지도의 지역을 탭해 첫 도장을 찍어보세요 — 탭할 때마다 등급이 올라갑니다',
-    'Tap a region to place your first stamp — each tap raises the grade',
-    '地域をタップして最初の判を押しましょう — タップごとにランクが上がります',
+    '지역을 탭하면 도장이 찍히고, 탭할 때마다 등급이 올라갑니다',
+    'Tap a region to stamp it — each tap raises the grade',
+    '地域をタップすると判が押せて、タップごとにランクが上がります',
   ],
-  'onboard.sub': [
-    '조준 버튼 = GPS 자동 감지 · 공유 버튼 = 내 지도 자랑 (기록은 내 기기에만 저장)',
-    'Locate button = GPS auto-detect · Share button = show off your map (data stays on your device)',
-    '照準ボタン = GPS自動検知・共有ボタン = 地図を自慢 (記録は端末にのみ保存)',
+  'onboard.detail': [
+    '길게 누르면 메모·방문 기록 같은 상세를 열 수 있습니다',
+    'Long-press a region for details — memos and visit logs',
+    '長押しでメモ・訪問記録などの詳細を開けます',
+  ],
+  'onboard.muni': [
+    '더 촘촘하게 — {term} 단위 도장은 "{term} 도장" 메뉴에서 찍습니다',
+    'Go deeper — stamp individual {term} from the "{term}" menu',
+    'もっと細かく — {term}単位の判は「{term}の経県値」から押せます',
+  ],
+  'onboard.gps': [
+    '좌하단 조준 버튼을 켜면 지금 있는 지역을 GPS로 자동 감지합니다',
+    'Turn on the locate button to auto-detect where you are with GPS',
+    '左下の照準ボタンでGPSが現在の地域を自動検知します',
+  ],
+  'onboard.privacy': [
+    '기록은 내 기기에만 저장되고, 공유 버튼으로 내 지도를 자랑할 수 있습니다',
+    'Everything stays on your device — share your map with the share button',
+    '記録は端末にのみ保存され、共有ボタンで自分の地図を自慢できます',
   ],
   'onboard.start': ['시작하기', 'Get started', 'はじめる'],
 

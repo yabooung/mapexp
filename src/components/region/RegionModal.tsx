@@ -6,14 +6,17 @@ import { getRegionMetadata } from '@/data/regions'
 import { ExpLevel, Visit, GyeongHyeonChi, ExperienceGrade } from '@/types'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
+import Icon from '@/components/common/Icon'
 import toast from 'react-hot-toast'
 import VisitList from './VisitList'
-import { useT, useLang, levelLabel, I18nKey } from '@/lib/i18n'
+import { useT, useLang, levelLabel, muniTerm, I18nKey } from '@/lib/i18n'
 
 interface RegionModalProps {
   isOpen: boolean
   onClose: () => void
   regionId: string
+  /** 이 광역의 기초 지역(시정촌/시군구) 도장 모달 열기 */
+  onOpenMunis?: (prefectureId: string) => void
 }
 
 /**
@@ -23,6 +26,7 @@ export default function RegionModal({
   isOpen,
   onClose,
   regionId,
+  onOpenMunis,
 }: RegionModalProps) {
   const { getRegionById, addRegion, updateRegion, deleteRegion } =
     useMapExpStore()
@@ -189,6 +193,17 @@ export default function RegionModal({
               })}
           </div>
         </div>
+
+        {/* 이 광역의 세부 지역 도장 진입 (광역 상세에서만 - 시정촌 상세에는 불필요) */}
+        {onOpenMunis && !regionId.includes('_') && regionInfo && (
+          <button
+            onClick={() => onOpenMunis(regionId)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-line bg-paper text-ink text-sm font-medium hover:border-seal/50 hover:bg-seal-soft transition-colors"
+          >
+            <Icon name="building" size={15} className="text-seal" />
+            {t('page.manageMunisLong', { term: muniTerm(regionInfo.country, lang) })}
+          </button>
+        )}
 
         {/* 레벨 5 설명 */}
         {level === GyeongHyeonChi.RESIDED && (
