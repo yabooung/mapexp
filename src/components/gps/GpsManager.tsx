@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import toast from 'react-hot-toast'
+import toast from '@/lib/appToast'
 import { useGpsStore } from '@/store/gps'
 import { useMapExpStore } from '@/store'
 import { detectRegionAt, detectMunicipalityAt } from '@/lib/geo'

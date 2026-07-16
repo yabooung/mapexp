@@ -15,7 +15,7 @@ import { ev } from '@/lib/analytics'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
 import Icon from '@/components/common/Icon'
-import toast from 'react-hot-toast'
+import toast from '@/lib/appToast'
 import QRCode from 'qrcode'
 import { parseImportFile, shareDataFile } from '@/lib/dataFile'
 

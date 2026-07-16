@@ -1,6 +1,6 @@
 'use client'
 
-import toast from 'react-hot-toast'
+import toast from '@/lib/appToast'
 import { useGpsStore } from '@/store/gps'
 import { useMapExpStore } from '@/store'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
