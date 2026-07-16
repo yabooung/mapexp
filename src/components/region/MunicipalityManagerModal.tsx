@@ -58,6 +58,8 @@ export default function MunicipalityManagerModal({
   // 지도가 기본 - 어디를 갔는지 공간으로 찍는 게 주 흐름, 목록은 검색·일괄용 보조
   const [viewMode, setViewMode] = useState<ViewMode>('map')
   const [locating, setLocating] = useState(false)
+  // 현 위치 도장으로 잡힌 세부 지역 - 미니맵이 이 지역으로 줌 이동
+  const [focusMuniId, setFocusMuniId] = useState<string | null>(null)
 
   const prefectures = useMemo(() => getRegionsByCountry(country), [country])
   const term = muniTerm(country, lang)
@@ -69,6 +71,7 @@ export default function MunicipalityManagerModal({
     setActiveTab('all')
     setSearch('')
     setViewMode('map')
+    setFocusMuniId(null)
   }, [isOpen, initialPrefectureId, country])
 
   // ESC로 닫기 (공용 Modal을 쓰지 않는 커스텀 레이아웃이라 직접 처리)
@@ -165,7 +168,9 @@ export default function MunicipalityManagerModal({
             return
           }
           setPrefectureId(region.id) // 해당 광역 화면으로 점프
+          setViewMode('map') // 지도에서 바로 확인할 수 있게
           const muni = await detectMunicipalityAt(lat, lng, region.id, country as Country)
+          setFocusMuniId(muni ? muni.id : null) // 미니맵이 이 세부 지역으로 줌
           const targetId = muni ? muni.id : region.id
           const prefName = (() => {
             const meta = prefectures.find((p) => p.id === region.id)
@@ -195,7 +200,10 @@ export default function MunicipalityManagerModal({
 
   const movePref = (delta: number) => {
     const next = prefectures[(prefIndex + delta + prefectures.length) % prefectures.length]
-    if (next) setPrefectureId(next.id)
+    if (next) {
+      setPrefectureId(next.id)
+      setFocusMuniId(null) // 수동 이동 시 초점 해제 (광역 전체 보기로)
+    }
   }
 
   const handleBulkUpdate = (level: ExperienceGrade) => {
@@ -259,7 +267,10 @@ export default function MunicipalityManagerModal({
               </button>
               <select
                 value={prefectureId}
-                onChange={(e) => setPrefectureId(e.target.value)}
+                onChange={(e) => {
+                  setPrefectureId(e.target.value)
+                  setFocusMuniId(null)
+                }}
                 className="text-[15px] sm:text-base font-bold text-ink bg-card border border-line rounded-md px-2.5 py-1.5 min-w-0 max-w-[190px] sm:max-w-[240px] focus:outline-none focus:border-ink"
                 aria-label={t('muni.selectAria')}
               >
@@ -396,7 +407,7 @@ export default function MunicipalityManagerModal({
         {/* Content */}
         <div className={`flex-1 min-h-0 bg-paper ${viewMode === 'map' ? 'p-2.5 sm:p-3' : 'overflow-y-auto p-3 sm:p-4'}`}>
           {viewMode === 'map' ? (
-            <MunicipalityMiniMap country={country as Country} prefectureId={prefectureId} />
+            <MunicipalityMiniMap country={country as Country} prefectureId={prefectureId} focusMuniId={focusMuniId} />
           ) : isLoading ? (
             <div className="flex flex-col items-center justify-center h-48 gap-3">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-seal"></div>
