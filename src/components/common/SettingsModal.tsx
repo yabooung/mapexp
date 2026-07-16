@@ -16,8 +16,8 @@ interface SettingsModalProps {
 
 const LANG_OPTIONS: Array<{ value: Lang; label: string }> = [
   { value: 'ko', label: '한국어' },
-  { value: 'en', label: 'English' },
   { value: 'ja', label: '日本語' },
+  { value: 'en', label: 'English' },
 ]
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
