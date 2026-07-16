@@ -154,6 +154,261 @@ const KOREA_ID_BY_PROV_CODE: Record<string, string> = Object.fromEntries(
   Object.entries(KOREA_PROV_CODE_BY_ID).map(([id, code]) => [code, id]),
 )
 
+/** dataURL → 이미지 로드 */
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
+
+export interface ShareCardData {
+  /** 우측 상단 국가 라벨 (일본 / 한국 / 일본 × 한국) */
+  headerLabel: string
+  /** 브랜드 부제 (나의 여행 도장) */
+  subtitle: string
+  /** 지도 이미지 (1장 = 전폭, 2장 = 좌우 배치 + 캡션) */
+  maps: Array<{ src: string; caption?: string }>
+  level: number
+  score: number
+  /** 다음 레벨 도달 점수 (progress 바용) */
+  nextLevelScore: number
+  tierLabel: string
+  /** '/ 다음 레벨까지 n점' 형식의 번역 문자열 */
+  toNextLabel: string
+  /** [방문 지역, 달성률, 도장첩] 라벨·값 3쌍 */
+  stats: Array<{ label: string; value: string; sub?: string }>
+  counts: Record<ExperienceGrade, number>
+  total: number
+  gradeLabels: Record<ExperienceGrade, string>
+  badgeIcons: string[]
+  siteUrl: string
+}
+
+/**
+ * 공유 카드 전체를 캔버스로 직접 그린다.
+ * html2canvas는 CJK 가변 폰트의 세로 메트릭·자간을 계속 오측정해
+ * (글자가 아래로 붙고 일본어 자간이 벌어짐) DOM 캡처를 버리고 직접 렌더.
+ */
+export async function renderShareCardImage(data: ShareCardData): Promise<string | null> {
+  const W = 840
+  const pad = 64
+  const inner = W - pad * 2
+
+  // 지도 블록 높이 선계산 (캔버스 높이 확정용)
+  const twoMaps = data.maps.length > 1
+  const mapW = twoMaps ? Math.floor((inner - 20) / 2) : inner
+  const mapH = mapW // 지도 스냅샷은 정사각
+  const mapBlockH = mapH + (data.maps.some((m) => m.caption) ? 44 : 0)
+
+  const hasBadges = data.badgeIcons.length > 0
+  const H = pad + 96 + 24 + mapBlockH + 30 + 150 + 24 + 108 + 26 + 78 + (hasBadges ? 104 : 0) + 70 + pad - 40
+
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  ctx.fillStyle = '#f5f3ec'
+  ctx.fillRect(0, 0, W, H)
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
+
+  let y = pad
+
+  // ── 헤더 ──
+  ctx.save()
+  ctx.translate(pad + 30, y + 30)
+  ctx.rotate((-3 * Math.PI) / 180)
+  ctx.fillStyle = '#be3a2b'
+  ctx.beginPath()
+  ctx.roundRect(-30, -30, 60, 60, 14)
+  ctx.fill()
+  ctx.fillStyle = '#ffffff'
+  ctx.font = `700 34px ${CARD_FONT}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('経', 0, 2)
+  ctx.restore()
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
+
+  ctx.fillStyle = '#26231c'
+  ctx.font = `700 34px ${CARD_FONT}`
+  ctx.fillText('MAPEXP', pad + 78, y + 26)
+  ctx.fillStyle = '#7c766a'
+  ctx.font = `500 20px ${CARD_FONT}`
+  ctx.fillText(data.subtitle, pad + 78, y + 56)
+
+  ctx.textAlign = 'right'
+  ctx.font = `600 22px ${CARD_FONT}`
+  ctx.fillText(data.headerLabel, W - pad, y + 32)
+  ctx.textAlign = 'left'
+  y += 96 + 24
+
+  // ── 지도 ──
+  try {
+    if (twoMaps) {
+      for (let i = 0; i < 2; i++) {
+        const slot = data.maps[i]
+        const x = pad + i * (mapW + 20)
+        const img = await loadImage(slot.src)
+        ctx.drawImage(img, x, y, mapW, mapH)
+        if (slot.caption) {
+          ctx.fillStyle = '#7c766a'
+          ctx.font = `600 19px ${CARD_FONT}`
+          ctx.textAlign = 'center'
+          ctx.fillText(slot.caption, x + mapW / 2, y + mapH + 30)
+        }
+      }
+      ctx.textAlign = 'left'
+    } else {
+      const img = await loadImage(data.maps[0].src)
+      ctx.drawImage(img, pad, y, mapW, mapH)
+    }
+  } catch {
+    return null
+  }
+  y += mapBlockH + 30
+
+  // ── Lv / EXP (게임식 표기) ──
+  ctx.fillStyle = '#26231c'
+  ctx.font = `700 72px ${CARD_FONT}`
+  ctx.fillText(`Lv.${data.level}`, pad, y + 64)
+  ctx.textAlign = 'right'
+  ctx.fillStyle = '#be3a2b'
+  ctx.font = `700 46px ${CARD_FONT}`
+  ctx.fillText(`${data.score} EXP`, W - pad, y + 62)
+  ctx.textAlign = 'left'
+
+  // 다음 레벨 진행 바 + 티어
+  const barY = y + 92
+  ctx.fillStyle = '#e3dfd3'
+  ctx.beginPath()
+  ctx.roundRect(pad, barY, inner, 12, 6)
+  ctx.fill()
+  const frac = Math.max(0.02, (data.score % 10) / 10)
+  ctx.fillStyle = '#be3a2b'
+  ctx.beginPath()
+  ctx.roundRect(pad, barY, Math.round(inner * frac), 12, 6)
+  ctx.fill()
+
+  ctx.fillStyle = '#be3a2b'
+  ctx.font = `700 21px ${CARD_FONT}`
+  ctx.fillText(data.tierLabel, pad, barY + 44)
+  ctx.textAlign = 'right'
+  ctx.fillStyle = '#a8a294'
+  ctx.font = `500 19px ${CARD_FONT}`
+  ctx.fillText(data.toNextLabel, W - pad, barY + 44)
+  ctx.textAlign = 'left'
+  y += 150 + 24
+
+  // ── 방문/달성률/도장첩 ──
+  ctx.strokeStyle = '#e3dfd3'
+  ctx.lineWidth = 1.4
+  ctx.beginPath()
+  ctx.moveTo(pad, y - 14)
+  ctx.lineTo(W - pad, y - 14)
+  ctx.stroke()
+
+  const colW = inner / 3
+  data.stats.forEach((s, i) => {
+    const x = pad + i * colW
+    ctx.fillStyle = '#7c766a'
+    ctx.font = `500 20px ${CARD_FONT}`
+    ctx.fillText(s.label, x, y + 26)
+    ctx.fillStyle = '#26231c'
+    ctx.font = `700 42px ${CARD_FONT}`
+    ctx.fillText(s.value, x, y + 76)
+    if (s.sub) {
+      const w = ctx.measureText(s.value).width
+      ctx.fillStyle = '#a8a294'
+      ctx.font = `600 22px ${CARD_FONT}`
+      ctx.fillText(` ${s.sub}`, x + w, y + 76)
+    }
+  })
+  y += 108 + 26
+
+  // ── 등급 분포: 하나의 막대에 쌓이는 스택 바 (기존 형식) + 인라인 범례 ──
+  const order: ExperienceGrade[] = [5, 4, 3, 2, 1, 0] as ExperienceGrade[]
+  let sx = pad
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(pad, y, inner, 20, 10)
+  ctx.clip()
+  for (const lvl of order) {
+    const cnt = data.counts[lvl]
+    if (!cnt) continue
+    const w = (cnt / data.total) * inner
+    ctx.fillStyle = lvl === 0 ? '#e3dfd3' : EXP_COLORS[lvl]
+    ctx.fillRect(sx, y, w + 1, 20)
+    sx += w
+  }
+  ctx.restore()
+
+  // 범례 (색점 + 이름 + 개수, 한 줄 중앙)
+  const legendY = y + 52
+  ctx.font = `600 19px ${CARD_FONT}`
+  const parts = ([1, 2, 3, 4, 5] as ExperienceGrade[]).map((lvl) => ({
+    lvl,
+    text: `${data.gradeLabels[lvl]} ${data.counts[lvl]}`,
+  }))
+  const gapDot = 26
+  const totalW = parts.reduce((s, p) => s + 14 + 8 + ctx.measureText(p.text).width, 0) + gapDot * (parts.length - 1)
+  let lx = pad + Math.max(0, (inner - totalW) / 2)
+  for (const p of parts) {
+    ctx.fillStyle = EXP_COLORS[p.lvl]
+    ctx.beginPath()
+    ctx.roundRect(lx, legendY - 13, 14, 14, 4)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)'
+    ctx.lineWidth = 1
+    ctx.stroke()
+    ctx.fillStyle = '#7c766a'
+    ctx.fillText(p.text, lx + 22, legendY)
+    lx += 14 + 8 + ctx.measureText(p.text).width + gapDot
+  }
+  y += 78
+
+  // ── 달성 도장 ──
+  if (hasBadges) {
+    let bx = pad + 34
+    data.badgeIcons.slice(0, 8).forEach((icon, i) => {
+      ctx.save()
+      ctx.translate(bx, y + 40)
+      ctx.rotate((((i % 5) - 2) * 4 * Math.PI) / 180)
+      ctx.fillStyle = '#be3a2b'
+      ctx.beginPath()
+      ctx.arc(0, 0, 34, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = `700 ${icon.length > 1 ? 20 : 30}px ${CARD_FONT}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(icon, 0, 2)
+      ctx.restore()
+      bx += 84
+    })
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+    y += 104
+  }
+
+  // ── 푸터 ──
+  ctx.strokeStyle = '#e3dfd3'
+  ctx.beginPath()
+  ctx.moveTo(pad, y + 6)
+  ctx.lineTo(W - pad, y + 6)
+  ctx.stroke()
+  ctx.fillStyle = '#a8a294'
+  ctx.font = `500 20px ${CARD_FONT}`
+  ctx.fillText(data.siteUrl, pad, y + 44)
+
+  return canvas.toDataURL('image/png')
+}
+
 const CARD_FONT = "'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Yu Gothic', sans-serif"
 
 /**
