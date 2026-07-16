@@ -44,7 +44,8 @@ export default function LanguageSwitcher() {
         aria-label="Language"
       >
         <Icon name="globe" size={17} />
-        <span className="text-xs font-semibold">{current.short}</span>
+        {/* 한/EN/日 폭 차이로 헤더가 흔들리지 않게 고정 폭 */}
+        <span className="text-xs font-semibold w-5 text-center">{current.short}</span>
       </button>
 
       {open && (
