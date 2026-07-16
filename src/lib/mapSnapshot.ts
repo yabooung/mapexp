@@ -27,11 +27,12 @@ const JAPAN_MAINLAND_BBOX = {
   },
 } as unknown as Feature
 
-/** 오키나와 인셋 박스를 그리고 그 안에 features를 렌더할 projection/extent를 반환 */
+/** 오키나와 인셋 박스를 그리고 그 안에 features를 렌더할 projection/extent를 반환
+ *  박스 비율을 열도 범위(약 2:1)에 맞춰 섬들이 박스를 가득 채우게 한다 */
 function drawOkinawaInsetBox(ctx: CanvasRenderingContext2D, width: number) {
   const pad = Math.round(width * 0.03)
-  const w = Math.round(width * 0.3)
-  const h = Math.round(width * 0.24)
+  const w = Math.round(width * 0.4)
+  const h = Math.round(width * 0.205)
   const x = pad
   const y = pad
   ctx.fillStyle = '#f5f3ec'
@@ -41,7 +42,7 @@ function drawOkinawaInsetBox(ctx: CanvasRenderingContext2D, width: number) {
   ctx.rect(x, y, w, h)
   ctx.fill()
   ctx.stroke()
-  const inner = Math.round(width * 0.015)
+  const inner = Math.round(width * 0.013)
   return geoMercator().fitExtent(
     [
       [x + inner, y + inner],
@@ -58,12 +59,82 @@ function drawOkinawaInsetBox(ctx: CanvasRenderingContext2D, width: number) {
     } as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
   )
 }
+
+interface LabelItem {
+  x: number
+  y: number
+  area: number
+  text: string
+}
+
+/** 라벨 위치 계산: 가장 큰 폴리곤 중심 (화면 밖·극소 지역은 null) */
+function labelSpot(
+  path: ReturnType<typeof geoPath>,
+  feature: Feature,
+  text: string,
+  bounds: { w: number; h: number },
+  minArea = 0,
+): LabelItem | null {
+  // MultiPolygon은 낙도가 중심을 바다로 끌어당기므로 최대 폴리곤만으로 판정
+  let target: Feature = feature
+  if (feature.geometry.type === 'MultiPolygon') {
+    let bestArea = -1
+    for (const coords of feature.geometry.coordinates) {
+      const f = { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: coords } } as Feature
+      const a = path.area(f)
+      if (a > bestArea) {
+        bestArea = a
+        target = f
+      }
+    }
+  }
+  const area = path.area(target)
+  if (minArea > 0 && area < minArea) return null
+  const [x, y] = path.centroid(target)
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+  if (x < 0 || x > bounds.w || y < 0 || y > bounds.h) return null
+  return { x, y, area, text }
+}
+
+/** 지명 라벨 일괄 배치: 넓은 지역 우선, 이미 놓인 라벨과 겹치면 생략 (밀집 지대 뭉개짐 방지) */
+function drawLabels(ctx: CanvasRenderingContext2D, items: LabelItem[], fontSize: number) {
+  ctx.save()
+  ctx.font = `700 ${fontSize}px ${CARD_FONT}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.lineJoin = 'round'
+
+  const placed: Array<[number, number, number, number]> = []
+  const sorted = [...items].sort((a, b) => b.area - a.area)
+  for (const it of sorted) {
+    const w = ctx.measureText(it.text).width + 8
+    const h = fontSize + 6
+    const rect: [number, number, number, number] = [it.x - w / 2, it.y - h / 2, it.x + w / 2, it.y + h / 2]
+    if (placed.some((r) => !(rect[2] < r[0] || rect[0] > r[2] || rect[3] < r[1] || rect[1] > r[3]))) continue
+    placed.push(rect)
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.88)'
+    ctx.lineWidth = Math.max(3, fontSize * 0.22)
+    ctx.strokeText(it.text, it.x, it.y)
+    ctx.fillStyle = '#3f3b30'
+    ctx.fillText(it.text, it.x, it.y)
+  }
+  ctx.restore()
+}
+
+export interface SnapshotOpts {
+  width?: number
+  height?: number
+  /** 지명 라벨 (regionId → 표시명, null이면 생략) */
+  getLabel?: (regionId: string) => string | null
+}
+
 export async function renderRegionMapImage(
   country: Country,
   getLevel: (regionId: string) => ExperienceGrade,
-  width = 840,
-  height = 840,
+  opts: SnapshotOpts = {},
 ): Promise<string | null> {
+  const { width = 1200, height = 1200, getLabel } = opts
   const fc = await loadPrefectures(country)
   if (!fc) return null
 
@@ -117,33 +188,37 @@ export async function renderRegionMapImage(
     drawFeature(feature as Feature, path)
   }
 
-  // 오키나와: 우하단 대각선 컷 인셋 (일본 지도 관례 - 좌측은 범례에 양보)
+  // 오키나와: 좌상단 사각 인셋 (기초 지도와 동일한 형식)
+  let okinawaInsetPath: ReturnType<typeof geoPath> | null = null
+  let okinawaFeature: Feature | null = null
   if (isJapan) {
     const okinawa = features.find((f) => (f.properties as { id?: string })?.id === 'okinawa')
     if (okinawa) {
-      // 대각선 구분선 (우하단 모서리 삼각 영역)
-      const cornerW = Math.round(width * 0.34)
-      const cornerH = Math.round(height * 0.26)
-      ctx.strokeStyle = '#aaa496'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(width - cornerW, height)
-      ctx.lineTo(width, height - cornerH)
-      ctx.stroke()
-
-      const insetProjection = geoMercator().fitExtent(
-        [
-          [width - cornerW + 46, height - cornerH + 62],
-          [width - 18, height - 22],
-        ],
-        {
-          type: 'Feature',
-          properties: {},
-          geometry: { type: 'MultiPoint', coordinates: [[122.9, 24.0], [131.4, 27.95]] },
-        } as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
-      )
-      drawFeature(okinawa as Feature, geoPath(insetProjection, ctx))
+      okinawaInsetPath = geoPath(drawOkinawaInsetBox(ctx, width), ctx)
+      okinawaFeature = okinawa as Feature
+      drawFeature(okinawaFeature, okinawaInsetPath)
     }
+  }
+
+  // 지명 라벨 (선택)
+  if (getLabel) {
+    const fontSize = Math.round(width * 0.0165)
+    const bounds = { w: width, h: height }
+    const items: LabelItem[] = []
+    for (const feature of features) {
+      const id = (feature.properties as { id?: string })?.id
+      if (!id || (isJapan && id === 'okinawa')) continue
+      const text = getLabel(id)
+      if (!text) continue
+      const spot = labelSpot(path, feature as Feature, text, bounds)
+      if (spot) items.push(spot)
+    }
+    if (okinawaInsetPath && okinawaFeature) {
+      const text = getLabel('okinawa')
+      const spot = text ? labelSpot(okinawaInsetPath, okinawaFeature, text, bounds) : null
+      if (spot) items.push(spot)
+    }
+    drawLabels(ctx, items, fontSize)
   }
 
   return canvas.toDataURL('image/png')
@@ -205,11 +280,14 @@ export async function renderShareCardImage(data: ShareCardData): Promise<string 
   const hasBadges = data.badgeIcons.length > 0
   const H = pad + 96 + 24 + mapBlockH + 30 + 150 + 24 + 108 + 26 + 78 + (hasBadges ? 104 : 0) + 70 + pad - 40
 
+  // 2배 해상도 렌더 (SNS 확대·좁은 기초 지역 시인성)
+  const S = 2
   const canvas = document.createElement('canvas')
-  canvas.width = W
-  canvas.height = H
+  canvas.width = W * S
+  canvas.height = H * S
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
+  ctx.scale(S, S)
 
   ctx.fillStyle = '#f5f3ec'
   ctx.fillRect(0, 0, W, H)
@@ -372,10 +450,11 @@ export async function renderShareCardImage(data: ShareCardData): Promise<string 
   }
   y += 78
 
-  // ── 달성 도장 ──
+  // ── 달성 도장 (8개 초과면 7개 + '+N' 표기) ──
   if (hasBadges) {
+    const maxShow = data.badgeIcons.length > 8 ? 7 : 8
     let bx = pad + 34
-    data.badgeIcons.slice(0, 8).forEach((icon, i) => {
+    data.badgeIcons.slice(0, maxShow).forEach((icon, i) => {
       ctx.save()
       ctx.translate(bx, y + 40)
       ctx.rotate((((i % 5) - 2) * 4 * Math.PI) / 180)
@@ -391,6 +470,13 @@ export async function renderShareCardImage(data: ShareCardData): Promise<string 
       ctx.restore()
       bx += 84
     })
+    if (data.badgeIcons.length > maxShow) {
+      ctx.fillStyle = '#7c766a'
+      ctx.font = `700 26px ${CARD_FONT}`
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(`+${data.badgeIcons.length - maxShow}`, bx - 16, y + 40)
+    }
     ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'
     y += 104
@@ -411,18 +497,29 @@ export async function renderShareCardImage(data: ShareCardData): Promise<string 
 
 const CARD_FONT = "'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Yu Gothic', sans-serif"
 
+export interface PrefectureCardOpts {
+  regionName: string
+  /** 브랜드 부제 (나의 여행 도장) - 국가 카드와 동일 헤더 */
+  subtitle: string
+  /** [방문, 달성률, EXP] 라벨·값 3쌍 - 국가 카드와 동일 형식 */
+  stats: Array<{ label: string; value: string; sub?: string }>
+  /** 기초 지명 라벨 (props·원어명 → 표시명, 미지정 시 라벨 없음) */
+  getLabel?: (props: Record<string, string | null> | null, name: string) => string | null
+  siteUrl?: string
+}
+
 /**
  * 광역 한 곳의 시정촌/시군구 색칠 지도를 담은 지역 카드 (전부 캔버스 - 배치 깨짐 없음)
  * 먼 섬 이상치는 미니맵과 같은 중앙값 컷으로 제외해 본체를 크게 그린다.
+ * 헤더·통계·푸터는 국가 공유 카드와 동일한 형식.
  */
 export async function renderPrefectureCardImage(
   country: Country,
   prefectureId: string,
   getLevel: (regionId: string) => ExperienceGrade,
-  regionName: string,
-  caption: string,
-  siteUrl = 'mapexp.vercel.app',
+  opts: PrefectureCardOpts,
 ): Promise<string | null> {
+  const { regionName, subtitle, stats, getLabel, siteUrl = 'mapexp.vercel.app' } = opts
   const muniFc = await loadMunicipalities(country)
   if (!muniFc) return null
 
@@ -444,29 +541,34 @@ export async function renderPrefectureCardImage(
   if (feats.length === 0) return null
 
   const width = 840
-  const height = 940
+  const mapH = 600
+  const pad = 64
+  // 헤더(96+20) + 지역명(64) + 지도 + 간격(44) + 통계(108+26) + 푸터(84)
+  const height = pad + 180 + mapH + 44 + 108 + 26 + 84
+
+  // 2배 해상도 렌더 (좁은 기초 지역 시인성)
+  const S = 2
   const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
+  canvas.width = width * S
+  canvas.height = height * S
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
+  ctx.scale(S, S)
 
   // 배경 (와시 페이퍼)
   ctx.fillStyle = '#f5f3ec'
   ctx.fillRect(0, 0, width, height)
 
-  const pad = 56
-
-  // ── 헤더: 経 인장 + MAPEXP + 지역명 ──
+  // ── 헤더: 국가 카드와 동일 (経 인장 + MAPEXP + 부제, 우측 지역명) ──
   ctx.save()
-  ctx.translate(pad + 26, pad + 26)
+  ctx.translate(pad + 30, pad + 30)
   ctx.rotate((-3 * Math.PI) / 180)
   ctx.fillStyle = '#be3a2b'
   ctx.beginPath()
-  ctx.roundRect(-26, -26, 52, 52, 12)
+  ctx.roundRect(-30, -30, 60, 60, 14)
   ctx.fill()
   ctx.fillStyle = '#ffffff'
-  ctx.font = `700 30px ${CARD_FONT}`
+  ctx.font = `700 34px ${CARD_FONT}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText('経', 0, 2)
@@ -475,16 +577,16 @@ export async function renderPrefectureCardImage(
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
   ctx.fillStyle = '#26231c'
-  ctx.font = `700 26px ${CARD_FONT}`
-  ctx.fillText('MAPEXP', pad + 68, pad + 22)
+  ctx.font = `700 34px ${CARD_FONT}`
+  ctx.fillText('MAPEXP', pad + 78, pad + 26)
   ctx.fillStyle = '#7c766a'
-  ctx.font = `500 15px ${CARD_FONT}`
-  ctx.fillText(siteUrl, pad + 68, pad + 45)
+  ctx.font = `500 20px ${CARD_FONT}`
+  ctx.fillText(subtitle, pad + 78, pad + 56)
 
   // 지역명 (크게)
   ctx.fillStyle = '#26231c'
-  ctx.font = `700 40px ${CARD_FONT}`
-  ctx.fillText(regionName, pad, pad + 116)
+  ctx.font = `700 48px ${CARD_FONT}`
+  ctx.fillText(regionName, pad, pad + 96 + 20 + 48)
 
   // ── 지도: 먼 섬 이상치 컷 후 본체 확대 ──
   const boxes = feats.map(({ feature }) => {
@@ -514,8 +616,7 @@ export async function renderPrefectureCardImage(
   })
   if (!Number.isFinite(minLng)) return null
 
-  const mapTop = pad + 150
-  const mapH = 560
+  const mapTop = pad + 180
   const projection = geoMercator().fitExtent(
     [
       [pad, mapTop],
@@ -553,23 +654,61 @@ export async function renderPrefectureCardImage(
     }
     ctx.stroke()
   }
+
+  // 기초 지명 라벨 (선택) - 좁은 지역·겹침은 생략
+  if (getLabel) {
+    const items: LabelItem[] = []
+    for (const { feature, id } of feats) {
+      if (!id) continue
+      const props = feature.properties as Record<string, string | null> | null
+      const name = id.slice(id.indexOf('_') + 1)
+      const text = getLabel(props, name)
+      if (!text) continue
+      const spot = labelSpot(path, feature, text, { w: width, h: height }, 380)
+      if (spot) items.push(spot)
+    }
+    drawLabels(ctx, items, 16)
+  }
   ctx.restore()
 
-  // ── 캡션 (점수·진행) ──
-  ctx.fillStyle = '#26231c'
-  ctx.font = `600 22px ${CARD_FONT}`
-  ctx.fillText(caption, pad, mapTop + mapH + 64)
+  // ── 방문/달성률/EXP (국가 카드와 동일 형식) ──
+  const statsY = mapTop + mapH + 44
+  const inner = width - pad * 2
+  ctx.strokeStyle = '#e3dfd3'
+  ctx.lineWidth = 1.4
+  ctx.beginPath()
+  ctx.moveTo(pad, statsY - 14)
+  ctx.lineTo(width - pad, statsY - 14)
+  ctx.stroke()
 
-  // 구분선 + 푸터
+  const colW = inner / 3
+  stats.forEach((s, i) => {
+    const x = pad + i * colW
+    ctx.fillStyle = '#7c766a'
+    ctx.font = `500 20px ${CARD_FONT}`
+    ctx.fillText(s.label, x, statsY + 26)
+    ctx.fillStyle = '#26231c'
+    ctx.font = `700 42px ${CARD_FONT}`
+    ctx.fillText(s.value, x, statsY + 76)
+    if (s.sub) {
+      const w = ctx.measureText(s.value).width
+      ctx.fillStyle = '#a8a294'
+      ctx.font = `600 22px ${CARD_FONT}`
+      ctx.fillText(` ${s.sub}`, x + w, statsY + 76)
+    }
+  })
+
+  // ── 푸터 (국가 카드와 동일) ──
+  const fy = statsY + 108 + 26
   ctx.strokeStyle = '#e3dfd3'
   ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.moveTo(pad, height - 78)
-  ctx.lineTo(width - pad, height - 78)
+  ctx.moveTo(pad, fy + 6)
+  ctx.lineTo(width - pad, fy + 6)
   ctx.stroke()
   ctx.fillStyle = '#a8a294'
-  ctx.font = `500 16px ${CARD_FONT}`
-  ctx.fillText(siteUrl, pad, height - 44)
+  ctx.font = `500 20px ${CARD_FONT}`
+  ctx.fillText(siteUrl, pad, fy + 44)
 
   return canvas.toDataURL('image/png')
 }
@@ -582,9 +721,9 @@ export async function renderPrefectureCardImage(
 export async function renderMunicipalityMapImage(
   country: Country,
   getLevel: (regionId: string) => ExperienceGrade,
-  width = 840,
-  height = 840,
+  opts: SnapshotOpts = {},
 ): Promise<string | null> {
+  const { width = 1200, height = 1200, getLabel } = opts
   const [muniFc, prefFc] = await Promise.all([loadMunicipalities(country), loadPrefectures(country)])
   if (!muniFc || !prefFc) return null
 
@@ -663,22 +802,45 @@ export async function renderMunicipalityMapImage(
   }
 
   // 오키나와 인셋 (시정촌 + 광역 경계)
+  let okinawaInsetPath: ReturnType<typeof geoPath> | null = null
+  let okinawaPref: Feature | null = null
   if (isJapan) {
     const insetProjection = drawOkinawaInsetBox(ctx, width)
-    const insetPath = geoPath(insetProjection, ctx)
+    okinawaInsetPath = geoPath(insetProjection, ctx)
     for (const feature of features) {
-      if (isOkinawaMuni(feature as Feature)) drawMuni(feature as Feature, insetPath)
+      if (isOkinawaMuni(feature as Feature)) drawMuni(feature as Feature, okinawaInsetPath)
     }
-    const okinawaPref = (prefFc as FeatureCollection).features.find(
+    okinawaPref = ((prefFc as FeatureCollection).features.find(
       (f) => (f.properties as { id?: string })?.id === 'okinawa',
-    )
+    ) ?? null) as Feature | null
     if (okinawaPref) {
       ctx.beginPath()
-      insetPath(okinawaPref as Feature)
+      okinawaInsetPath(okinawaPref)
       ctx.strokeStyle = 'rgba(38, 35, 28, 0.35)'
       ctx.lineWidth = 0.9
       ctx.stroke()
     }
+  }
+
+  // 지명 라벨 (선택) - 기초 지도에서는 광역명만 (기초명은 전국 축척에서 읽을 수 없음)
+  if (getLabel) {
+    const fontSize = Math.round(width * 0.0165)
+    const bounds = { w: width, h: height }
+    const items: LabelItem[] = []
+    for (const feature of (prefFc as FeatureCollection).features) {
+      const id = (feature.properties as { id?: string })?.id
+      if (!id || (isJapan && id === 'okinawa')) continue
+      const text = getLabel(id)
+      if (!text) continue
+      const spot = labelSpot(path, feature as Feature, text, bounds)
+      if (spot) items.push(spot)
+    }
+    if (okinawaInsetPath && okinawaPref) {
+      const text = getLabel('okinawa')
+      const spot = text ? labelSpot(okinawaInsetPath, okinawaPref, text, bounds) : null
+      if (spot) items.push(spot)
+    }
+    drawLabels(ctx, items, fontSize)
   }
 
   return canvas.toDataURL('image/png')

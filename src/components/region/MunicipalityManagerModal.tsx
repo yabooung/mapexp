@@ -201,6 +201,7 @@ export default function MunicipalityManagerModal({
 
   // 지역 카드 캡처: 이 광역의 기초 색칠 지도를 이미지로 (모바일=공유 시트, 폴백=다운로드)
   const [capturing, setCapturing] = useState(false)
+  const [captureLabels, setCaptureLabels] = useState(false) // 캡처에 기초 지명 라벨 포함
   const handleCapture = async () => {
     if (capturing) return
     setCapturing(true)
@@ -211,8 +212,19 @@ export default function MunicipalityManagerModal({
       }
       const score = municipalities.reduce((s, m) => s + m.level, 0)
       const done = municipalities.filter((m) => m.level > 0).length
-      const caption = `${t('stats.muniTotal', { n: score, m: done })} · ${done}/${municipalities.length}`
-      const dataUrl = await renderPrefectureCardImage(country as Country, prefectureId, getLevel, prefName, caption)
+      const pct = Math.round((done / municipalities.length) * 100) || 0
+      const dataUrl = await renderPrefectureCardImage(country as Country, prefectureId, getLevel, {
+        regionName: prefName,
+        subtitle: t('page.title'),
+        stats: [
+          { label: t('stats.visited'), value: String(done), sub: `/ ${municipalities.length}` },
+          { label: t('stats.completion'), value: `${pct}%` },
+          { label: 'EXP', value: String(score) },
+        ],
+        getLabel: captureLabels
+          ? (props, name) => muniDisplayName(country as Country, props, name, lang)
+          : undefined,
+      })
       if (!dataUrl) throw new Error('render failed')
 
       const blob = await (await fetch(dataUrl)).blob()
@@ -428,6 +440,18 @@ export default function MunicipalityManagerModal({
                 </button>
               ))}
             </div>
+
+            {/* 캡처 이미지에 지명 라벨 포함 여부 */}
+            <button
+              onClick={() => setCaptureLabels((v) => !v)}
+              title={t('muni.captureLabels')}
+              className={`shrink-0 px-2.5 py-1 rounded-full text-[13px] font-medium whitespace-nowrap border transition-colors flex items-center gap-1 ${
+                captureLabels ? 'bg-ink text-paper border-ink' : 'bg-card text-muted border-line hover:text-ink'
+              }`}
+            >
+              <Icon name="download" size={12} />
+              {t('share.optLabels')}
+            </button>
 
             {viewMode === 'list' ? (
               <>

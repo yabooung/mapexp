@@ -5,12 +5,14 @@ import { useMapExpStore } from '@/store'
 import { useGpsStore } from '@/store/gps'
 import { generateShareUrl } from '@/lib/share'
 import { TOTAL_REGIONS } from '@/constants'
+import { isHiddenRegion } from '@/constants/regions'
+import { getRegionsByCountry } from '@/data/regions'
 import { ExperienceGrade, RegionExp } from '@/types'
 import { countryStats, countryGradeCounts, levelFromScore, muniStats } from '@/lib/stats'
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters, type Country } from '@/lib/geo'
 import { renderRegionMapImage, renderMunicipalityMapImage, renderShareCardImage } from '@/lib/mapSnapshot'
-import { useT, useLang, levelLabel, tNow, I18nKey } from '@/lib/i18n'
+import { useT, useLang, levelLabel, regionDisplayName, tNow, I18nKey } from '@/lib/i18n'
 import { ev } from '@/lib/analytics'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
@@ -46,6 +48,9 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
   const [scope, setScope] = useState<CardScope>('japan')
   const [detail, setDetail] = useState<CardDetail>('pref')
   const [rendering, setRendering] = useState(false)
+  // 카드 옵션: 지명 라벨 / 도장첩 표시
+  const [optLabels, setOptLabels] = useState(false)
+  const [optBadges, setOptBadges] = useState(true)
   // 완성 카드 이미지 (캔버스 직접 렌더 - html2canvas의 CJK 메트릭 문제 회피)
   const [cardImg, setCardImg] = useState<string | null>(null)
   const t = useT()
@@ -67,15 +72,6 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       const data = exportData()
       setShareUrl(generateShareUrl(data))
 
-      // 색칠된 지도 스냅샷 렌더링: 활성 국가 + (기록이 있으면) 반대 국가
-      const levelOf = levelOfFor(regions)
-      setMapImgs({ japan: null, korea: null })
-      setMuniImgs({ japan: null, korea: null })
-      const wantJapan = country === 'japan' || countryStats(regions, 'japan').visited > 0
-      const wantKorea = country === 'korea' || countryStats(regions, 'korea').visited > 0
-      if (wantJapan) renderRegionMapImage('japan', levelOf).then((img) => setMapImgs((m) => ({ ...m, japan: img })))
-      if (wantKorea) renderRegionMapImage('korea', levelOf).then((img) => setMapImgs((m) => ({ ...m, korea: img })))
-
       // 기본 스코프: 양국 기록이 있으면 양국, 아니면 현재 국가
       const j = countryStats(regions, 'japan')
       const k = countryStats(regions, 'korea')
@@ -86,17 +82,57 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, exportData, country, regions, lang])
 
+  // 지명 라벨 함수 (옵션 켬일 때만) - 히든 지역은 라벨 없음
+  const labelFor = (c: Country) => {
+    if (!optLabels) return undefined
+    const metas = getRegionsByCountry(c)
+    return (id: string) => {
+      if (isHiddenRegion(id)) return null
+      const meta = metas.find((r) => r.id === id)
+      return meta ? regionDisplayName(meta, lang) : null
+    }
+  }
+
+  // 색칠된 지도 스냅샷 렌더링: 활성 국가 + (기록이 있으면) 반대 국가
+  useEffect(() => {
+    if (!isOpen) return
+    let cancelled = false
+    const levelOf = levelOfFor(regions)
+    setMapImgs({ japan: null, korea: null })
+    setMuniImgs({ japan: null, korea: null }) // 라벨 옵션 변경 시 기초 지도도 다시
+    const wantJapan = country === 'japan' || countryStats(regions, 'japan').visited > 0
+    const wantKorea = country === 'korea' || countryStats(regions, 'korea').visited > 0
+    if (wantJapan)
+      renderRegionMapImage('japan', levelOf, { getLabel: labelFor('japan') }).then((img) => {
+        if (!cancelled) setMapImgs((m) => ({ ...m, japan: img }))
+      })
+    if (wantKorea)
+      renderRegionMapImage('korea', levelOf, { getLabel: labelFor('korea') }).then((img) => {
+        if (!cancelled) setMapImgs((m) => ({ ...m, korea: img }))
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, country, regions, optLabels, lang])
+
   // 기초 지도 이미지는 무겁기 때문에(전국 시정촌 GeoJSON) 필요할 때만 렌더
   useEffect(() => {
     if (!isOpen || detail === 'pref') return
+    let cancelled = false
     const levelOf = levelOfFor(regions)
     const need: Country[] = scope === 'both' ? ['japan', 'korea'] : [scope]
     need.forEach((c) => {
       if (muniImgs[c]) return
-      renderMunicipalityMapImage(c, levelOf).then((img) => setMuniImgs((m) => (m[c] ? m : { ...m, [c]: img })))
+      renderMunicipalityMapImage(c, levelOf, { getLabel: labelFor(c) }).then((img) => {
+        if (!cancelled) setMuniImgs((m) => (m[c] ? m : { ...m, [c]: img }))
+      })
     })
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, detail, scope])
+  }, [isOpen, detail, scope, optLabels, lang, muniImgs])
 
   // QR 코드: 링크와 동일한 내용 - 오프라인에서 폰 카메라로 바로 열 수 있다
   useEffect(() => {
@@ -290,7 +326,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       gradeLabels: Object.fromEntries(
         ([0, 1, 2, 3, 4, 5] as ExperienceGrade[]).map((l) => [l, levelLabel(l, lang)]),
       ) as Record<ExperienceGrade, string>,
-      badgeIcons: achievedBadges.map((b) => b.icon),
+      badgeIcons: optBadges ? achievedBadges.map((b) => b.icon) : [],
       siteUrl: 'mapexp.vercel.app',
     }).then((url) => {
       if (!cancelled) setCardImg(url)
@@ -299,7 +335,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, scope, detail, mapImgs, muniImgs, lang, regions])
+  }, [isOpen, scope, detail, mapImgs, muniImgs, lang, regions, optBadges])
 
   return (
     <Modal
@@ -368,6 +404,24 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
               )
             })}
           </div>
+
+          {/* 카드 옵션: 지명 라벨 / 도장첩 표시 */}
+          {(
+            [
+              [optLabels, setOptLabels, t('share.optLabels')],
+              [optBadges, setOptBadges, t('share.optBadges')],
+            ] as Array<[boolean, (fn: (v: boolean) => boolean) => void, string]>
+          ).map(([on, set, label]) => (
+            <button
+              key={label}
+              onClick={() => set((v) => !v)}
+              className={`px-3 py-1 rounded-full text-[13px] font-medium border transition-colors ${
+                on ? 'bg-ink text-paper border-ink' : 'bg-card text-muted border-line hover:text-ink'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* 카드 미리보기 - 저장/공유되는 이미지 그대로 (캔버스 렌더) */}
