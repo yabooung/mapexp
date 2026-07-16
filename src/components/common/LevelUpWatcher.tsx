@@ -6,6 +6,7 @@ import { useMapExpStore } from '@/store'
 import { useGpsStore } from '@/store/gps'
 import { TOTAL_REGIONS } from '@/constants'
 import { computeBadges } from '@/lib/badges'
+import { countryStats, levelFromScore } from '@/lib/stats'
 import { trackDistanceMeters } from '@/lib/geo'
 import { tNow, useT, I18nKey } from '@/lib/i18n'
 import { ev } from '@/lib/analytics'
@@ -19,16 +20,17 @@ import { ev } from '@/lib/analytics'
 export default function LevelUpWatcher() {
   const regions = useMapExpStore((s) => s.regions)
   const country = useMapExpStore((s) => s.country)
-  const getSystemLevel = useMapExpStore((s) => s.getSystemLevel)
   const trackPoints = useGpsStore((s) => s.trackPoints)
 
   const prevLevelRef = useRef<number | null>(null)
   const prevBadgesRef = useRef<Set<string> | null>(null)
+  const prevCountryRef = useRef(country)
   const [celebration, setCelebration] = useState<number | null>(null)
   const t = useT()
 
   useEffect(() => {
-    const level = getSystemLevel()
+    // 여행자 레벨은 양국 합산 - 국가 전환으로 출렁이지 않음
+    const level = levelFromScore(countryStats(regions, 'japan').score + countryStats(regions, 'korea').score)
     const trackKm = trackDistanceMeters(trackPoints) / 1000
     const achieved = new Set(
       computeBadges(regions, TOTAL_REGIONS[country], trackKm, country)
@@ -36,10 +38,12 @@ export default function LevelUpWatcher() {
         .map((b) => b.id),
     )
 
-    // 첫 실행: 기준값만 저장
-    if (prevLevelRef.current === null || prevBadgesRef.current === null) {
+    // 첫 실행 또는 국가 전환: 기준값만 저장
+    // (뱃지는 국가별 집계라, 전환 직후 비교하면 이미 달성한 뱃지가 새로 딴 것처럼 토스트됨)
+    if (prevLevelRef.current === null || prevBadgesRef.current === null || country !== prevCountryRef.current) {
       prevLevelRef.current = level
       prevBadgesRef.current = achieved
+      prevCountryRef.current = country
       return
     }
 
@@ -67,7 +71,7 @@ export default function LevelUpWatcher() {
       }
     }
     prevBadgesRef.current = achieved
-  }, [regions, country, trackPoints, getSystemLevel])
+  }, [regions, country, trackPoints])
 
   if (celebration === null) return null
 

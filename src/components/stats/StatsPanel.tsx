@@ -20,8 +20,7 @@ interface StatsPanelProps {
  */
 export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
   const [mounted, setMounted] = useState(false)
-  const { country, regions, getTotalGyeonghyeonchi, getSystemLevel, getVisitedCount, getCompletionRate, getGyeonghyeonchiCounts } =
-    useMapExpStore()
+  const { country, regions, getVisitedCount, getCompletionRate, getGyeonghyeonchiCounts } = useMapExpStore()
   const t = useT()
   const lang = useLang()
 
@@ -35,8 +34,9 @@ export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
   const jp = countryStats(regions, 'japan')
   const kr = countryStats(regions, 'korea')
 
-  const totalGyeonghyeonchi = showBoth ? jp.score + kr.score : getTotalGyeonghyeonchi()
-  const systemLevel = showBoth ? levelFromScore(totalGyeonghyeonchi) : getSystemLevel()
+  // 여행자 레벨은 항상 양국 합산 - 국가 탭 전환으로 '나의 레벨'이 출렁이지 않게 한다
+  const totalGyeonghyeonchi = jp.score + kr.score
+  const systemLevel = levelFromScore(totalGyeonghyeonchi)
   const visitedCount = showBoth ? jp.visited + kr.visited : getVisitedCount()
   const totalRegions = showBoth ? jp.total + kr.total : TOTAL_REGIONS[country]
   const completionRate = showBoth
@@ -73,7 +73,7 @@ export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
         <div className="flex items-baseline justify-between">
           <span className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">
             {t('stats.travelerLevel')}
-            {showBoth && <span className="ml-1.5 normal-case tracking-normal">· {t('common.japan')} × {t('common.korea')}</span>}
+            <span className="ml-1.5 normal-case tracking-normal">· {t('common.japan')} × {t('common.korea')}</span>
           </span>
           <span className="text-xs text-muted tabular-nums">{t('stats.exp', { n: totalGyeonghyeonchi })}</span>
         </div>

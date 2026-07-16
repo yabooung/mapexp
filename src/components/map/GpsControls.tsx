@@ -9,6 +9,8 @@ import Icon from '@/components/common/Icon'
 import { useT, useLang, levelLabel, regionDisplayName } from '@/lib/i18n'
 import { ev } from '@/lib/analytics'
 import { getRegionMetadata } from '@/data/regions'
+import { muniDisplayName } from '@/lib/muniNames'
+import type { Country } from '@/lib/geo'
 
 interface GpsControlsProps {
   onRegionClick: (regionId: string) => void
@@ -30,10 +32,11 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
   const currentRegionName = useGpsStore((s) => s.currentRegionName)
   const currentMuniId = useGpsStore((s) => s.currentMuniId)
   const currentMuniName = useGpsStore((s) => s.currentMuniName)
+  const currentMuniProps = useGpsStore((s) => s.currentMuniProps)
   const autoDetectVisit = useGpsStore((s) => s.autoDetectVisit)
   const { setWatchEnabled, setFollowMode, startTracking, stopTracking, clearTrack } = useGpsStore()
 
-  const { getRegionById, addGpsRecord } = useMapExpStore()
+  const { getRegionById, addGpsRecord, country } = useMapExpStore()
   const t = useT()
   const lang = useLang()
 
@@ -44,7 +47,10 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
   const targetId = currentMuniId ?? currentRegionId
   const regionMeta = currentRegionId ? getRegionMetadata(currentRegionId) : undefined
   const prefDisplay = regionMeta ? regionDisplayName(regionMeta, lang) : currentRegionName
-  const targetLabel = currentMuniName ? `${prefDisplay} · ${currentMuniName}` : prefDisplay
+  const muniDisplay = currentMuniName
+    ? muniDisplayName(country as Country, currentMuniProps, currentMuniName, lang)
+    : null
+  const targetLabel = muniDisplay ? `${prefDisplay} · ${muniDisplay}` : prefDisplay
 
   const currentLevel: ExperienceGrade = (() => {
     if (!targetId) return GyeongHyeonChi.UNVISITED

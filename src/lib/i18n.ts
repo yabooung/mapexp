@@ -23,6 +23,7 @@ const STRINGS = {
   'common.save': ['저장', 'Save', '保存'],
   'common.delete': ['삭제', 'Delete', '削除'],
   'common.edit': ['수정', 'Edit', '編集'],
+  'common.undo': ['실행취소', 'Undo', '元に戻す'],
   'common.japan': ['일본', 'Japan', '日本'],
   'common.korea': ['한국', 'Korea', '韓国'],
 
@@ -53,9 +54,9 @@ const STRINGS = {
   'page.manageMunis': ['{term} 관리', '{term}', '{term}管理'],
   'page.manageMunisLong': ['{term} 일괄 관리', 'Manage {term}', '{term}を一括管理'],
   'page.guide': [
-    '지도 클릭으로 레벨 변경 (0→5→0) · Shift+클릭으로 상세 설정 · 좌하단 조준 버튼으로 GPS 추적',
-    'Click map to cycle level (0→5→0) · Shift+Click for details · Use the locate button for GPS',
-    '地図クリックでレベル変更 (0→5→0)・Shift+クリックで詳細・左下の照準ボタンでGPS',
+    '지도 클릭으로 레벨 변경 (0→5→0) · 우클릭/길게 누르기로 상세 설정 · 좌하단 조준 버튼으로 GPS 추적',
+    'Click map to cycle level (0→5→0) · Right-click / long-press for details · Use the locate button for GPS',
+    '地図クリックでレベル変更 (0→5→0)・右クリック/長押しで詳細・左下の照準ボタンでGPS',
   ],
 
   // 통계
@@ -146,7 +147,7 @@ const STRINGS = {
   'list.sortGroupKr': ['권역별', 'By region', '圏域別'],
   'list.sortName': ['이름순', 'Name', '名前順'],
   'list.sortLevel': ['레벨순', 'Level', 'レベル順'],
-  'list.hint': ['클릭: 레벨 변경 · Shift+클릭: 상세', 'Click: cycle level · Shift+Click: details', 'クリック: レベル変更・Shift+クリック: 詳細'],
+  'list.hint': ['클릭: 레벨 변경 · 연필 버튼: 상세', 'Click: cycle level · Pen button: details', 'クリック: レベル変更・ペンボタン: 詳細'],
   'list.noResult': ["'{q}'에 해당하는 지역이 없습니다", "No regions match '{q}'", '「{q}」に該当する地域がありません'],
 
   // 지역 상세 모달

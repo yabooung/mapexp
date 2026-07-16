@@ -42,6 +42,8 @@ interface GpsStore {
   /** 현재 감지된 시정촌 ID/이름 (예: tokyo_千代田区) */
   currentMuniId: string | null
   currentMuniName: string | null
+  /** 감지된 시정촌의 GeoJSON 속성 (표시명 다국어화용) */
+  currentMuniProps: Record<string, unknown> | null
 
   // 영속 상태
   isTracking: boolean // 트랙 로그 기록 중 여부
@@ -54,7 +56,7 @@ interface GpsStore {
   setStatus: (status: GpsStatus, errorMessage?: string | null) => void
   setPosition: (position: GpsPosition) => void
   setCurrentRegion: (id: string | null, name: string | null) => void
-  setCurrentMuni: (id: string | null, name: string | null) => void
+  setCurrentMuni: (id: string | null, name: string | null, props?: Record<string, unknown> | null) => void
   startTracking: () => void
   stopTracking: () => void
   clearTrack: () => void
@@ -73,6 +75,7 @@ export const useGpsStore = create<GpsStore>()(
       currentRegionName: null,
       currentMuniId: null,
       currentMuniName: null,
+      currentMuniProps: null,
 
       isTracking: false,
       trackPoints: [],
@@ -105,7 +108,7 @@ export const useGpsStore = create<GpsStore>()(
       },
 
       setCurrentRegion: (id, name) => set({ currentRegionId: id, currentRegionName: name }),
-      setCurrentMuni: (id, name) => set({ currentMuniId: id, currentMuniName: name }),
+      setCurrentMuni: (id, name, props = null) => set({ currentMuniId: id, currentMuniName: name, currentMuniProps: props }),
 
       startTracking: () => set({ isTracking: true }),
       stopTracking: () => set({ isTracking: false }),

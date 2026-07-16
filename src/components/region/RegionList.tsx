@@ -2,11 +2,12 @@
 
 import { useState, useMemo } from 'react'
 import { useMapExpStore } from '@/store'
-import { getRegionsByCountry, getHiddenRegionsByCountry } from '@/data/regions'
+import { getRegionsByCountry, getHiddenRegionsByCountry, getRegionMetadata } from '@/data/regions'
 import { GyeongHyeonChi, ExperienceGrade, RegionMetadata } from '@/types'
 import { REGION_GROUPS } from '@/constants/regions'
 import RegionCard from './RegionCard'
-import { useT } from '@/lib/i18n'
+import { useT, useLang, regionDisplayName } from '@/lib/i18n'
+import { showLevelUndoToast } from '@/lib/undoToast'
 
 interface RegionListProps {
   onRegionClick: (regionId: string) => void
@@ -22,6 +23,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
   const [searchText, setSearchText] = useState('')
   const [sortBy, setSortBy] = useState<SortMode>('group')
   const t = useT()
+  const lang = useLang()
 
   const levelOf = (regionId: string): ExperienceGrade => {
     const exp = getRegionById(regionId)
@@ -91,7 +93,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
     }
 
     const regionExp = getRegionById(regionId)
-    const currentVal = regionExp?.gyeonghyeonchi ?? regionExp?.level ?? GyeongHyeonChi.UNVISITED
+    const currentVal = (regionExp?.gyeonghyeonchi ?? regionExp?.level ?? GyeongHyeonChi.UNVISITED) as ExperienceGrade
     const nextVal = (currentVal >= GyeongHyeonChi.RESIDED
       ? GyeongHyeonChi.UNVISITED
       : currentVal + 1) as ExperienceGrade
@@ -105,6 +107,9 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
         updatedAt: new Date().toISOString(),
       })
     }
+
+    const meta = getRegionMetadata(regionId)
+    showLevelUndoToast(regionId, meta ? regionDisplayName(meta, lang) : regionId, currentVal, nextVal)
   }
 
   const renderCards = (regions: RegionMetadata[]) => (
@@ -115,6 +120,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
           regionInfo={region}
           regionExp={getRegionById(region.id)}
           onClick={(e) => handleRegionClick(e, region.id)}
+          onDetail={() => onRegionClick(region.id)}
         />
       ))}
     </div>

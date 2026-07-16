@@ -14,6 +14,8 @@ export type Country = 'japan' | 'korea'
 export interface DetectedRegion {
   id: string
   name: string
+  /** GeoJSON 속성 (기초 지역 표시명 다국어화용 - muniDisplayName에 전달) */
+  props?: Record<string, unknown> | null
 }
 
 /** 지역 ID → 현지어 광역 이름 역매핑 (예: tokyo → 東京都, seoul → 서울특별시) */
@@ -175,7 +177,7 @@ export async function detectMunicipalityAt(
       if (containsPoint(feature as Feature, lng, lat)) {
         const name = municipalityName(props)
         if (!name) return null
-        return { id: `${prefId}_${name}`, name }
+        return { id: `${prefId}_${name}`, name, props }
       }
     }
     return null
@@ -191,7 +193,7 @@ export async function detectMunicipalityAt(
     if (containsPoint(feature as Feature, lng, lat)) {
       const name = props.name
       if (!name) return null
-      return { id: `${prefId}_${name}`, name }
+      return { id: `${prefId}_${name}`, name, props }
     }
   }
   return null

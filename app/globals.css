@@ -42,6 +42,7 @@ body {
   font-family: var(--font-sans-kr), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   font-feature-settings: "tnum";
   text-rendering: optimizeLegibility;
+  word-break: keep-all; /* 한국어 어절 단위 줄바꿈 ("내보내/기" 같은 중간 절단 방지) */
 }
 
 /* Leaflet 지도 스타일 커스터마이징 */
