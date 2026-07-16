@@ -33,7 +33,7 @@ Based on Japan's [経県値 (Keikenchi)](https://uub.jp/kkn/) concept, reimagine
 - **GPS** — Auto-detects your current region (province + municipality), records travel tracks, auto-logs visits
   - GPS-verified records can't be edited or deleted; manual records allow free past-date entry
 - **Gamification** — Traveler level, kanji seal stamp book (12 badges), per-region and municipal score breakdowns
-- **Sharing** — SNS image card (with rank tier), QR codes, read-only share links, JSON file exchange. Overlay a friend's map on yours in a 3-color compare view (only me / only them / both)
+- **Sharing** — SNS image card (game-style Lv/EXP score, rank tier, optional place-name labels and badge row, Japan/Korea/both × regions/municipalities), per-region card with share preview, QR codes, read-only share links, JSON file exchange. Overlay a friend's map on yours in a 3-color compare view (only me / only them / both)
 - **i18n UI** — Korean · English · Japanese
 - **PWA** — Home-screen install, offline map caching
 - **Privacy** — All records and location data stay in your browser only (no server, no login)
