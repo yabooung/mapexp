@@ -297,6 +297,9 @@ const STRINGS = {
   'map.baseTiles': ['배경 지도', 'Base map', '背景地図'],
   'map.both': ['양국 지도', 'Both countries', '日韓を同時'],
   'map.settingsAria': ['지도 설정', 'Map settings', '地図設定'],
+  // 이동/구경 중 실수로 지역을 탭해 등급이 바뀌는 걸 막는 잠금
+  'map.editLock': ['편집 잠금', 'Lock editing', '編集ロック'],
+  'map.lockedToast': ['편집 잠금 중입니다 - 지도 패널에서 해제할 수 있어요', 'Editing is locked - unlock it in the map panel', '編集ロック中です - 地図パネルで解除できます'],
   'map.loading': ['지도를 불러오는 중...', 'Loading map…', '地図を読み込み中…'],
   'map.loadFailed': ['지도 데이터를 불러오지 못했습니다', "Couldn't load map data", '地図データを読み込めませんでした'],
   'map.retry': ['다시 시도', 'Retry', '再試行'],

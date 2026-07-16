@@ -9,7 +9,55 @@ import { loadPrefectures, loadMunicipalities, municipalityName, type Country } f
  * 공유 이미지용 지도 스냅샷 렌더러
  * 배경 타일 없이 광역 지역을 등급색으로 칠한 클래식 経県値 스타일 지도를
  * 캔버스에 그려 dataURL로 반환한다. (타일 CORS/taint 문제와 무관)
+ *
+ * 일본은 오키나와·이즈/오가사와라 낙도가 지도를 절반 크기로 축소시키므로,
+ * 본토 고정 범위로 확대하고 오키나와는 좌상단 인셋 박스에 따로 그린다.
+ * (도쿄 낙도는 본토 범위 밖으로 크롭 - 색은 본토 도쿄에서 이미 보인다)
  */
+
+/** 일본 본토 범위 (규슈 고토열도~홋카이도, 야쿠시마 포함 / 오키나와·오가사와라 제외)
+ *  주의: d3-geo는 구면 폴리곤이라 감김 방향이 틀리면 '지구 전체'로 해석됨
+ *  → 방향 무관한 MultiPoint(대각 모서리)로 fit */
+const JAPAN_MAINLAND_BBOX = {
+  type: 'Feature',
+  properties: {},
+  geometry: {
+    type: 'MultiPoint',
+    coordinates: [[128.3, 30.0], [147.0, 45.8]],
+  },
+} as unknown as Feature
+
+/** 오키나와 인셋 박스를 그리고 그 안에 features를 렌더할 projection/extent를 반환 */
+function drawOkinawaInsetBox(ctx: CanvasRenderingContext2D, width: number) {
+  const pad = Math.round(width * 0.03)
+  const w = Math.round(width * 0.3)
+  const h = Math.round(width * 0.24)
+  const x = pad
+  const y = pad
+  ctx.fillStyle = '#f5f3ec'
+  ctx.strokeStyle = '#d8d4c8'
+  ctx.lineWidth = 1.2
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.fill()
+  ctx.stroke()
+  const inner = Math.round(width * 0.015)
+  return geoMercator().fitExtent(
+    [
+      [x + inner, y + inner],
+      [x + w - inner, y + h - inner],
+    ],
+    // 오키나와 본섬~사키시마 제도 범위 (MultiPoint - 감김 방향 무관)
+    {
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'MultiPoint',
+        coordinates: [[122.9, 24.0], [131.4, 27.95]],
+      },
+    } as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
+  )
+}
 export async function renderRegionMapImage(
   country: Country,
   getLevel: (regionId: string) => ExperienceGrade,
@@ -26,12 +74,13 @@ export async function renderRegionMapImage(
   if (!ctx) return null
 
   const pad = Math.round(width * 0.03)
+  const isJapan = country === 'japan'
   const projection = geoMercator().fitExtent(
     [
       [pad, pad],
       [width - pad, height - pad],
     ],
-    fc as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
+    (isJapan ? JAPAN_MAINLAND_BBOX : fc) as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
   )
   const path = geoPath(projection, ctx)
 
@@ -42,12 +91,12 @@ export async function renderRegionMapImage(
     return (la > 0 ? 1 : 0) - (lb > 0 ? 1 : 0)
   })
 
-  for (const feature of features) {
+  const drawFeature = (feature: Feature, p: ReturnType<typeof geoPath>) => {
     const id = (feature.properties as { id?: string })?.id
     const level = id ? getLevel(id) : (0 as ExperienceGrade)
 
     ctx.beginPath()
-    path(feature as Feature)
+    p(feature)
 
     if (level > 0) {
       ctx.fillStyle = EXP_COLORS[level]
@@ -61,6 +110,20 @@ export async function renderRegionMapImage(
       ctx.lineWidth = 0.8
     }
     ctx.stroke()
+  }
+
+  for (const feature of features) {
+    if (isJapan && (feature.properties as { id?: string })?.id === 'okinawa') continue // 인셋에서 그림
+    drawFeature(feature as Feature, path)
+  }
+
+  // 오키나와 인셋 (좌상단 - 본토가 커지도록 따로 그린다)
+  if (isJapan) {
+    const okinawa = features.find((f) => (f.properties as { id?: string })?.id === 'okinawa')
+    if (okinawa) {
+      const insetProjection = drawOkinawaInsetBox(ctx, width)
+      drawFeature(okinawa as Feature, geoPath(insetProjection, ctx))
+    }
   }
 
   return canvas.toDataURL('image/png')
@@ -92,14 +155,16 @@ export async function renderMunicipalityMapImage(
   if (!ctx) return null
 
   const pad = Math.round(width * 0.03)
+  const isJapan = country === 'japan'
   const projection = geoMercator().fitExtent(
     [
       [pad, pad],
       [width - pad, height - pad],
     ],
-    prefFc as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
+    (isJapan ? JAPAN_MAINLAND_BBOX : prefFc) as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
   )
   const path = geoPath(projection, ctx)
+  const isOkinawaMuni = (f: Feature) => (f.properties as { N03_001?: string } | null)?.N03_001 === '沖縄県'
 
   // 기초 지역 ID 계산 (MapView/관리 모달과 동일한 규약)
   const muniId = (props: Record<string, string | null> | null): string | null => {
@@ -121,12 +186,12 @@ export async function renderMunicipalityMapImage(
     return (la > 0 ? 1 : 0) - (lb > 0 ? 1 : 0)
   })
 
-  for (const feature of features) {
+  const drawMuni = (feature: Feature, p: ReturnType<typeof geoPath>) => {
     const id = muniId(feature.properties as Record<string, string | null>)
     const level = id ? getLevel(id) : (0 as ExperienceGrade)
 
     ctx.beginPath()
-    path(feature as Feature)
+    p(feature)
 
     if (level > 0) {
       ctx.fillStyle = EXP_COLORS[level]
@@ -142,13 +207,38 @@ export async function renderMunicipalityMapImage(
     ctx.stroke()
   }
 
+  for (const feature of features) {
+    if (isJapan && isOkinawaMuni(feature as Feature)) continue // 인셋에서 그림
+    drawMuni(feature as Feature, path)
+  }
+
   // 광역 경계선 (맥락)
   for (const feature of (prefFc as FeatureCollection).features) {
+    if (isJapan && (feature.properties as { id?: string })?.id === 'okinawa') continue
     ctx.beginPath()
     path(feature as Feature)
     ctx.strokeStyle = 'rgba(38, 35, 28, 0.35)'
     ctx.lineWidth = 0.9
     ctx.stroke()
+  }
+
+  // 오키나와 인셋 (시정촌 + 광역 경계)
+  if (isJapan) {
+    const insetProjection = drawOkinawaInsetBox(ctx, width)
+    const insetPath = geoPath(insetProjection, ctx)
+    for (const feature of features) {
+      if (isOkinawaMuni(feature as Feature)) drawMuni(feature as Feature, insetPath)
+    }
+    const okinawaPref = (prefFc as FeatureCollection).features.find(
+      (f) => (f.properties as { id?: string })?.id === 'okinawa',
+    )
+    if (okinawaPref) {
+      ctx.beginPath()
+      insetPath(okinawaPref as Feature)
+      ctx.strokeStyle = 'rgba(38, 35, 28, 0.35)'
+      ctx.lineWidth = 0.9
+      ctx.stroke()
+    }
   }
 
   return canvas.toDataURL('image/png')

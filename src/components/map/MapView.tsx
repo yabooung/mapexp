@@ -243,6 +243,9 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
   // 기본 끔: 첫 방문자는 광역 탭-도장 흐름(온보딩 안내)이 바로 동작해야 한다
   const [showMuniLayer, setShowMuniLayer] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false) // 범례/컨트롤 패널 토글 (데스크톱은 기본 열림)
+  // 편집 잠금: 이동/구경 중 실수 탭으로 등급이 바뀌는 걸 방지 (기기에 기억)
+  const [editLock, setEditLock] = useState(false)
+  const editLockRef = useRef(false)
   const [retryKey, setRetryKey] = useState(0) // 지도 데이터 로드 실패 시 재시도
   const t = useT()
   const uiLang = useLang()
@@ -268,7 +271,19 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
   // 데스크톱은 패널 기본 열림 (접었다 펼 수 있음), 모바일은 기본 닫힘
   useEffect(() => {
     if (window.matchMedia('(min-width: 640px)').matches) setPanelOpen(true)
+    try {
+      if (localStorage.getItem('mapexp_edit_lock') === '1') setEditLock(true)
+    } catch { /* 무시 */ }
   }, [])
+
+  const toggleEditLock = () => {
+    setEditLock((v) => {
+      try {
+        localStorage.setItem('mapexp_edit_lock', v ? '0' : '1')
+      } catch { /* 무시 */ }
+      return !v
+    })
+  }
 
   // 국가 전환 시 오버레이/뷰 상태 초기화
   useEffect(() => {
@@ -553,6 +568,12 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
       return
     }
 
+    // 편집 잠금 중: 실수 탭 방지 (상세 보기는 우클릭/길게 누르기로 여전히 가능)
+    if (editLockRef.current) {
+      toast(tNow('map.lockedToast'), { id: 'edit-lock-hint' })
+      return
+    }
+
     const currentExp = useMapExpStore.getState().getRegionById(regionId)
     const currentVal = currentExp?.gyeonghyeonchi ?? (currentExp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
     const nextVal = (currentVal >= GyeongHyeonChi.RESIDED ? GyeongHyeonChi.UNVISITED : currentVal + 1) as ExperienceGrade
@@ -650,6 +671,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
     baseStyleRef.current = getRegionStyle
     muniStyleRef.current = getMunicipalityStyle
     readOnlyRef.current = showMuniLayer
+    editLockRef.current = editLock
     baseLayerRef.current?.setStyle((f) => baseStyleRef.current(f as Feature))
     overlayLayerRef.current?.setStyle((f) => muniStyleRef.current(f as Feature))
     secondaryLayerRef.current?.setStyle((f) => baseStyleRef.current(f as Feature))
@@ -997,6 +1019,17 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
             >
                <span className={showMuniLayer ? 'text-paper/70' : 'text-muted'}>{t('map.muniLayer')}</span>
                <span className="font-semibold">{showMuniLayer ? t('map.on') : t('map.off')}</span>
+            </button>
+
+            {/* 편집 잠금 - 이동/구경 중 실수 탭 방지 */}
+            <button
+              onClick={toggleEditLock}
+              className={`w-full py-1.5 px-2.5 rounded-md border font-medium flex items-center justify-between transition-colors ${
+                editLock ? 'bg-seal text-white border-seal' : 'border-line text-ink hover:bg-paper'
+              }`}
+            >
+               <span className={editLock ? 'text-white/80' : 'text-muted'}>{t('map.editLock')}</span>
+               <span className="font-semibold">{editLock ? t('map.on') : t('map.off')}</span>
             </button>
 
             {onToggleBoth && (
