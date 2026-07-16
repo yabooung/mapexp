@@ -53,7 +53,8 @@ export default function MunicipalityManagerModal({
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabId>('all')
   const [search, setSearch] = useState('')
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  // 지도가 기본 - 어디를 갔는지 공간으로 찍는 게 주 흐름, 목록은 검색·일괄용 보조
+  const [viewMode, setViewMode] = useState<ViewMode>('map')
 
   const prefectures = useMemo(() => getRegionsByCountry(country), [country])
   const term = muniTerm(country, lang)
@@ -64,7 +65,7 @@ export default function MunicipalityManagerModal({
     setPrefectureId(initialPrefectureId || (country === 'japan' ? 'tokyo' : 'seoul'))
     setActiveTab('all')
     setSearch('')
-    setViewMode('list')
+    setViewMode('map')
   }, [isOpen, initialPrefectureId, country])
 
   // ESC로 닫기 (공용 Modal을 쓰지 않는 커스텀 레이아웃이라 직접 처리)
@@ -279,12 +280,12 @@ export default function MunicipalityManagerModal({
 
           {/* 뷰 전환 + 분류 탭 */}
           <div className="flex items-center gap-1.5 mt-3 overflow-x-auto pb-0.5">
-            {/* 목록 / 지도 토글 */}
+            {/* 지도 / 목록 토글 (지도가 기본) */}
             <div className="shrink-0 flex items-center p-0.5 rounded-full border border-line bg-card mr-1">
               {(
                 [
-                  ['list', 'list', t('muni.viewList')],
                   ['map', 'map', t('muni.viewMap')],
+                  ['list', 'list', t('muni.viewList')],
                 ] as Array<[ViewMode, IconName, string]>
               ).map(([mode, icon, label]) => (
                 <button

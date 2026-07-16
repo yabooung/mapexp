@@ -137,7 +137,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             {LANG_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => updateSettings({ language: opt.value })}
+                onClick={() => updateSettings({ language: opt.value, mapLanguage: 'auto' })}
                 className={`px-4 py-1.5 rounded-[5px] text-sm font-medium transition-colors ${
                   lang === opt.value ? 'bg-ink text-paper' : 'text-muted hover:text-ink'
                 }`}

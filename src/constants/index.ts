@@ -6,7 +6,7 @@ export * from './regions'
  */
 export const APP_NAME = 'MAPEXP'
 export const APP_VERSION = '1.4.0'
-export const APP_DESCRIPTION = '일본·한국 여행 도장 지도'
+export const APP_DESCRIPTION = '여행 도장 지도'
 
 /**
  * LocalStorage 키

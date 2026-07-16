@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, GeoJSON, Marker, useMap } from 'react-leaflet'
+import { MapContainer, GeoJSON, Marker, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { geoCentroid } from 'd3-geo'
 import type { Feature, FeatureCollection } from 'geojson'
@@ -12,7 +12,7 @@ import { EXP_COLORS } from '@/constants'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
-import { mapLangNow, useMapLang } from '@/lib/i18n'
+import { mapLangNow, useMapLang, useLang, useT, levelLabel, I18nKey } from '@/lib/i18n'
 
 interface Props {
   country: Country
@@ -29,36 +29,46 @@ const FitToData = ({ data }: { data: FeatureCollection | null }) => {
   const map = useMap()
   useEffect(() => {
     if (!data || data.features.length === 0) return
+    // 모달과 동시에 마운트되면 컨테이너가 아직 레이아웃 전이라
+    // fitBounds가 엉뚱하게 계산됨 → 한 템포 뒤로 미뤄 크기 확정 후 맞춘다
+    const timer = setTimeout(() => {
     try {
-      // 모달 안에서 마운트되므로 컨테이너 크기를 한 번 재계산 후 맞춘다
       map.invalidateSize()
 
-      const centers = data.features
+      const entries = data.features
         .map((f) => {
           try {
-            return L.geoJSON(f).getBounds().getCenter()
+            const b = L.geoJSON(f).getBounds()
+            return { bounds: b, center: b.getCenter() }
           } catch {
             return null
           }
         })
-        .filter((c): c is L.LatLng => !!c)
-      if (centers.length === 0) return
+        .filter((e): e is { bounds: L.LatLngBounds; center: L.LatLng } => !!e)
+      if (entries.length === 0) return
 
       const median = (arr: number[]) => {
         const s = [...arr].sort((a, b) => a - b)
         return s[Math.floor(s.length / 2)]
       }
-      const medLat = median(centers.map((c) => c.lat))
-      const medLng = median(centers.map((c) => c.lng))
-      const dists = centers.map((c) => Math.hypot(c.lat - medLat, c.lng - medLng)).sort((a, b) => a - b)
-      // 85% 지점까지의 확산 반경 (섬 이상치는 그 바깥으로 밀려남)
-      const r = Math.max(0.03, dists[Math.floor(dists.length * 0.85)] ?? 0.03)
+      const medLat = median(entries.map((e) => e.center.lat))
+      const medLng = median(entries.map((e) => e.center.lng))
+      const dists = entries.map((e) => Math.hypot(e.center.lat - medLat, e.center.lng - medLng))
+      // 중앙값 기반 이상치 컷: 먼 섬(이즈·오가사와라, 백령도 등)만 밖으로 밀려난다
+      const cut = Math.max(0.35, median(dists) * 2.5)
 
-      const bounds = L.latLngBounds([medLat - r, medLng - r], [medLat + r, medLng + r]).pad(0.15)
-      map.fitBounds(bounds, { padding: [10, 10] })
+      // 본체 폴리곤들의 실제 bounds 합집합 - 반경 정사각형보다 타이트하게 맞는다
+      let fit: L.LatLngBounds | null = null
+      entries.forEach((e, i) => {
+        if (dists[i] > cut) return
+        fit = fit ? fit.extend(e.bounds) : L.latLngBounds(e.bounds.getSouthWest(), e.bounds.getNorthEast())
+      })
+      if (fit) map.fitBounds((fit as L.LatLngBounds).pad(0.05), { padding: [10, 10] })
     } catch {
       /* 지오메트리 오류 무시 */
     }
+    }, 120)
+    return () => clearTimeout(timer)
   }, [data, map])
   return null
 }
@@ -80,6 +90,8 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
   useMapExpStore()
   const { getRegionById, addRegion, updateRegion } = useMapExpStore.getState()
   const mapLang = useMapLang()
+  const lang = useLang()
+  const t = useT()
   const [geo, setGeo] = useState<FeatureCollection | null>(null)
   // react-leaflet GeoJSON은 data prop 변경을 반영하지 않음 → 버전으로 key를 바꿔 리마운트
   const [geoV, setGeoV] = useState(0)
@@ -221,6 +233,8 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
         doubleClickZoom={false}
         attributionControl={false}
       >
+        {/* 실제 지도 배경 - 윤곽선만으로는 어디였는지 떠올리기 어렵다 (역·도로·지형이 기억의 단서) */}
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
         {geo && geo.features.length > 0 && (
           <GeoJSON
             ref={layerRef}
@@ -246,6 +260,19 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
         ))}
         <FitToData data={geo} />
       </MapContainer>
+
+      {/* 등급 색 범례 - 지도에서 색이 무슨 뜻인지 바로 알 수 있게 (호버 시 한 줄 설명) */}
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2.5 bg-card/95 border border-line rounded-full shadow-[0_2px_8px_rgba(38,35,28,0.12)] px-3 py-1.5 max-w-[calc(100%-16px)] overflow-x-auto">
+        {([5, 4, 3, 2, 1, 0] as ExperienceGrade[]).map((lvl) => (
+          <span key={lvl} className="flex items-center gap-1 shrink-0" title={t(`level.hint.${lvl}` as I18nKey)}>
+            <span
+              className="w-2.5 h-2.5 rounded-[2px] border border-black/10"
+              style={{ backgroundColor: EXP_COLORS[lvl] }}
+            />
+            <span className="text-[10px] font-medium text-ink whitespace-nowrap">{levelLabel(lvl, lang)}</span>
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
