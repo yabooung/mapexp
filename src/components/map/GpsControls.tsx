@@ -120,6 +120,7 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
           {currentLevel < GyeongHyeonChi.LANDED ? (
             <button
               onClick={handleQuickRecord}
+              title={t('level.hint.2')}
               className="px-3 py-1.5 bg-seal text-white rounded-full text-xs font-semibold hover:bg-seal-hover active:scale-95 transition-all whitespace-nowrap"
             >
               {t('gps.quickRecord')}

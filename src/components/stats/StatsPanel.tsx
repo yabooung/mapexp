@@ -60,8 +60,9 @@ export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
     { c: 'korea', label: t('common.korea'), s: kr },
   ]
 
-  // 지역별 점수 (방문 지역만): 광역 등급 + 산하 기초 지역 점수 - 국가 무관 전체 기록
-  const scoreRows = regionScoreRows(regions, ['japan', 'korea'])
+  // 지역별 점수 (방문 지역만): 광역 등급 + 산하 기초 지역 점수
+  // 위 카드들과 스코프를 맞춘다 - 단일 국가 뷰에선 현재 국가만, 양국 뷰에선 전체
+  const scoreRows = regionScoreRows(regions, showBoth ? ['japan', 'korea'] : [country as Country])
   const muniTotalScore = scoreRows.reduce((s, r) => s + r.muniScore, 0)
   const muniTotalCount = scoreRows.reduce((s, r) => s + r.muniCount, 0)
 

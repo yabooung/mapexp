@@ -6,7 +6,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useMapExpStore } from '@/store'
 import { parseShareUrl } from '@/lib/share'
 import toast from 'react-hot-toast'
-import CountrySelector from '@/components/common/CountrySelector'
 import RegionList from '@/components/region/RegionList'
 import RegionModal from '@/components/region/RegionModal'
 import StatsPanel from '@/components/stats/StatsPanel'
@@ -49,6 +48,21 @@ function HomeContent() {
   const lang = useLang()
   // 기초 지역 용어는 보고 있는 국가를 따름 (일본=시정촌, 한국=시군구)
   const term = muniTerm(country, lang)
+
+  // 첫 방문: 브라우저 언어로 UI 언어와 기본 국가를 정한다 (한국어 브라우저 → 한국 지도)
+  // 주의: 다른 효과들이 스토어를 건드려 mapexp_data가 생기기 전에 판정해야 하므로 가장 먼저 실행
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('mapexp_data')) return
+      const nav = (navigator.language || '').toLowerCase()
+      const detected = nav.startsWith('ko') ? 'ko' : nav.startsWith('ja') ? 'ja' : 'en'
+      const store = useMapExpStore.getState()
+      store.updateSettings({ language: detected })
+      if (detected === 'ko') store.setCountry('korea')
+    } catch {
+      // localStorage 접근 불가 환경 - 기본값 유지
+    }
+  }, [])
 
   // 새로고침 후에도 뷰어 모드 유지
   useEffect(() => {
@@ -97,15 +111,12 @@ function HomeContent() {
       <ViewerBanner />
 
       <div className="flex flex-col h-full lg:h-auto lg:block lg:container lg:mx-auto lg:px-4 lg:py-6 lg:max-w-7xl">
-        {/* 데스크톱 타이틀 섹션 */}
-        <div className="hidden lg:flex mb-6 flex-row items-end justify-between gap-4">
-          <div>
-            <h1 className="text-[28px] font-bold tracking-tight text-ink leading-tight">
-              {t('page.title')}
-            </h1>
-            <p className="text-muted mt-1 text-[15px]">{t('page.tagline')}</p>
-          </div>
-          <CountrySelector />
+        {/* 데스크톱 타이틀 섹션 (국가 전환은 헤더 JP/KR 토글 하나로 통일) */}
+        <div className="hidden lg:block mb-6">
+          <h1 className="text-[28px] font-bold tracking-tight text-ink leading-tight">
+            {t('page.title')}
+          </h1>
+          <p className="text-muted mt-1 text-[15px]">{t('page.tagline')}</p>
         </div>
 
         {/* 데스크톱 뷰 모드 전환 */}
@@ -157,9 +168,8 @@ function HomeContent() {
             <div className="space-y-4">
               <StatsPanel showBoth={showBothMaps} />
               <BadgePanel />
-              {/* 모바일 전용: 국가/도쿄 관리 */}
+              {/* 모바일 전용: 기초 지역 관리 (국가 전환은 헤더 JP/KR 토글) */}
               <div className="lg:hidden space-y-3">
-                <CountrySelector />
                 <button
                   onClick={() => setShowTokyoModal(true)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-medium text-ink border border-line bg-card active:bg-paper"

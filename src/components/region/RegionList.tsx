@@ -6,7 +6,7 @@ import { getRegionsByCountry, getHiddenRegionsByCountry, getRegionMetadata } fro
 import { GyeongHyeonChi, ExperienceGrade, RegionMetadata } from '@/types'
 import { REGION_GROUPS } from '@/constants/regions'
 import RegionCard from './RegionCard'
-import { useT, useLang, regionDisplayName } from '@/lib/i18n'
+import { useT, useLang, regionDisplayName, I18nKey } from '@/lib/i18n'
 import { showLevelUndoToast } from '@/lib/undoToast'
 
 interface RegionListProps {
@@ -65,7 +65,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
     const hiddenMembers = filteredRegions.filter((r) => r.hidden)
     if (hiddenMembers.length > 0) {
       result.push({
-        name: '히든',
+        name: 'group.hidden',
         members: hiddenMembers,
         totalInGroup: hiddenMembers.length,
         visitedInGroup: hiddenMembers.length,
@@ -190,7 +190,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
               <section key={group.name}>
                 {/* 그룹 헤더: 지방명 + 진행도 */}
                 <div className="flex items-center gap-3 mb-2.5">
-                  <h3 className="text-sm font-bold text-ink whitespace-nowrap">{group.name}</h3>
+                  <h3 className="text-sm font-bold text-ink whitespace-nowrap">{t(group.name as I18nKey)}</h3>
                   <span className="flex-1 h-px bg-line" />
                   <span className="w-16 h-1 rounded-full bg-line overflow-hidden">
                     <span
