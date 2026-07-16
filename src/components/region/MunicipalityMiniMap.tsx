@@ -13,6 +13,9 @@ import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
 import { mapLangNow, useMapLang, useLang, useT, levelLabel, I18nKey } from '@/lib/i18n'
+import Icon from '@/components/common/Icon'
+
+const TILES_KEY = 'mapexp_minimap_tiles' // 배경 지도 토글 기억 (모달을 다시 열어도 유지)
 
 interface Props {
   country: Country
@@ -95,6 +98,21 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
   const [geo, setGeo] = useState<FeatureCollection | null>(null)
   // react-leaflet GeoJSON은 data prop 변경을 반영하지 않음 → 버전으로 key를 바꿔 리마운트
   const [geoV, setGeoV] = useState(0)
+  const [showTiles, setShowTiles] = useState(() => {
+    try {
+      return localStorage.getItem(TILES_KEY) !== '0'
+    } catch {
+      return true
+    }
+  })
+  const toggleTiles = () => {
+    setShowTiles((v) => {
+      try {
+        localStorage.setItem(TILES_KEY, v ? '0' : '1')
+      } catch { /* 무시 */ }
+      return !v
+    })
+  }
   const [labels, setLabels] = useState<MiniLabel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const layerRef = useRef<L.GeoJSON | null>(null)
@@ -167,7 +185,8 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
     const exp = getRegionById(id)
     const level = exp?.gyeonghyeonchi ?? (exp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
     if (level === GyeongHyeonChi.UNVISITED) {
-      return { fillColor: '#ffffff', fillOpacity: 0.2, color: '#8a8a8a', weight: 0.8, dashArray: '2' }
+      // 배경 끔이면 흰 종이처럼 채워 깔끔한 経県値 지도 느낌으로
+      return { fillColor: '#ffffff', fillOpacity: showTiles ? 0.2 : 1, color: '#8a8a8a', weight: 0.8, dashArray: '2' }
     }
     const isResided = level === GyeongHyeonChi.RESIDED
     return {
@@ -234,7 +253,9 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
         attributionControl={false}
       >
         {/* 실제 지도 배경 - 윤곽선만으로는 어디였는지 떠올리기 어렵다 (역·도로·지형이 기억의 단서) */}
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+        {showTiles && (
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+        )}
         {geo && geo.features.length > 0 && (
           <GeoJSON
             ref={layerRef}
@@ -260,6 +281,17 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
         ))}
         <FitToData data={geo} />
       </MapContainer>
+
+      {/* 배경 지도 켬/끔 - 기억 단서(도로·역)가 필요할 때와 깔끔한 색 지도가 필요할 때 */}
+      <button
+        onClick={toggleTiles}
+        className={`absolute top-2 right-2 z-[1000] flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-semibold shadow-[0_2px_8px_rgba(38,35,28,0.12)] transition-colors ${
+          showTiles ? 'bg-ink text-paper border-ink' : 'bg-card text-muted border-line hover:text-ink'
+        }`}
+      >
+        <Icon name="layers" size={12} />
+        {t('map.baseTiles')} {showTiles ? t('map.on') : t('map.off')}
+      </button>
 
       {/* 등급 색 범례 - 지도에서 색이 무슨 뜻인지 바로 알 수 있게 (호버 시 한 줄 설명) */}
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2.5 bg-card/95 border border-line rounded-full shadow-[0_2px_8px_rgba(38,35,28,0.12)] px-3 py-1.5 max-w-[calc(100%-16px)] overflow-x-auto">

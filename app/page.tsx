@@ -196,7 +196,7 @@ function HomeContent() {
                   onRegionClick={handleRegionClick}
                   showBoth={showBothMaps}
                   onToggleBoth={() => setShowBothMaps((v) => !v)}
-                  onOpenMuniManager={() => setMuniModal({ open: true })}
+                  onOpenMuniManager={(prefId) => setMuniModal({ open: true, prefId })}
                 />
                 {/* 첫 방문 온보딩 (한 번만 표시, 공유 열람 중에는 숨김) */}
                 {!isViewer && <OnboardingHint />}

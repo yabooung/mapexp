@@ -5,7 +5,7 @@ import L from 'leaflet'
 import { useMapExpStore } from '@/store'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
-import { REGION_ID_MAP } from '@/constants/regions'
+import { REGION_ID_MAP, isHiddenRegion } from '@/constants/regions'
 import { LABEL_OVERRIDES } from '@/constants/label_overrides'
 import type { GeoJsonObject, Feature, FeatureCollection } from 'geojson'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
@@ -36,8 +36,8 @@ interface MapViewProps {
   /** 양국(일본+한국) 지도를 동시에 표시 */
   showBoth?: boolean
   onToggleBoth?: () => void
-  /** 기초 지역(시정촌/시군구) 도장 모달 열기 - 지도에서 바로 진입할 수 있게 */
-  onOpenMuniManager?: () => void
+  /** 기초 지역(시정촌/시군구) 도장 모달 열기 - prefectureId를 주면 해당 광역으로 */
+  onOpenMuniManager?: (prefectureId?: string) => void
 }
 
 interface RegionLabelNames {
@@ -498,7 +498,16 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
     // 툴팁은 열릴 때만 내용을 만들므로, 떠 있는 동안 탭하면 이전 등급이 보인다 → 즉시 갱신
     const regionName = (feature.properties?.name_ko || feature.properties?.name) as string
     ;(e.target as L.Path).setTooltipContent(buildTooltip(regionId, prefDisplayName(regionId, regionName)))
-    showLevelUndoToast(regionId, prefDisplayName(regionId, regionName), currentVal, nextVal)
+    // 도장을 찍은 김에 그 지역의 세부 도장으로 이어지는 버튼을 토스트에 함께
+    // (미답으로 되돌린 탭이나 세부 지역이 없는 히든 지역은 제외)
+    const canGoDeeper = nextVal > GyeongHyeonChi.UNVISITED && !!onOpenMuniManager && !isHiddenRegion(regionId)
+    showLevelUndoToast(
+      regionId,
+      prefDisplayName(regionId, regionName),
+      currentVal,
+      nextVal,
+      canGoDeeper ? { onMuni: () => onOpenMuniManager!(regionId) } : undefined,
+    )
   }
 
   const onEachFeature = (feature: Feature, layer: Layer) => {
