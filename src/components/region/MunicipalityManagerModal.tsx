@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { useMapExpStore } from '@/store'
@@ -62,6 +62,11 @@ export default function MunicipalityManagerModal({
   const [locating, setLocating] = useState(false)
   // 현 위치 도장으로 잡힌 세부 지역 - 미니맵이 이 지역으로 줌 이동
   const [focusMuniId, setFocusMuniId] = useState<string | null>(null)
+  // 지역 카드 공유 프리뷰
+  const [sharePreview, setSharePreview] = useState(false)
+  const [cardLabels, setCardLabels] = useState(true) // 기본: 지명 표시
+  const [cardImg, setCardImg] = useState<string | null>(null)
+  const [sharing, setSharing] = useState(false)
 
   const prefectures = useMemo(() => getRegionsByCountry(country), [country])
   const term = muniTerm(country, lang)
@@ -77,10 +82,15 @@ export default function MunicipalityManagerModal({
   }, [isOpen, initialPrefectureId, country])
 
   // ESC로 닫기 (공용 Modal을 쓰지 않는 커스텀 레이아웃이라 직접 처리)
+  // 공유 프리뷰가 떠 있으면 프리뷰만 먼저 닫는다
+  const sharePreviewRef = useRef(false)
+  sharePreviewRef.current = sharePreview
   useEffect(() => {
     if (!isOpen) return
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      if (sharePreviewRef.current) setSharePreview(false)
+      else onClose()
     }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
@@ -199,40 +209,54 @@ export default function MunicipalityManagerModal({
   const prefMeta = prefectures.find((p) => p.id === prefectureId)
   const prefName = prefMeta ? regionDisplayName(prefMeta, lang) : prefectureId
 
-  // 지역 카드 캡처: 이 광역의 기초 색칠 지도를 이미지로 (모바일=공유 시트, 폴백=다운로드)
-  const [capturing, setCapturing] = useState(false)
-  const [captureLabels, setCaptureLabels] = useState(false) // 캡처에 기초 지명 라벨 포함
-  const handleCapture = async () => {
-    if (capturing) return
-    setCapturing(true)
-    try {
-      const getLevel = (id: string): ExperienceGrade => {
-        const exp = getRegionById(id)
-        return (exp?.gyeonghyeonchi ?? (exp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED) as ExperienceGrade
-      }
-      const score = municipalities.reduce((s, m) => s + m.level, 0)
-      const done = municipalities.filter((m) => m.level > 0).length
-      const pct = Math.round((done / municipalities.length) * 100) || 0
-      const dataUrl = await renderPrefectureCardImage(country as Country, prefectureId, getLevel, {
-        regionName: prefName,
-        subtitle: t('page.title'),
-        stats: [
-          { label: t('stats.visited'), value: String(done), sub: `/ ${municipalities.length}` },
-          { label: t('stats.completion'), value: `${pct}%` },
-          { label: 'EXP', value: String(score) },
-        ],
-        getLabel: captureLabels
-          ? (props, name) => muniDisplayName(country as Country, props, name, lang)
-          : undefined,
-      })
-      if (!dataUrl) throw new Error('render failed')
+  // ── 지역 카드 공유: 프리뷰 창에서 지명 표시를 켜고 끈 뒤 공유/저장 ──
+  // 프리뷰가 열려 있는 동안 옵션·지역이 바뀌면 카드 다시 렌더 (프리뷰 = 저장본)
+  useEffect(() => {
+    if (!sharePreview || !isOpen || municipalities.length === 0) return
+    let cancelled = false
+    setCardImg(null)
+    const getLevel = (id: string): ExperienceGrade => {
+      const exp = getRegionById(id)
+      return (exp?.gyeonghyeonchi ?? (exp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED) as ExperienceGrade
+    }
+    const score = municipalities.reduce((s, m) => s + m.level, 0)
+    const done = municipalities.filter((m) => m.level > 0).length
+    const pct = Math.round((done / municipalities.length) * 100) || 0
+    renderPrefectureCardImage(country as Country, prefectureId, getLevel, {
+      regionName: prefName,
+      subtitle: t('page.title'),
+      stats: [
+        { label: t('stats.visited'), value: String(done), sub: `/ ${municipalities.length}` },
+        { label: t('stats.completion'), value: `${pct}%` },
+        { label: 'EXP', value: String(score) },
+      ],
+      getLabel: cardLabels
+        ? (props, name) => muniDisplayName(country as Country, props, name, lang)
+        : undefined,
+    }).then((url) => {
+      if (!cancelled) setCardImg(url)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharePreview, isOpen, cardLabels, prefectureId, municipalities, lang])
 
-      const blob = await (await fetch(dataUrl)).blob()
+  // 광역이 바뀌거나 모달이 닫히면 프리뷰 정리
+  useEffect(() => {
+    setSharePreview(false)
+  }, [prefectureId, isOpen])
+
+  const handleShareCard = async () => {
+    if (!cardImg || sharing) return
+    setSharing(true)
+    try {
+      const blob = await (await fetch(cardImg)).blob()
       const fileName = `mapexp_${prefName}_${new Date().toISOString().slice(0, 10)}.png`
       const file = new File([blob], fileName, { type: 'image/png' })
       const download = () => {
         const a = document.createElement('a')
-        a.href = dataUrl
+        a.href = cardImg
         a.download = fileName
         a.click()
         toast.success(tNow('share.imageDone'))
@@ -251,7 +275,7 @@ export default function MunicipalityManagerModal({
     } catch {
       toast.error(tNow('share.imageFail'))
     } finally {
-      setCapturing(false)
+      setSharing(false)
     }
   }
   const prefIndex = prefectures.findIndex((p) => p.id === prefectureId)
@@ -310,7 +334,7 @@ export default function MunicipalityManagerModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[1500] flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-card rounded-xl shadow-2xl w-full max-w-4xl h-[88vh] max-h-[680px] flex flex-col overflow-hidden">
+      <div className="relative bg-card rounded-xl shadow-2xl w-full max-w-4xl h-[88vh] max-h-[680px] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-3.5 sm:p-4 border-b border-line bg-paper">
           <div className="flex items-center justify-between gap-2 mb-3.5">
@@ -358,18 +382,15 @@ export default function MunicipalityManagerModal({
                   <Icon name="locate" size={15} />
                 )}
               </button>
-              {/* 이 지역 이미지 캡처 (기초 색칠 지도 카드) */}
+              {/* 지역 카드 공유 (프리뷰 창에서 지명 표시 선택 후 공유/저장) */}
               <button
-                onClick={handleCapture}
-                className="w-8 h-8 shrink-0 rounded-md border border-line bg-card text-muted hover:text-ink flex items-center justify-center transition-colors"
+                onClick={() => setSharePreview(true)}
+                className="h-8 shrink-0 rounded-md border border-line bg-card text-muted hover:text-ink flex items-center justify-center gap-1 px-2 sm:px-2.5 text-[13px] font-medium transition-colors"
                 aria-label={t('muni.capture')}
                 title={t('muni.capture')}
               >
-                {capturing ? (
-                  <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full" />
-                ) : (
-                  <Icon name="download" size={15} />
-                )}
+                <Icon name="share" size={14} />
+                <span className="hidden sm:inline">{t('share.native')}</span>
               </button>
               <span className="hidden sm:inline text-sm text-muted whitespace-nowrap ml-2">
                 {t('muni.count', { kind: term, n: total })}
@@ -440,18 +461,6 @@ export default function MunicipalityManagerModal({
                 </button>
               ))}
             </div>
-
-            {/* 캡처 이미지에 지명 라벨 포함 여부 */}
-            <button
-              onClick={() => setCaptureLabels((v) => !v)}
-              title={t('muni.captureLabels')}
-              className={`shrink-0 px-2.5 py-1 rounded-full text-[13px] font-medium whitespace-nowrap border transition-colors flex items-center gap-1 ${
-                captureLabels ? 'bg-ink text-paper border-ink' : 'bg-card text-muted border-line hover:text-ink'
-              }`}
-            >
-              <Icon name="download" size={12} />
-              {t('share.optLabels')}
-            </button>
 
             {viewMode === 'list' ? (
               <>
@@ -553,6 +562,64 @@ export default function MunicipalityManagerModal({
             </div>
           )}
         </div>
+
+        {/* ── 지역 카드 공유 프리뷰: 보이는 그대로 저장/공유 ── */}
+        {sharePreview && (
+          <div
+            // Leaflet 미니맵 페인(z-index ~1000) 위로 - z-30이면 지도가 프리뷰를 덮는다
+            className="absolute inset-0 z-[1100] bg-black/45 backdrop-blur-[2px] flex items-center justify-center p-4"
+            onClick={() => setSharePreview(false)}
+          >
+            <div
+              className="bg-card rounded-xl shadow-2xl w-full max-w-sm p-3.5 space-y-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-ink truncate">{prefName}</span>
+                {/* 지명 표시 토글 (기본 켬) */}
+                <button
+                  onClick={() => setCardLabels((v) => !v)}
+                  className={`ml-auto shrink-0 px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors ${
+                    cardLabels ? 'bg-ink text-paper border-ink' : 'bg-card text-muted border-line hover:text-ink'
+                  }`}
+                >
+                  {t('share.optLabels')}
+                </button>
+                <button
+                  onClick={() => setSharePreview(false)}
+                  className="shrink-0 p-1.5 text-muted hover:text-ink hover:bg-line/50 rounded-full"
+                  aria-label={t('common.close')}
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+
+              <div className="rounded-lg border border-line overflow-hidden">
+                {cardImg ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={cardImg} alt="" className="w-full h-auto max-h-[52vh] object-contain bg-[#f5f3ec]" />
+                ) : (
+                  <div className="h-40 flex items-center justify-center bg-[#f5f3ec]">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-seal" />
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={handleShareCard}
+                disabled={!cardImg || sharing}
+                className="w-full py-2 rounded-md bg-seal text-white text-sm font-bold hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-1.5"
+              >
+                {sharing ? (
+                  <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full" />
+                ) : (
+                  <Icon name="share" size={14} />
+                )}
+                {t('share.native')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body,

@@ -48,9 +48,9 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
   const [scope, setScope] = useState<CardScope>('japan')
   const [detail, setDetail] = useState<CardDetail>('pref')
   const [rendering, setRendering] = useState(false)
-  // 카드 옵션: 지명 라벨 / 도장첩 표시
-  const [optLabels, setOptLabels] = useState(false)
-  const [optBadges, setOptBadges] = useState(true)
+  // 카드 옵션: 지명 라벨(기본 켬) / 도장첩 표시(기본 끔)
+  const [optLabels, setOptLabels] = useState(true)
+  const [optBadges, setOptBadges] = useState(false)
   // 완성 카드 이미지 (캔버스 직접 렌더 - html2canvas의 CJK 메트릭 문제 회피)
   const [cardImg, setCardImg] = useState<string | null>(null)
   const t = useT()
