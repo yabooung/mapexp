@@ -160,11 +160,12 @@ function HomeContent() {
 
         {/* 메인 컨텐츠 */}
         <div className="flex-1 min-h-0 lg:grid lg:grid-cols-4 lg:gap-6">
-          {/* 통계 패널: 데스크톱 사이드바 / 모바일 '통계' 탭 */}
+          {/* 통계 패널: 데스크톱 사이드바 / 모바일 '통계' 탭
+              데스크톱은 지도와 같은 높이로 고정하고 내부 스크롤 - 두 컬럼 아랫단이 항상 맞는다 */}
           <div
             className={`${
               view === 'stats' ? 'block overflow-y-auto p-4 pb-24 h-full' : 'hidden'
-            } lg:block lg:col-span-1 lg:p-0 lg:h-auto lg:overflow-visible lg:pb-0`}
+            } lg:block lg:col-span-1 lg:p-0 lg:pb-0 lg:h-[calc(100vh-270px)] lg:min-h-[600px] lg:overflow-y-auto lg:pr-1`}
           >
             <div className="space-y-4">
               <StatsPanel showBoth={showBothMaps} />

@@ -35,7 +35,11 @@ export const metadata: Metadata = {
     title: "MAPEXP",
   },
   icons: {
-    icon: "/icons/icon-192.png",
+    // 헤더 워드마크와 동일한 経 인장 (SVG 우선, PNG 폴백)
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
     apple: "/icons/apple-touch-icon.png",
   },
 };

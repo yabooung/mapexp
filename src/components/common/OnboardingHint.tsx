@@ -11,8 +11,8 @@ const STORAGE_KEY = 'mapexp_onboarded'
 
 const LANG_OPTIONS: Array<{ value: Lang; label: string }> = [
   { value: 'ko', label: '한국어' },
-  { value: 'en', label: 'English' },
   { value: 'ja', label: '日本語' },
+  { value: 'en', label: 'English' },
 ]
 
 /**
@@ -26,6 +26,7 @@ export default function OnboardingHint() {
   const lang = useLang()
   const { updateSettings, setCountry, country } = useMapExpStore()
   const term = muniTerm(country, lang)
+  const isKo = lang === 'ko'
 
   useEffect(() => {
     try {
@@ -96,7 +97,10 @@ export default function OnboardingHint() {
         </div>
 
         {/* 언어 선택 - 누르면 즉시 전체 UI에 반영 */}
-        <div className="grid grid-cols-3 gap-1.5 mb-4">
+        <div className="text-[11px] font-semibold tracking-[0.06em] text-muted uppercase mb-1.5">
+          {t('settings.language')}
+        </div>
+        <div className="grid grid-cols-3 gap-1.5 mb-3.5">
           {LANG_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -110,6 +114,34 @@ export default function OnboardingHint() {
               {opt.label}
             </button>
           ))}
+        </div>
+
+        {/* 시작 지도 선택 - 언어 선택이 기본값을 정해주지만 직접 바꿀 수 있다 */}
+        <div className="text-[11px] font-semibold tracking-[0.06em] text-muted uppercase mb-1.5">
+          {t('nav.map')}
+        </div>
+        <div className="grid grid-cols-2 gap-1.5 mb-4">
+          {(
+            [
+              ['korea', t('common.korea')],
+              ['japan', t('common.japan')],
+            ] as Array<['korea' | 'japan', string]>
+          )
+            // 한국어 UI는 한국 먼저, 그 외는 일본 먼저
+            .sort(([c]) => (isKo ? (c === 'korea' ? -1 : 1) : c === 'japan' ? -1 : 1))
+            .map(([c, label]) => (
+              <button
+                key={c}
+                onClick={() => setCountry(c)}
+                className={`py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                  country === c
+                    ? 'bg-ink text-paper border-ink'
+                    : 'bg-card text-muted border-line hover:text-ink hover:bg-paper'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
         </div>
 
         {/* 간단 매뉴얼 */}

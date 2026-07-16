@@ -7,8 +7,8 @@ import Icon from '@/components/common/Icon'
 
 const OPTIONS: Array<{ value: Lang; label: string; short: string }> = [
   { value: 'ko', label: '한국어', short: '한' },
-  { value: 'en', label: 'English', short: 'EN' },
   { value: 'ja', label: '日本語', short: '日' },
+  { value: 'en', label: 'English', short: 'EN' },
 ]
 
 /**

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 헤더 워드마크와 동일한 経 인장 (인주 레드 + 살짝 기울인 도장) -->
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="#be3a2b"/>
+  <text x="32" y="34.5" font-family="'Hiragino Kaku Gothic ProN','Yu Gothic','Noto Sans JP','Malgun Gothic',sans-serif" font-size="38" font-weight="700" fill="#ffffff" text-anchor="middle" dominant-baseline="central" transform="rotate(-3 32 32)">経</text>
+</svg>
