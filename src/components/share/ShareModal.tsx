@@ -488,19 +488,19 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             )
           )}
 
-          {/* 레벨 + 티어 */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontSize: 52, fontWeight: 700, lineHeight: 1 }}>{cardLevel}</span>
-            <span style={{ fontSize: 14, color: '#7c766a' }}>{t('stats.travelerLevel')}</span>
+          {/* 레벨 + 티어 (html2canvas는 baseline 정렬이 어긋나므로 center + lineHeight 고정) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 52, fontWeight: 700, lineHeight: '52px' }}>{cardLevel}</span>
+            <span style={{ fontSize: 14, color: '#7c766a', lineHeight: '14px' }}>{t('stats.travelerLevel')}</span>
             <span
               style={{
-                alignSelf: 'center', padding: '3px 10px', borderRadius: 999,
+                padding: '5px 10px', borderRadius: 999, lineHeight: '12px',
                 backgroundColor: '#f8eae4', color: '#be3a2b', fontSize: 12, fontWeight: 700,
               }}
             >
               {tierLabel}
             </span>
-            <span style={{ marginLeft: 'auto', fontSize: 13, color: '#7c766a' }}>{t('stats.exp', { n: cardScore })}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 13, color: '#7c766a', lineHeight: '13px' }}>{t('stats.exp', { n: cardScore })}</span>
           </div>
 
           {/* 방문/달성률 */}
@@ -539,9 +539,9 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
             {([5, 4, 3, 2, 1] as ExperienceGrade[]).map((lvl) => (
-              <span key={lvl} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#7c766a' }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: EXP_COLORS[lvl], border: '1px solid rgba(0,0,0,0.08)' }} />
-                {levelLabel(lvl, lang)} {counts[lvl]}
+              <span key={lvl} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, lineHeight: '10px', color: '#7c766a' }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, backgroundColor: EXP_COLORS[lvl], border: '1px solid rgba(0,0,0,0.08)' }} />
+                <span style={{ lineHeight: '10px' }}>{levelLabel(lvl, lang)} {counts[lvl]}</span>
               </span>
             ))}
           </div>
@@ -557,6 +557,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
                     width: 34, height: 34, borderRadius: 17, backgroundColor: '#be3a2b', color: '#fff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: b.icon.length > 1 ? 10 : 15, fontWeight: 700,
+                    lineHeight: b.icon.length > 1 ? '10px' : '15px',
                     transform: `rotate(${((i % 5) - 2) * 4}deg)`,
                   }}
                 >
