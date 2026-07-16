@@ -1,9 +1,9 @@
-import { geoMercator, geoPath } from 'd3-geo'
+import { geoMercator, geoPath, geoBounds } from 'd3-geo'
 import type { Feature, FeatureCollection } from 'geojson'
 import { EXP_COLORS } from '@/constants'
 import { REGION_ID_MAP, KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { ExperienceGrade } from '@/types'
-import { loadPrefectures, loadMunicipalities, municipalityName, type Country } from '@/lib/geo'
+import { loadPrefectures, loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
 
 /**
  * 공유 이미지용 지도 스냅샷 렌더러
@@ -133,6 +133,171 @@ export async function renderRegionMapImage(
 const KOREA_ID_BY_PROV_CODE: Record<string, string> = Object.fromEntries(
   Object.entries(KOREA_PROV_CODE_BY_ID).map(([id, code]) => [code, id]),
 )
+
+const CARD_FONT = "'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Yu Gothic', sans-serif"
+
+/**
+ * 광역 한 곳의 시정촌/시군구 색칠 지도를 담은 지역 카드 (전부 캔버스 - 배치 깨짐 없음)
+ * 먼 섬 이상치는 미니맵과 같은 중앙값 컷으로 제외해 본체를 크게 그린다.
+ */
+export async function renderPrefectureCardImage(
+  country: Country,
+  prefectureId: string,
+  getLevel: (regionId: string) => ExperienceGrade,
+  regionName: string,
+  caption: string,
+  siteUrl = 'mapexp.vercel.app',
+): Promise<string | null> {
+  const muniFc = await loadMunicipalities(country)
+  if (!muniFc) return null
+
+  // 해당 광역의 기초 지역 feature + 스토어 규약 ID
+  const prefKanji = PREF_KANJI_BY_ID[prefectureId]
+  const feats: Array<{ feature: Feature; id: string | null }> = []
+  for (const f of muniFc.features) {
+    const props = f.properties as Record<string, string | null> | null
+    if (country === 'japan') {
+      if (props?.N03_001 !== prefKanji) continue
+      const name = municipalityName(props)
+      feats.push({ feature: f as Feature, id: name ? `${prefectureId}_${name}` : null })
+    } else {
+      const provCode = KOREA_PROV_CODE_BY_ID[prefectureId]
+      if (!provCode || !props?.code?.startsWith(provCode)) continue
+      feats.push({ feature: f as Feature, id: props.name ? `${prefectureId}_${props.name}` : null })
+    }
+  }
+  if (feats.length === 0) return null
+
+  const width = 840
+  const height = 940
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  // 배경 (와시 페이퍼)
+  ctx.fillStyle = '#f5f3ec'
+  ctx.fillRect(0, 0, width, height)
+
+  const pad = 56
+
+  // ── 헤더: 経 인장 + MAPEXP + 지역명 ──
+  ctx.save()
+  ctx.translate(pad + 26, pad + 26)
+  ctx.rotate((-3 * Math.PI) / 180)
+  ctx.fillStyle = '#be3a2b'
+  ctx.beginPath()
+  ctx.roundRect(-26, -26, 52, 52, 12)
+  ctx.fill()
+  ctx.fillStyle = '#ffffff'
+  ctx.font = `700 30px ${CARD_FONT}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('経', 0, 2)
+  ctx.restore()
+
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = '#26231c'
+  ctx.font = `700 26px ${CARD_FONT}`
+  ctx.fillText('MAPEXP', pad + 68, pad + 22)
+  ctx.fillStyle = '#7c766a'
+  ctx.font = `500 15px ${CARD_FONT}`
+  ctx.fillText(siteUrl, pad + 68, pad + 45)
+
+  // 지역명 (크게)
+  ctx.fillStyle = '#26231c'
+  ctx.font = `700 40px ${CARD_FONT}`
+  ctx.fillText(regionName, pad, pad + 116)
+
+  // ── 지도: 먼 섬 이상치 컷 후 본체 확대 ──
+  const boxes = feats.map(({ feature }) => {
+    try {
+      return geoBounds(feature) // [[minLng,minLat],[maxLng,maxLat]]
+    } catch {
+      return null
+    }
+  })
+  const centers = boxes.map((b) => (b ? [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2] : null))
+  const valid = centers.filter((c): c is [number, number] => !!c)
+  const median = (arr: number[]) => {
+    const s = [...arr].sort((a, b) => a - b)
+    return s[Math.floor(s.length / 2)]
+  }
+  const medLng = median(valid.map((c) => c[0]))
+  const medLat = median(valid.map((c) => c[1]))
+  const dists = valid.map((c) => Math.hypot(c[0] - medLng, c[1] - medLat))
+  const cut = Math.max(0.35, median(dists) * 2.5)
+
+  let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity
+  boxes.forEach((b, i) => {
+    const c = centers[i]
+    if (!b || !c || Math.hypot(c[0] - medLng, c[1] - medLat) > cut) return
+    minLng = Math.min(minLng, b[0][0]); minLat = Math.min(minLat, b[0][1])
+    maxLng = Math.max(maxLng, b[1][0]); maxLat = Math.max(maxLat, b[1][1])
+  })
+  if (!Number.isFinite(minLng)) return null
+
+  const mapTop = pad + 150
+  const mapH = 560
+  const projection = geoMercator().fitExtent(
+    [
+      [pad, mapTop],
+      [width - pad, mapTop + mapH],
+    ],
+    {
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'MultiPoint', coordinates: [[minLng, minLat], [maxLng, maxLat]] },
+    } as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
+  )
+  const path = geoPath(projection, ctx)
+
+  // 지도 영역 클리핑 (이상치 섬이 텍스트 위로 튀지 않게)
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(0, mapTop - 24, width, mapH + 48)
+  ctx.clip()
+
+  const sorted = [...feats].sort((a, b) => ((getLevel(a.id ?? '') > 0 ? 1 : 0) - (getLevel(b.id ?? '') > 0 ? 1 : 0)))
+  for (const { feature, id } of sorted) {
+    const level = id ? getLevel(id) : (0 as ExperienceGrade)
+    ctx.beginPath()
+    path(feature)
+    if (level > 0) {
+      ctx.fillStyle = EXP_COLORS[level]
+      ctx.fill()
+      ctx.strokeStyle = 'rgba(38, 35, 28, 0.35)'
+      ctx.lineWidth = 1
+    } else {
+      ctx.fillStyle = '#ffffff'
+      ctx.fill()
+      ctx.strokeStyle = '#d8d4c8'
+      ctx.lineWidth = 0.8
+    }
+    ctx.stroke()
+  }
+  ctx.restore()
+
+  // ── 캡션 (점수·진행) ──
+  ctx.fillStyle = '#26231c'
+  ctx.font = `600 22px ${CARD_FONT}`
+  ctx.fillText(caption, pad, mapTop + mapH + 64)
+
+  // 구분선 + 푸터
+  ctx.strokeStyle = '#e3dfd3'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(pad, height - 78)
+  ctx.lineTo(width - pad, height - 78)
+  ctx.stroke()
+  ctx.fillStyle = '#a8a294'
+  ctx.font = `500 16px ${CARD_FONT}`
+  ctx.fillText(siteUrl, pad, height - 44)
+
+  return canvas.toDataURL('image/png')
+}
 
 /**
  * 기초 지역(시정촌/시군구) 단위 지도 스냅샷

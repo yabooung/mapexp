@@ -125,6 +125,11 @@ export function downloadDataFile(data: MapExpData, name?: string | null) {
   URL.revokeObjectURL(url)
 }
 
+/** 터치 기기 여부 - navigator.share는 데스크톱에서 시트 없이 영원히 pending일 수 있어
+ *  모바일에서만 시도한다 (데스크톱은 다운로드가 자연스럽기도 함) */
+export const isTouchDevice = () =>
+  typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+
 /**
  * 모바일 우선 공유: Web Share API로 파일을 메신저에 바로 전달, 미지원이면 다운로드 폴백.
  * (다운로드 → 메신저 첨부는 모바일에서 마찰이 커 실사용률이 크게 갈린다)
@@ -132,13 +137,13 @@ export function downloadDataFile(data: MapExpData, name?: string | null) {
 export async function shareDataFile(data: MapExpData, name?: string | null): Promise<'shared' | 'downloaded'> {
   const json = JSON.stringify(buildExportEnvelope(data), null, 2)
   const file = new File([json], exportFileName(name), { type: 'application/json' })
-  if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
+  if (isTouchDevice() && typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: 'MAPEXP' })
       return 'shared'
-    } catch {
-      // 사용자 취소 등 - 다운로드로 폴백하지 않고 조용히 종료
-      return 'shared'
+    } catch (err) {
+      // 사용자 취소(AbortError)는 조용히 종료, 공유 시트가 실제로 없는 환경이면 다운로드 폴백
+      if ((err as Error)?.name === 'AbortError') return 'shared'
     }
   }
   downloadDataFile(data, name)
