@@ -117,11 +117,31 @@ export async function renderRegionMapImage(
     drawFeature(feature as Feature, path)
   }
 
-  // 오키나와 인셋 (좌상단 - 본토가 커지도록 따로 그린다)
+  // 오키나와: 우하단 대각선 컷 인셋 (일본 지도 관례 - 좌측은 범례에 양보)
   if (isJapan) {
     const okinawa = features.find((f) => (f.properties as { id?: string })?.id === 'okinawa')
     if (okinawa) {
-      const insetProjection = drawOkinawaInsetBox(ctx, width)
+      // 대각선 구분선 (우하단 모서리 삼각 영역)
+      const cornerW = Math.round(width * 0.34)
+      const cornerH = Math.round(height * 0.26)
+      ctx.strokeStyle = '#aaa496'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(width - cornerW, height)
+      ctx.lineTo(width, height - cornerH)
+      ctx.stroke()
+
+      const insetProjection = geoMercator().fitExtent(
+        [
+          [width - cornerW + 46, height - cornerH + 62],
+          [width - 18, height - 22],
+        ],
+        {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'MultiPoint', coordinates: [[122.9, 24.0], [131.4, 27.95]] },
+        } as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
+      )
       drawFeature(okinawa as Feature, geoPath(insetProjection, ctx))
     }
   }
