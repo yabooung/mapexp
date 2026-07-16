@@ -84,7 +84,7 @@ export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
           </span>
           <span className="text-sm text-muted">{t('stats.toNext', { n: 10 - (totalGyeonghyeonchi % 10) })}</span>
         </div>
-        <div className="mt-3 w-full bg-paper rounded-full h-1.5 overflow-hidden">
+        <div className="mt-3 w-full bg-line/50 rounded-full h-1.5 overflow-hidden">
           <div
             className="bg-seal h-full rounded-full transition-all duration-700"
             style={{ width: `${(totalGyeonghyeonchi % 10) * 10}%` }}
@@ -101,7 +101,7 @@ export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
                   {s.visited}
                   <span className="text-faint"> / {s.total}</span>
                 </span>
-                <span className="flex-1 h-1 bg-paper rounded-full overflow-hidden">
+                <span className="flex-1 h-1.5 bg-line/50 rounded-full overflow-hidden">
                   <span
                     className="block h-full rounded-full bg-seal"
                     style={{ width: `${s.completion}%` }}
@@ -157,10 +157,10 @@ export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
                   {levelLabel(level, lang)}
                 </span>
                 {/* 미니 바 */}
-                <span className="flex-1 h-1 bg-paper rounded-full overflow-hidden">
+                <span className="flex-1 h-1.5 bg-line/50 rounded-full overflow-hidden">
                   <span
-                    className="block h-full rounded-full"
-                    style={{ width: `${pct}%`, backgroundColor: level === 0 ? 'var(--line)' : EXP_COLORS[level] }}
+                    className="block h-full rounded-full border-r border-black/5"
+                    style={{ width: `${pct}%`, backgroundColor: level === 0 ? 'var(--faint)' : EXP_COLORS[level] }}
                   />
                 </span>
                 <span className="text-xs text-muted tabular-nums w-8 text-right">{count}</span>

@@ -58,8 +58,9 @@ const STRINGS = {
     'Every pass, stop, walk, and stay leaves a stamp',
     '通って、降りて、歩いて、泊まった場所に判が積もる',
   ],
-  'page.manageMunis': ['{term} 관리', '{term}', '{term}管理'],
-  'page.manageMunisLong': ['{term} 일괄 관리', 'Manage {term}', '{term}を一括管理'],
+  // '관리'는 관리자 느낌이라 사용자 언어(도장 찍기)로 - ja는 経県値 문화 용어 활용
+  'page.manageMunis': ['{term} 도장', '{term}', '{term}の経県値'],
+  'page.manageMunisLong': ['{term} 도장 찍기', 'Stamp {term}', '{term}の経県値を付ける'],
   'page.guide': [
     '지도 클릭으로 레벨 변경 (0→5→0) · 우클릭/길게 누르기로 상세 설정 · 좌하단 조준 버튼으로 GPS 추적',
     'Click map to cycle level (0→5→0) · Right-click / long-press for details · Use the locate button for GPS',
@@ -247,7 +248,7 @@ const STRINGS = {
   'map.mapLang': ['지명 언어', 'Place names', '地名の言語'],
   'map.langAuto': ['자동', 'Auto', '自動'],
   'map.muniLayer': ['기초 지역', 'Municipalities', '市区町村'],
-  'map.muniReadOnly': ['{term} 수정은 "{term} 관리"에서 할 수 있어요', 'Edit records in "Manage {term}"', '{term}の記録は「{term}管理」で編集できます'],
+  'map.muniReadOnly': ['{term} 도장은 "{term} 도장" 메뉴에서 찍을 수 있어요', 'Stamp {term} in the "{term}" menu', '{term}の判は「{term}の経県値」で押せます'],
   'map.label': ['라벨', 'Labels', 'ラベル'],
   'map.labelCustom': ['직접 표시', 'Custom', '独自表示'],
   'map.labelNative': ['지도 원본', 'Map default', '地図標準'],
