@@ -4,12 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useMapExpStore } from '@/store'
 import { useGpsStore } from '@/store/gps'
 import { generateShareUrl } from '@/lib/share'
-import { TOTAL_REGIONS, EXP_COLORS } from '@/constants'
+import { TOTAL_REGIONS } from '@/constants'
 import { ExperienceGrade, RegionExp } from '@/types'
 import { countryStats, countryGradeCounts, levelFromScore, muniStats } from '@/lib/stats'
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters, type Country } from '@/lib/geo'
-import { renderRegionMapImage, renderMunicipalityMapImage } from '@/lib/mapSnapshot'
+import { renderRegionMapImage, renderMunicipalityMapImage, renderShareCardImage } from '@/lib/mapSnapshot'
 import { useT, useLang, levelLabel, tNow, I18nKey } from '@/lib/i18n'
 import { ev } from '@/lib/analytics'
 import Modal from '@/components/common/Modal'
@@ -46,7 +46,8 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
   const [scope, setScope] = useState<CardScope>('japan')
   const [detail, setDetail] = useState<CardDetail>('pref')
   const [rendering, setRendering] = useState(false)
-  const cardRef = useRef<HTMLDivElement>(null)
+  // 완성 카드 이미지 (캔버스 직접 렌더 - html2canvas의 CJK 메트릭 문제 회피)
+  const [cardImg, setCardImg] = useState<string | null>(null)
   const t = useT()
   const lang = useLang()
 
@@ -152,13 +153,6 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     }
   }
 
-  // 카드 DOM → 캔버스 (저장/공유 공용)
-  const renderCardCanvas = async () => {
-    if (!cardRef.current) return null
-    const html2canvas = (await import('html2canvas')).default
-    return html2canvas(cardRef.current, { scale: 2, backgroundColor: null, logging: false })
-  }
-
   // 모바일 네이티브 공유 시트 — 이미지 파일을 실어 X/인스타에 카드가 그대로 올라가게.
   // 파일 공유 미지원(구형 브라우저 등)이면 링크 공유로 폴백.
   const canNativeShare = typeof navigator !== 'undefined' && 'share' in navigator
@@ -166,10 +160,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     if (rendering) return
     setRendering(true)
     try {
-      const canvas = await renderCardCanvas()
-      const blob = canvas
-        ? await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
-        : null
+      const blob = cardImg ? await (await fetch(cardImg)).blob() : null
       const files = blob ? [new File([blob], 'mapexp.png', { type: 'image/png' })] : []
       const withImage = files.length > 0 && !!navigator.canShare?.({ files })
 
@@ -186,15 +177,12 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     }
   }
 
-  // SNS용 이미지 카드 저장 (html2canvas로 카드 DOM 캡처)
-  const handleSaveImage = async () => {
-    if (rendering) return
-    setRendering(true)
+  // 이미지 카드 저장 (캔버스 렌더 결과 그대로)
+  const handleSaveImage = () => {
+    if (!cardImg) return
     try {
-      const canvas = await renderCardCanvas()
-      if (!canvas) return
       const a = document.createElement('a')
-      a.href = canvas.toDataURL('image/png')
+      a.href = cardImg
       a.download = `mapexp-${new Date().toISOString().slice(0, 10)}.png`
       a.click()
       ev('image_card_save', { country, scope })
@@ -202,14 +190,11 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     } catch (err) {
       console.error(err)
       toast.error(t('share.imageFail'))
-    } finally {
-      setRendering(false)
     }
   }
 
   // ── 스코프별 카드 통계 ──
   const trackKm = trackDistanceMeters(trackPoints) / 1000
-  const singleCountry: Country = scope === 'both' ? (country as Country) : scope
   const singleStats = scope === 'japan' ? jpStats : scope === 'korea' ? krStats : null
 
   const cardScore = scope === 'both' ? jpStats.score + krStats.score : singleStats!.score
@@ -278,7 +263,43 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     }
     return [{ key: `${scope}-pref`, img: mapImgs[scope] }]
   })()
-  const multiMap = mapSlots.length > 1
+
+  // 지도가 준비되면 완성 카드를 캔버스로 렌더 (미리보기 = 저장본, WYSIWYG)
+  useEffect(() => {
+    if (!isOpen || mapSlots.length === 0 || mapSlots.some((s) => !s.img)) {
+      setCardImg(null)
+      return
+    }
+    let cancelled = false
+    renderShareCardImage({
+      headerLabel,
+      subtitle: t('page.title'),
+      maps: mapSlots.map((s) => ({ src: s.img!, caption: s.caption })),
+      level: cardLevel,
+      score: cardScore,
+      nextLevelScore: cardLevel * 10,
+      tierLabel,
+      toNextLabel: t('stats.toNext', { n: 10 - (cardScore % 10) }).replace(/^\/\s*/, ''),
+      stats: [
+        { label: t('stats.visited'), value: String(cardVisited), sub: `/ ${cardTotal}` },
+        { label: t('stats.completion'), value: `${cardCompletion}%` },
+        { label: t('badges.title'), value: String(achievedBadges.length) },
+      ],
+      counts,
+      total: cardTotal,
+      gradeLabels: Object.fromEntries(
+        ([0, 1, 2, 3, 4, 5] as ExperienceGrade[]).map((l) => [l, levelLabel(l, lang)]),
+      ) as Record<ExperienceGrade, string>,
+      badgeIcons: achievedBadges.map((b) => b.icon),
+      siteUrl: 'mapexp.vercel.app',
+    }).then((url) => {
+      if (!cancelled) setCardImg(url)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, scope, detail, mapImgs, muniImgs, lang, regions])
 
   return (
     <Modal
@@ -349,17 +370,15 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
           </div>
         </div>
 
-        {/* 지도 미리보기 (이미지 카드에 들어가는 색칠 지도) */}
-        <div className={`rounded-lg border border-line bg-[#f5f3ec] p-2 ${multiMap ? 'grid grid-cols-2 gap-1' : ''}`}>
-          {mapSlots.map(({ key, img }) =>
-            img ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img key={key} src={img} alt="" className="w-full h-auto max-h-56 object-contain" />
-            ) : (
-              <div key={key} className="h-32 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-seal" />
-              </div>
-            ),
+        {/* 카드 미리보기 - 저장/공유되는 이미지 그대로 (캔버스 렌더) */}
+        <div className="rounded-lg border border-line overflow-hidden">
+          {cardImg ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={cardImg} alt="" className="w-full h-auto max-h-[440px] object-contain bg-[#f5f3ec]" />
+          ) : (
+            <div className="h-40 flex items-center justify-center bg-[#f5f3ec]">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-seal" />
+            </div>
           )}
         </div>
 
@@ -425,140 +444,6 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
 
         <div className="bg-paper border border-line p-3 rounded-lg text-sm text-muted">
           {t('share.info')}
-        </div>
-      </div>
-
-      {/* ── SNS용 이미지 카드 (화면 밖 렌더링, html2canvas 캡처용) ── */}
-      <div className="fixed -left-[9999px] top-0" aria-hidden="true">
-        <div
-          ref={cardRef}
-          style={{
-            width: 420,
-            padding: '32px 34px',
-            backgroundColor: '#f5f3ec',
-            // html2canvas가 가변 폰트·tabular-nums(body 상속)를 잘못 측정해
-            // 숫자 주변이 벌어지므로 카드에서는 시스템 폰트 + 기본 메트릭으로 고정
-            fontFamily: "'Apple SD Gothic Neo', 'Malgun Gothic', 'Yu Gothic', sans-serif",
-            fontFeatureSettings: 'normal',
-            fontVariantNumeric: 'normal',
-            letterSpacing: 'normal',
-            color: '#26231c',
-          }}
-        >
-          {/* 헤더 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
-            <span
-              style={{
-                width: 36, height: 36, borderRadius: 8, backgroundColor: '#be3a2b', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 18, fontWeight: 700, transform: 'rotate(-3deg)',
-              }}
-            >
-              経
-            </span>
-            <div>
-              <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.3 }}>MAPEXP</div>
-              <div style={{ fontSize: 11, color: '#7c766a' }}>{t('page.title')}</div>
-            </div>
-            <div style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: '#7c766a' }}>
-              {headerLabel}
-            </div>
-          </div>
-
-
-          {/* 색칠된 지도 (비교의 핵심) — 2장이면 나란히 + 캡션, 1장이면 전폭 */}
-          {multiMap ? (
-            <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-              {mapSlots.map(({ key, img, caption }) => (
-                <div key={key} style={{ flex: 1, minWidth: 0 }}>
-                  {img && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={img} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
-                  )}
-                  {caption && (
-                    <div style={{ fontSize: 11, color: '#7c766a', marginTop: 6, textAlign: 'center', fontWeight: 600 }}>
-                      {caption}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            mapSlots[0]?.img && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={mapSlots[0].img!}
-                alt=""
-                style={{ width: '100%', height: 'auto', display: 'block', marginBottom: 18 }}
-              />
-            )
-          )}
-
-          {/* 점수 - 한눈에 들어오게 크게 (지도 다음, 기존 순서) */}
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 44, fontWeight: 700, color: '#26231c', lineHeight: '44px' }}>
-              {t('stats.exp', { n: cardScore })}
-            </div>
-            <div style={{ marginTop: 8, fontSize: 14, color: '#7c766a', lineHeight: '14px' }}>
-              {t('stats.travelerLevel')} {cardLevel} · <span style={{ color: '#be3a2b', fontWeight: 700 }}>{tierLabel}</span>
-            </div>
-          </div>
-
-          {/* 방문/달성률 */}
-          <div style={{ display: 'flex', gap: 24, paddingTop: 16, borderTop: '1px solid #e3dfd3' }}>
-            <div>
-              <div style={{ fontSize: 11, color: '#7c766a' }}>{t('stats.visited')}</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>
-                {cardVisited}<span style={{ fontSize: 13, color: '#a8a294' }}> / {cardTotal}</span>
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: '#7c766a' }}>{t('stats.completion')}</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{cardCompletion}%</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: '#7c766a' }}>{t('badges.title')}</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{achievedBadges.length}</div>
-            </div>
-          </div>
-
-          {/* 등급 사다리 (온보딩과 같은 우리 모티프) - 색·이름·개수를 한 줄에 */}
-          <div style={{ display: 'flex', gap: 5, marginTop: 18 }}>
-            {([1, 2, 3, 4, 5] as ExperienceGrade[]).map((lvl) => (
-              <div key={lvl} style={{ flex: 1 }}>
-                <div style={{ height: 13, borderRadius: 4, backgroundColor: EXP_COLORS[lvl], border: '1px solid rgba(0,0,0,0.08)' }} />
-                <div style={{ marginTop: 7, fontSize: 11, lineHeight: '11px', color: '#7c766a', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                  {levelLabel(lvl, lang)} <span style={{ fontWeight: 700, color: '#26231c' }}>{counts[lvl]}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 달성 도장 */}
-          {achievedBadges.length > 0 && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-              {achievedBadges.slice(0, 7).map((b, i) => (
-                <span
-                  key={b.id}
-                  title={t(`badge.${b.id}.name` as I18nKey)}
-                  style={{
-                    width: 34, height: 34, borderRadius: 17, backgroundColor: '#be3a2b', color: '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: b.icon.length > 1 ? 10 : 15, fontWeight: 700,
-                    lineHeight: b.icon.length > 1 ? '10px' : '15px',
-                    transform: `rotate(${((i % 5) - 2) * 4}deg)`,
-                  }}
-                >
-                  {b.icon}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* 푸터 */}
-          <div style={{ marginTop: 20, paddingTop: 12, borderTop: '1px solid #e3dfd3', fontSize: 11, color: '#a8a294' }}>
-            mapexp.vercel.app
-          </div>
         </div>
       </div>
     </Modal>
