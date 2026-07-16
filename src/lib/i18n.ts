@@ -304,8 +304,27 @@ const STRINGS = {
     '共有リンクは閲覧モードで開き、気に入ればすぐ自分の地図を始められます。',
   ],
 
+  // 공유 카드 티어 (달성률 구간별 칭호)
+  'tier.0': ['여행 새싹', 'Sprout', '旅の芽'],
+  'tier.1': ['동네 탐방가', 'Wanderer', '街歩き'],
+  'tier.2': ['지도 순례자', 'Pilgrim', '地図巡礼者'],
+  'tier.3': ['정복자', 'Conqueror', '征服者'],
+  'tier.4': ['제패왕', 'Overlord', '制覇王'],
+
+  // QR·파일 교환
+  'share.qr': ['QR 코드', 'QR code', 'QRコード'],
+  'share.qrHint': ['카메라로 찍으면 이 지도가 열립니다', 'Scan to open this map', 'カメラで読み取るとこの地図が開きます'],
+  'share.fileExport': ['파일로 내보내기', 'Export file', 'ファイルに書き出し'],
+  'share.fileOpen': ['받은 파일 열기', 'Open received file', '受け取ったファイルを開く'],
+  'share.fileOpenHint': ['친구의 JSON 파일을 열면 내 기록은 그대로 두고 보기 모드로 열립니다', "Opens a friend's JSON in view mode — your records stay untouched", '友達のJSONを閲覧モードで開きます — 自分の記録はそのまま'],
+  'share.fileInvalid': ['잘못된 파일입니다.', 'Invalid file.', '無効なファイルです。'],
+
   // 공유 뷰어
   'viewer.banner': ['공유된 지도를 보는 중 — 내 기록은 안전하게 보관돼 있어요', 'Viewing a shared map — your own records are safe', '共有地図を表示中 — 自分の記録は保管されています'],
+  'viewer.compare': ['내 지도와 비교', 'Compare with mine', '自分と比較'],
+  'compare.mine': ['나만', 'Only me', '自分のみ'],
+  'compare.theirs': ['상대만', 'Only them', '相手のみ'],
+  'compare.both': ['둘 다', 'Both', '両方'],
   'viewer.exit': ['내 지도 만들기', 'Start my map', '自分の地図へ'],
   'viewer.adopt': ['이 지도 저장', 'Save this map', 'この地図を保存'],
   'viewer.loaded': ['공유된 지도를 열었습니다 (보기 모드)', 'Shared map opened (view mode)', '共有地図を開きました (閲覧モード)'],

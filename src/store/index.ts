@@ -97,12 +97,15 @@ interface MapExpStore {
 
   /** 공유 지도 열람 모드 (내 데이터는 백업 후 안전하게 보관) */
   isViewer: boolean;
+  /** 뷰어 모드에서 내 기록과 겹쳐보기 (비교 지도) */
+  compareMine: boolean;
 
   // 뷰어 액션
   enterViewerMode: (data: MapExpData) => void;
   exitViewerMode: () => void;
   adoptSharedMap: () => void;
   initViewerFromStorage: () => void;
+  toggleCompareMine: () => void;
 
   // 기본 액션
   setCountry: (country: "japan" | "korea") => void;
@@ -137,10 +140,22 @@ const initialState = {
   selectedRegionId: null,
   settings: DEFAULT_SETTINGS,
   isViewer: false,
+  compareMine: false,
 };
 
 /** 뷰어 모드 진입 시 내 데이터 백업 키 */
 const VIEWER_BACKUP_KEY = "mapexp_viewer_backup";
+
+/** 뷰어 모드 중 백업된 내 기록 읽기 (겹쳐보기 비교용) */
+export function getViewerBackupRegions(): RegionExp[] | null {
+  try {
+    const raw = localStorage.getItem(VIEWER_BACKUP_KEY);
+    if (!raw) return null;
+    return (JSON.parse(raw) as { regions?: RegionExp[] }).regions ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /** 외부에서 온 공유 데이터 정제 (레벨 범위/타입 검증, GPS 인증 사칭 제거) */
 function sanitizeSharedRegions(regions: unknown): RegionExp[] {
@@ -201,9 +216,10 @@ export const useMapExpStore = create<MapExpStore>()(
             regions: backup?.regions ?? [],
             selectedRegionId: null,
             isViewer: false,
+            compareMine: false,
           });
         } catch {
-          set({ isViewer: false });
+          set({ isViewer: false, compareMine: false });
         }
       },
 
@@ -213,8 +229,10 @@ export const useMapExpStore = create<MapExpStore>()(
         } catch {
           // 무시
         }
-        set({ isViewer: false });
+        set({ isViewer: false, compareMine: false });
       },
+
+      toggleCompareMine: () => set((s) => ({ compareMine: !s.compareMine })),
 
       // 새로고침 후에도 뷰어 모드 유지 (백업 존재 = 뷰어 중)
       initViewerFromStorage: () => {
