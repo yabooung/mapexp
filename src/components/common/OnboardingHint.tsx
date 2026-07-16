@@ -167,6 +167,8 @@ export default function OnboardingHint() {
               </span>
             ))}
           </div>
+          {/* 등급 기준의 출처 - 経県値 문화권 사용자에게 즉시 통하는 신뢰 신호 (지시적 표기) */}
+          <p className="mt-2 text-[10px] text-faint text-center">{t('region.levelNote')}</p>
         </div>
 
         <button
