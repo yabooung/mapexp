@@ -264,6 +264,7 @@ const STRINGS = {
   'muni.resetConfirm': ['{name}의 기초 지역 기록을 모두 초기화할까요?', 'Reset all municipality records in {name}?', '{name}の市区町村の記録をすべてリセットしますか？'],
   'muni.selectAria': ['광역 지역 선택', 'Select prefecture', '都道府県を選択'],
   'muni.locate': ['현 위치 도장 (GPS 인증)', 'Stamp my location (GPS)', '現在地に判 (GPS認証)'],
+  'muni.capture': ['이 지역 이미지 저장', 'Save this region as image', 'この地域を画像で保存'],
   'muni.locateFail': ['현 위치가 지금 보고 있는 나라의 지도 밖입니다', "Your location is outside this country's map", '現在地はこの国の地図の外です'],
   'muni.viewList': ['목록', 'List', 'リスト'],
   'muni.viewMap': ['지도', 'Map', '地図'],

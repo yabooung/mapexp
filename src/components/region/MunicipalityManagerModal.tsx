@@ -10,6 +10,8 @@ import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { getRegionsByCountry } from '@/data/regions'
 import { loadMunicipalities, municipalityName, detectRegionAt, detectMunicipalityAt, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
+import { renderPrefectureCardImage } from '@/lib/mapSnapshot'
+import { isTouchDevice } from '@/lib/dataFile'
 import { useT, useLang, regionDisplayName, muniTerm, tNow, I18nKey } from '@/lib/i18n'
 import Icon, { IconName } from '@/components/common/Icon'
 import toast from '@/lib/appToast'
@@ -196,6 +198,50 @@ export default function MunicipalityManagerModal({
 
   const prefMeta = prefectures.find((p) => p.id === prefectureId)
   const prefName = prefMeta ? regionDisplayName(prefMeta, lang) : prefectureId
+
+  // 지역 카드 캡처: 이 광역의 기초 색칠 지도를 이미지로 (모바일=공유 시트, 폴백=다운로드)
+  const [capturing, setCapturing] = useState(false)
+  const handleCapture = async () => {
+    if (capturing) return
+    setCapturing(true)
+    try {
+      const getLevel = (id: string): ExperienceGrade => {
+        const exp = getRegionById(id)
+        return (exp?.gyeonghyeonchi ?? (exp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED) as ExperienceGrade
+      }
+      const score = municipalities.reduce((s, m) => s + m.level, 0)
+      const done = municipalities.filter((m) => m.level > 0).length
+      const caption = `${t('stats.muniTotal', { n: score, m: done })} · ${done}/${municipalities.length}`
+      const dataUrl = await renderPrefectureCardImage(country as Country, prefectureId, getLevel, prefName, caption)
+      if (!dataUrl) throw new Error('render failed')
+
+      const blob = await (await fetch(dataUrl)).blob()
+      const fileName = `mapexp_${prefName}_${new Date().toISOString().slice(0, 10)}.png`
+      const file = new File([blob], fileName, { type: 'image/png' })
+      const download = () => {
+        const a = document.createElement('a')
+        a.href = dataUrl
+        a.download = fileName
+        a.click()
+        toast.success(tNow('share.imageDone'))
+      }
+      // 공유 시트는 터치 기기에서만 (데스크톱 share()는 시트 없이 멈출 수 있음)
+      if (isTouchDevice() && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'MAPEXP' })
+        } catch (err) {
+          if ((err as Error)?.name !== 'AbortError') download()
+        }
+      } else {
+        download()
+      }
+      ev('muni_card_capture', { country })
+    } catch {
+      toast.error(tNow('share.imageFail'))
+    } finally {
+      setCapturing(false)
+    }
+  }
   const prefIndex = prefectures.findIndex((p) => p.id === prefectureId)
 
   const movePref = (delta: number) => {
@@ -298,6 +344,19 @@ export default function MunicipalityManagerModal({
                   <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full" />
                 ) : (
                   <Icon name="locate" size={15} />
+                )}
+              </button>
+              {/* 이 지역 이미지 캡처 (기초 색칠 지도 카드) */}
+              <button
+                onClick={handleCapture}
+                className="w-8 h-8 shrink-0 rounded-md border border-line bg-card text-muted hover:text-ink flex items-center justify-center transition-colors"
+                aria-label={t('muni.capture')}
+                title={t('muni.capture')}
+              >
+                {capturing ? (
+                  <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full" />
+                ) : (
+                  <Icon name="download" size={15} />
                 )}
               </button>
               <span className="hidden sm:inline text-sm text-muted whitespace-nowrap ml-2">
