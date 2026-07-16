@@ -83,7 +83,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       ev('share_open', { country })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, exportData, country, regions])
+  }, [isOpen, exportData, country, regions, lang])
 
   // 기초 지도 이미지는 무겁기 때문에(전국 시정촌 GeoJSON) 필요할 때만 렌더
   useEffect(() => {
@@ -460,6 +460,16 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             </div>
           </div>
 
+          {/* 점수 - 한눈에 들어오게 크게 (우리 편집 스타일: 좌측 정렬 큰 타이포) */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 44, fontWeight: 700, color: '#26231c', lineHeight: '44px' }}>
+              {t('stats.exp', { n: cardScore })}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 14, color: '#7c766a', lineHeight: '14px' }}>
+              {t('stats.travelerLevel')} {cardLevel} · <span style={{ color: '#be3a2b', fontWeight: 700 }}>{tierLabel}</span>
+            </div>
+          </div>
+
           {/* 색칠된 지도 (비교의 핵심) — 2장이면 나란히 + 캡션, 1장이면 전폭 */}
           {multiMap ? (
             <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
@@ -488,23 +498,8 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             )
           )}
 
-          {/* 레벨 + 티어 (html2canvas는 baseline 정렬이 어긋나므로 center + lineHeight 고정) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 52, fontWeight: 700, lineHeight: '52px' }}>{cardLevel}</span>
-            <span style={{ fontSize: 14, color: '#7c766a', lineHeight: '14px' }}>{t('stats.travelerLevel')}</span>
-            <span
-              style={{
-                padding: '5px 10px', borderRadius: 999, lineHeight: '12px',
-                backgroundColor: '#f8eae4', color: '#be3a2b', fontSize: 12, fontWeight: 700,
-              }}
-            >
-              {tierLabel}
-            </span>
-            <span style={{ marginLeft: 'auto', fontSize: 13, color: '#7c766a', lineHeight: '13px' }}>{t('stats.exp', { n: cardScore })}</span>
-          </div>
-
           {/* 방문/달성률 */}
-          <div style={{ display: 'flex', gap: 24, marginTop: 18, paddingTop: 16, borderTop: '1px solid #e3dfd3' }}>
+          <div style={{ display: 'flex', gap: 24, paddingTop: 4 }}>
             <div>
               <div style={{ fontSize: 11, color: '#7c766a' }}>{t('stats.visited')}</div>
               <div style={{ fontSize: 22, fontWeight: 700 }}>
@@ -521,28 +516,15 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             </div>
           </div>
 
-          {/* 등급 분포 스택 바 */}
-          <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginTop: 18, border: '1px solid rgba(0,0,0,0.06)' }}>
-            {([5, 4, 3, 2, 1, 0] as ExperienceGrade[]).map((lvl) => {
-              const count = counts[lvl]
-              if (!count) return null
-              return (
-                <span
-                  key={lvl}
-                  style={{
-                    width: `${(count / cardTotal) * 100}%`,
-                    backgroundColor: lvl === 0 ? '#e3dfd3' : EXP_COLORS[lvl],
-                  }}
-                />
-              )
-            })}
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
-            {([5, 4, 3, 2, 1] as ExperienceGrade[]).map((lvl) => (
-              <span key={lvl} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, lineHeight: '10px', color: '#7c766a' }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, backgroundColor: EXP_COLORS[lvl], border: '1px solid rgba(0,0,0,0.08)' }} />
-                <span style={{ lineHeight: '10px' }}>{levelLabel(lvl, lang)} {counts[lvl]}</span>
-              </span>
+          {/* 등급 사다리 (온보딩과 같은 우리 모티프) - 색·이름·개수를 한 줄에 */}
+          <div style={{ display: 'flex', gap: 5, marginTop: 18 }}>
+            {([1, 2, 3, 4, 5] as ExperienceGrade[]).map((lvl) => (
+              <div key={lvl} style={{ flex: 1 }}>
+                <div style={{ height: 13, borderRadius: 4, backgroundColor: EXP_COLORS[lvl], border: '1px solid rgba(0,0,0,0.08)' }} />
+                <div style={{ marginTop: 7, fontSize: 11, lineHeight: '11px', color: '#7c766a', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                  {levelLabel(lvl, lang)} <span style={{ fontWeight: 700, color: '#26231c' }}>{counts[lvl]}</span>
+                </div>
+              </div>
             ))}
           </div>
 
