@@ -7,7 +7,7 @@
 A map that stamps every region you've traveled to, building up your travel footprint.
 Records Japan's 47 prefectures & 1,897 municipalities and Korea's 16 provinces & 250 municipalities — **on one map**.
 
-Based on Japan's [経県値 (Keikenchi)](https://uub.jp/kkn/) concept, reimagined with dual-country recording, municipality-level precision, and GPS stamping.
+Based on Japan's [経県値 (Keikenchi)](https://uub.jp/kkn/) concept, reimagined with dual-country recording, municipality-level precision, and GPS stamping. The map uses the original Keikenchi standard color palette.
 
 <p align="center">
   <img src="docs/screenshots/desktop.en.png" width="800" alt="Japan map view">
@@ -26,9 +26,9 @@ Based on Japan's [経県値 (Keikenchi)](https://uub.jp/kkn/) concept, reimagine
 
 ## Features
 
-- **Stamp records** — Tap a region to cycle its grade: Unvisited(0) → Passed(1) → Landed(2) → Visited(3) → Stayed(4) → Lived(5)
-- **Dual-country view** — Show Japan and Korea on one screen with a combined level plus per-country stats
-- **Municipality level** — Stamp individual municipalities in the manager view (list or mini-map); a "Municipalities" toggle renders the whole country at municipal detail
+- **Stamp records** — Tap a region to cycle its grade: Unvisited(0) → Passed(1) → Landed(2) → Visited(3) → Stayed(4) → Lived(5). Mis-taps can be undone from a toast; long-press opens details (memos, visit log)
+- **Dual-country view** — Show Japan and Korea on one screen; your traveler level always combines both countries, with per-country stats
+- **Municipality level** — Stamp individual municipalities in the stamping view (list or mini-map); a "Municipalities" toggle renders the whole country at municipal detail
 - **Place names in 3 languages** — Japanese municipalities in Hangul and romaji (from official MIC readings), Korean municipalities in kanji + katakana. Map place-name language is selectable independently of the UI language
 - **GPS** — Auto-detects your current region (province + municipality), records travel tracks, auto-logs visits
   - GPS-verified records can't be edited or deleted; manual records allow free past-date entry

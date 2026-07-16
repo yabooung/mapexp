@@ -50,6 +50,34 @@ body {
   font-family: inherit;
 }
 
+/* 줌 컨트롤: 기본 Leaflet 룩 대신 페이퍼&인주 디자인 토큰으로 */
+.leaflet-control-zoom.leaflet-bar {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(38, 35, 28, 0.14);
+}
+.leaflet-control-zoom.leaflet-bar a {
+  background: var(--card);
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  font-family: inherit;
+}
+.leaflet-control-zoom.leaflet-bar a:last-child {
+  border-bottom: none;
+}
+.leaflet-control-zoom.leaflet-bar a:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* 모바일: 핀치 줌이 있으므로 줌 버튼 숨김 (지도 좌상단 공간 확보) */
+@media (max-width: 640px) {
+  .leaflet-control-zoom {
+    display: none;
+  }
+}
+
 .region-tooltip {
   background-color: rgba(0, 0, 0, 0.8) !important;
   color: white !important;
