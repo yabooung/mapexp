@@ -17,12 +17,14 @@ type BadgeView = 'list' | 'grid'
  */
 export default function BadgePanel() {
   const [mounted, setMounted] = useState(false)
+  // 모바일=리스트(조건·진행률 학습), 데스크톱=도장 그리드(사이드바가 길어지지 않게)
   const [view, setView] = useState<BadgeView>('list')
   const { country, regions } = useMapExpStore()
   const trackPoints = useGpsStore((s) => s.trackPoints)
   const t = useT()
 
   useEffect(() => {
+    if (window.matchMedia('(min-width: 1024px)').matches) setView('grid')
     setMounted(true)
   }, [])
 
@@ -85,7 +87,8 @@ export default function BadgePanel() {
           })}
         </div>
       ) : (
-        <div>
+        /* 데스크톱 사이드바에서 카드가 한없이 길어지지 않게 내부 스크롤 (지역별 점수 카드와 동일 패턴) */
+        <div className="lg:max-h-80 lg:overflow-y-auto lg:pr-1">
           {badges.map((badge, i) => {
             const name = t(`badge.${badge.id}.name` as I18nKey)
             const desc = t(`badge.${badge.id}.desc` as I18nKey)
