@@ -353,6 +353,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
           position = [centroid[1], centroid[0]]
         }
         const meta = getRegionMetadata(id)
+        if (meta?.hidden) return
         labels.push({
           id,
           name: props.name as string,

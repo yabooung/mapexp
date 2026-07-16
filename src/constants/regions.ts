@@ -59,6 +59,13 @@ export const TOTAL_REGIONS = {
   korea: 16, // 2026-07 전남광주통합특별시 출범으로 17 → 16개 시도
 } as const
 
+export const HIDDEN_REGION_IDS = new Set(['dokdo'])
+
+export function isHiddenRegion(regionId: string): boolean {
+  const parentId = regionId.includes('_') ? regionId.split('_')[0] : regionId
+  return HIDDEN_REGION_IDS.has(parentId)
+}
+
 /**
  * 지역 ID 타입
  */
@@ -139,6 +146,7 @@ export const REGION_ID_MAP: Record<string, Record<string, string>> = {
     '경상남도': 'gyeongnam',
     '제주특별자치도': 'jeju',
     '전남광주통합특별시': 'jeonnamgwangju',
+    '독도': 'dokdo',
     // 구 명칭 → 통합시로 흡수 (구버전 데이터/공유 링크 호환)
     '광주광역시': 'jeonnamgwangju',
     '전라남도': 'jeonnamgwangju',
@@ -180,7 +188,7 @@ export const KOREA_PROV_CODE_BY_ID: Record<string, string> = {
 /**
  * 지역 ID가 해당 국가 소속인지 판별 (시군구/시정촌 ID는 부모 기준)
  */
-const KOREA_ID_SET = new Set(Object.keys(KOREA_PROV_CODE_BY_ID))
+const KOREA_ID_SET = new Set([...Object.keys(KOREA_PROV_CODE_BY_ID), 'dokdo'])
 const JAPAN_ID_SET = new Set<string>(JAPAN_REGION_IDS)
 
 export function isRegionOfCountry(regionId: string, country: 'japan' | 'korea'): boolean {

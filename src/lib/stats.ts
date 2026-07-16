@@ -1,5 +1,5 @@
 import { TOTAL_REGIONS } from '@/constants'
-import { isRegionOfCountry } from '@/constants/regions'
+import { isRegionOfCountry, isHiddenRegion } from '@/constants/regions'
 import { GyeongHyeonChi, ExperienceGrade, RegionExp } from '@/types'
 import type { Country } from '@/lib/geo'
 
@@ -15,7 +15,7 @@ export function countryStats(regions: RegionExp[], c: Country) {
     if (r.regionId.includes('_') || !isRegionOfCountry(r.regionId, c)) continue
     const lvl = r.gyeonghyeonchi ?? r.level ?? 0
     score += lvl
-    if (lvl > 0) visited++
+    if (lvl > 0 && !isHiddenRegion(r.regionId)) visited++
   }
   const total = TOTAL_REGIONS[c]
   return {
@@ -39,6 +39,7 @@ export function countryGradeCounts(regions: RegionExp[], c: Country): Record<Exp
   }
   for (const r of regions) {
     if (r.regionId.includes('_') || !isRegionOfCountry(r.regionId, c)) continue
+    if (isHiddenRegion(r.regionId)) continue
     const lvl = (r.gyeonghyeonchi ?? r.level ?? 0) as ExperienceGrade
     if (lvl > 0) {
       counts[lvl]++

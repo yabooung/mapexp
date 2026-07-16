@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { GyeongHyeonChi, MapExpData, RegionExp, UserSettings, ExperienceGrade, Visit } from "@/types";
 import { STORAGE_KEYS, DEFAULT_SETTINGS, DATA_VERSION } from "@/constants";
-import { TOTAL_REGIONS, isRegionOfCountry, LEGACY_REGION_ID_MAP } from "@/constants/regions";
+import { TOTAL_REGIONS, isRegionOfCountry, isHiddenRegion, LEGACY_REGION_ID_MAP } from "@/constants/regions";
 
 /**
  * 저장 데이터 마이그레이션
@@ -502,6 +502,7 @@ export const useMapExpStore = create<MapExpStore>()(
           (region) =>
             !region.regionId.includes("_") &&
             isRegionOfCountry(region.regionId, state.country) &&
+            !isHiddenRegion(region.regionId) &&
             (region.gyeonghyeonchi ?? region.level ?? 0) > GyeongHyeonChi.UNVISITED,
         ).length;
       },
@@ -533,6 +534,7 @@ export const useMapExpStore = create<MapExpStore>()(
         state.regions.forEach((region) => {
           if (region.regionId.includes("_")) return;
           if (!isRegionOfCountry(region.regionId, state.country)) return;
+          if (isHiddenRegion(region.regionId)) return;
           const val = (region.gyeonghyeonchi ?? region.level ?? 0) as ExperienceGrade;
           counts[val]++;
           counts[GyeongHyeonChi.UNVISITED]--;
