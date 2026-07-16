@@ -91,6 +91,7 @@ export interface RegionMetadata {
   nameJa?: string; // 지역명 (일본어 표기 - 한국 지역용, 일본 지역은 nameLocal이 일본어)
   country: "japan" | "korea"; // 국가
   type: "prefecture" | "province"; // 행정구역 타입
+  hidden?: boolean;
   population?: number; // 인구 (선택)
   area?: number; // 면적 (km²) (선택)
 }

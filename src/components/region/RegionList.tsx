@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useMapExpStore } from '@/store'
-import { getRegionsByCountry } from '@/data/regions'
+import { getRegionsByCountry, getHiddenRegionsByCountry } from '@/data/regions'
 import { GyeongHyeonChi, ExperienceGrade, RegionMetadata } from '@/types'
 import { REGION_GROUPS } from '@/constants/regions'
 import RegionCard from './RegionCard'
@@ -23,13 +23,16 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
   const [sortBy, setSortBy] = useState<SortMode>('group')
   const t = useT()
 
-  // 현재 국가의 모든 지역 메타데이터
-  const allRegions = getRegionsByCountry(country)
-
   const levelOf = (regionId: string): ExperienceGrade => {
     const exp = getRegionById(regionId)
     return (exp?.gyeonghyeonchi ?? exp?.level ?? 0) as ExperienceGrade
   }
+
+  // 현재 국가의 모든 지역 메타데이터
+  const allRegions = [
+    ...getRegionsByCountry(country),
+    ...getHiddenRegionsByCountry(country).filter((r) => levelOf(r.id) > GyeongHyeonChi.UNVISITED),
+  ]
 
   // 검색 필터
   const filteredRegions = useMemo(() => {
@@ -47,7 +50,7 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
   const groups = useMemo(() => {
     if (sortBy !== 'group') return null
     const byId = new Map(filteredRegions.map((r) => [r.id, r]))
-    return REGION_GROUPS[country]
+    const result = REGION_GROUPS[country]
       .map((group) => {
         const members = group.ids
           .map((id) => byId.get(id))
@@ -57,6 +60,16 @@ export default function RegionList({ onRegionClick }: RegionListProps) {
         return { name: group.name, members, totalInGroup, visitedInGroup }
       })
       .filter((g) => g.members.length > 0)
+    const hiddenMembers = filteredRegions.filter((r) => r.hidden)
+    if (hiddenMembers.length > 0) {
+      result.push({
+        name: '히든',
+        members: hiddenMembers,
+        totalInGroup: hiddenMembers.length,
+        visitedInGroup: hiddenMembers.length,
+      })
+    }
+    return result
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredRegions, sortBy, country, getRegionById])
 
