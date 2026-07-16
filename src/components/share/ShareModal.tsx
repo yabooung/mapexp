@@ -10,12 +10,13 @@ import { countryStats, countryGradeCounts, levelFromScore, muniStats } from '@/l
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters, type Country } from '@/lib/geo'
 import { renderRegionMapImage, renderMunicipalityMapImage } from '@/lib/mapSnapshot'
-import { useT, useLang, levelLabel, I18nKey } from '@/lib/i18n'
+import { useT, useLang, levelLabel, tNow, I18nKey } from '@/lib/i18n'
 import { ev } from '@/lib/analytics'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
 import Icon from '@/components/common/Icon'
 import toast from 'react-hot-toast'
+import QRCode from 'qrcode'
 
 interface ShareModalProps {
   isOpen: boolean
@@ -33,9 +34,12 @@ const levelOfFor = (regions: RegionExp[]) => (regionId: string): ExperienceGrade
 }
 
 export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
-  const { exportData, country, regions } = useMapExpStore()
+  const { exportData, country, regions, enterViewerMode } = useMapExpStore()
   const trackPoints = useGpsStore((s) => s.trackPoints)
   const [shareUrl, setShareUrl] = useState('')
+  const [showQr, setShowQr] = useState(false)
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [mapImgs, setMapImgs] = useState<{ japan: string | null; korea: string | null }>({ japan: null, korea: null })
   const [muniImgs, setMuniImgs] = useState<{ japan: string | null; korea: string | null }>({ japan: null, korea: null })
   const [scope, setScope] = useState<CardScope>('japan')
@@ -91,6 +95,53 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, detail, scope])
+
+  // QR 코드: 링크와 동일한 내용 - 오프라인에서 폰 카메라로 바로 열 수 있다
+  useEffect(() => {
+    if (!isOpen || !showQr || !shareUrl) return
+    QRCode.toDataURL(shareUrl, { width: 220, margin: 1, color: { dark: '#26231c', light: '#ffffff' } })
+      .then(setQrDataUrl)
+      .catch(() => setQrDataUrl(null))
+  }, [isOpen, showQr, shareUrl])
+
+  useEffect(() => {
+    if (!isOpen) setShowQr(false)
+  }, [isOpen])
+
+  // 파일 교환: 내보내기(백업과 동일 포맷) / 받은 파일은 뷰어 모드로 안전하게 열기
+  const handleFileExport = () => {
+    try {
+      const blob = new Blob([JSON.stringify(exportData(), null, 2)], { type: 'application/json' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `mapexp-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(a.href)
+      ev('share_file_export')
+    } catch {
+      toast.error(t('settings.exportFail'))
+    }
+  }
+
+  const handleFileOpen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result))
+        if (!Array.isArray(data?.regions)) throw new Error('invalid')
+        enterViewerMode(data)
+        ev('share_file_open')
+        onClose()
+        toast.success(tNow('viewer.loaded'))
+      } catch {
+        toast.error(tNow('share.fileInvalid'))
+      }
+    }
+    reader.readAsText(file)
+  }
 
   const handleCopy = async () => {
     try {
@@ -190,6 +241,10 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
 
   const countryLabel = (c: Country) => t(c === 'japan' ? 'common.japan' : 'common.korea')
   const headerLabel = scope === 'both' ? `${countryLabel('japan')} × ${countryLabel('korea')}` : countryLabel(scope)
+
+  // 달성률 구간별 칭호 (카드에 순위 티어로 표시)
+  const tierIdx = cardCompletion >= 90 ? 4 : cardCompletion >= 60 ? 3 : cardCompletion >= 30 ? 2 : cardCompletion >= 10 ? 1 : 0
+  const tierLabel = t(`tier.${tierIdx}` as I18nKey)
 
   // 카드 지도 슬롯: 스코프 × 상세도 조합
   // - 양국: 국가별 지도 2장 (광역 or 기초) + 국가 캡션
@@ -318,7 +373,24 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             className="w-full px-3 py-2 bg-paper border border-line rounded-md text-sm text-muted focus:outline-none"
             onClick={(e) => (e.target as HTMLInputElement).select()}
           />
+          <button
+            onClick={() => setShowQr((v) => !v)}
+            className={`shrink-0 px-3 py-2 rounded-md border text-xs font-bold transition-colors ${
+              showQr ? 'bg-ink text-paper border-ink' : 'border-line text-muted hover:text-ink bg-card'
+            }`}
+          >
+            {t('share.qr')}
+          </button>
         </div>
+
+        {/* QR 코드 - 오프라인/대면 공유용 */}
+        {showQr && qrDataUrl && (
+          <div className="flex flex-col items-center gap-2 py-3 bg-card border border-line rounded-lg">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrDataUrl} alt={t('share.qr')} className="w-44 h-44 rounded-md" />
+            <p className="text-xs text-muted">{t('share.qrHint')}</p>
+          </div>
+        )}
 
         {/* 공유 액션 */}
         <div className="grid grid-cols-2 gap-2">
@@ -338,6 +410,20 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             {rendering ? '…' : t('share.image')}
           </Button>
         </div>
+
+        {/* 파일 교환 - 메신저로 JSON을 주고받아 서로의 지도를 열어본다 */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" onClick={handleFileExport} className="gap-1.5">
+            <Icon name="download" size={15} />
+            {t('share.fileExport')}
+          </Button>
+          <Button variant="secondary" onClick={() => fileInputRef.current?.click()} className="gap-1.5">
+            <Icon name="upload" size={15} />
+            {t('share.fileOpen')}
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleFileOpen} />
+        </div>
+        <p className="text-xs text-faint -mt-2">{t('share.fileOpenHint')}</p>
 
         <div className="bg-paper border border-line p-3 rounded-lg text-sm text-muted">
           {t('share.info')}
@@ -404,10 +490,18 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             )
           )}
 
-          {/* 레벨 */}
+          {/* 레벨 + 티어 */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span style={{ fontSize: 52, fontWeight: 700, lineHeight: 1 }}>{cardLevel}</span>
             <span style={{ fontSize: 14, color: '#7c766a' }}>{t('stats.travelerLevel')}</span>
+            <span
+              style={{
+                alignSelf: 'center', padding: '3px 10px', borderRadius: 999,
+                backgroundColor: '#f8eae4', color: '#be3a2b', fontSize: 12, fontWeight: 700,
+              }}
+            >
+              {tierLabel}
+            </span>
             <span style={{ marginLeft: 'auto', fontSize: 13, color: '#7c766a' }}>{t('stats.exp', { n: cardScore })}</span>
           </div>
 

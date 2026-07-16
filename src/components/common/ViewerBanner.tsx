@@ -12,6 +12,8 @@ import Icon from '@/components/common/Icon'
  */
 export default function ViewerBanner() {
   const isViewer = useMapExpStore((s) => s.isViewer)
+  const compareMine = useMapExpStore((s) => s.compareMine)
+  const toggleCompareMine = useMapExpStore((s) => s.toggleCompareMine)
   const exitViewerMode = useMapExpStore((s) => s.exitViewerMode)
   const adoptSharedMap = useMapExpStore((s) => s.adoptSharedMap)
   const t = useT()
@@ -21,11 +23,23 @@ export default function ViewerBanner() {
   return (
     <div className="bg-seal text-white">
       <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-[13px] font-medium min-w-0">
+        <span className="hidden sm:flex items-center gap-2 text-[13px] font-medium min-w-0">
           <Icon name="pin" size={14} className="shrink-0" />
           <span className="truncate">{t('viewer.banner')}</span>
         </span>
         <span className="flex items-center gap-1.5 shrink-0">
+          {/* 내 기록과 겹쳐보기 - 지도가 나만/상대만/둘 다 3색 비교로 바뀐다 */}
+          <button
+            onClick={() => {
+              toggleCompareMine()
+              ev('viewer_compare', { on: !compareMine })
+            }}
+            className={`px-2.5 py-1 rounded-md text-[12px] font-semibold transition-colors ${
+              compareMine ? 'bg-white text-seal' : 'bg-white/15 hover:bg-white/25'
+            }`}
+          >
+            {t('viewer.compare')}
+          </button>
           <button
             onClick={() => {
               adoptSharedMap()

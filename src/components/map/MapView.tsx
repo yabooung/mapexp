@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, GeoJSON, Marker, useMap, useMapEvents } from 'react-leaflet'
 import { geoCentroid } from 'd3-geo'
 import L from 'leaflet'
-import { useMapExpStore } from '@/store'
+import { useMapExpStore, getViewerBackupRegions } from '@/store'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
 import { REGION_ID_MAP, isHiddenRegion } from '@/constants/regions'
@@ -201,7 +201,7 @@ const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLe
 }
 
 export default function MapView({ onRegionClick, showBoth = false, onToggleBoth, onOpenMuniManager }: MapViewProps) {
-  const { country: storeCountry, getRegionById, addRegion, updateRegion, updateSettings, settings, isViewer } = useMapExpStore()
+  const { country: storeCountry, getRegionById, addRegion, updateRegion, updateSettings, settings, isViewer, compareMine } = useMapExpStore()
   const country = storeCountry as Country
   const otherCountry: Country = country === 'japan' ? 'korea' : 'japan'
   const [baseGeoData, setBaseGeoData] = useState<GeoJsonObject | null>(null)
@@ -413,12 +413,36 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
   // 기초 지역 표시 중에는 지도 전체가 읽기 전용 (광역 탭 수정도 금지)
   const readOnlyRef = useRef(false)
 
+  // 겹쳐보기(비교) 모드: 뷰어 중 내 백업 기록과 상대 기록의 방문 여부를 대비
+  const COMPARE_COLORS = { mine: '#be3a2b', theirs: '#4a86c8', both: '#8e5bb8' } as const
+  const myBackupLevels = useMemo(() => {
+    if (!isViewer || !compareMine) return null
+    const m = new Map<string, number>()
+    getViewerBackupRegions()?.forEach((r) => {
+      if (!r.regionId.includes('_')) m.set(r.regionId, r.gyeonghyeonchi ?? r.level ?? 0)
+    })
+    return m
+  }, [isViewer, compareMine])
+
+  const getCompareStyle = (feature?: Feature): PathOptions => {
+    if (!feature?.properties?.id) return { fillOpacity: 0, opacity: 0 }
+    const regionId = feature.properties.id as string
+    const theirs = (useMapExpStore.getState().getRegionById(regionId)?.gyeonghyeonchi ?? 0) > 0
+    const mine = (myBackupLevels?.get(regionId) ?? 0) > 0
+    if (!theirs && !mine) {
+      return { fillColor: '#f5f3ec', fillOpacity: showTiles ? 0.55 : 1.0, color: '#999', weight: 0.5, dashArray: '3' }
+    }
+    const color = theirs && mine ? COMPARE_COLORS.both : theirs ? COMPARE_COLORS.theirs : COMPARE_COLORS.mine
+    return { fillColor: color, fillOpacity: 0.65, color, weight: 1.5 }
+  }
+
   // 지역 스타일
   // 주의: interactive:false를 반환하는 분기를 두면 안 된다.
   // 레이어 생성 시점의 스테일 스타일로 만들어진 path는 setStyle로
   // 인터랙티브를 복원할 수 없어 영구 클릭 불능이 된다.
   // (활성 현은 어차피 data 필터에서 제외되므로 숨김 분기 자체가 불필요)
   const getRegionStyle = (feature?: Feature): PathOptions => {
+    if (isViewer && compareMine && myBackupLevels) return getCompareStyle(feature)
     if (!feature?.properties?.id) return { fillOpacity: 0, opacity: 0 }
 
     const regionId = feature.properties.id as string
@@ -793,15 +817,29 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
       <GpsControls onRegionClick={onRegionClick} onOpenMuniManager={onOpenMuniManager} />
 
       {/* 공유 지도 열람 중에는 범례를 상시 노출 - 처음 보는 사람이 색의 의미를 바로 알 수 있게
-          (뷰어 배너가 레이아웃을 아래로 밀어 bottom-20은 하단 탭에 가려짐 → 여유 있게 bottom-32) */}
+          (뷰어 배너가 레이아웃을 아래로 밀어 bottom-20은 하단 탭에 가려짐 → 여유 있게 bottom-32)
+          비교 모드에서는 나만/상대만/둘 다 3색으로 교체 */}
       {isViewer && (
         <div className="absolute bottom-32 lg:bottom-4 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2.5 bg-card border border-line rounded-full shadow-[0_2px_10px_rgba(38,35,28,0.12)] px-3.5 py-1.5 max-w-[calc(100%-24px)] overflow-x-auto">
-          {([5, 4, 3, 2, 1] as ExperienceGrade[]).map((lvl) => (
-            <span key={lvl} className="flex items-center gap-1 shrink-0">
-              <span className="w-2.5 h-2.5 rounded-[2px] border border-black/10" style={{ backgroundColor: EXP_COLORS[lvl] }} />
-              <span className="text-[10px] font-medium text-ink whitespace-nowrap">{t(`level.${lvl}` as I18nKey)}</span>
-            </span>
-          ))}
+          {compareMine
+            ? (
+              [
+                ['mine', 'compare.mine'],
+                ['theirs', 'compare.theirs'],
+                ['both', 'compare.both'],
+              ] as Array<[keyof typeof COMPARE_COLORS, I18nKey]>
+            ).map(([key, labelKey]) => (
+              <span key={key} className="flex items-center gap-1 shrink-0">
+                <span className="w-2.5 h-2.5 rounded-[2px] border border-black/10" style={{ backgroundColor: COMPARE_COLORS[key] }} />
+                <span className="text-[10px] font-medium text-ink whitespace-nowrap">{t(labelKey)}</span>
+              </span>
+            ))
+            : ([5, 4, 3, 2, 1] as ExperienceGrade[]).map((lvl) => (
+              <span key={lvl} className="flex items-center gap-1 shrink-0">
+                <span className="w-2.5 h-2.5 rounded-[2px] border border-black/10" style={{ backgroundColor: EXP_COLORS[lvl] }} />
+                <span className="text-[10px] font-medium text-ink whitespace-nowrap">{t(`level.${lvl}` as I18nKey)}</span>
+              </span>
+            ))}
         </div>
       )}
 
