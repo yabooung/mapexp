@@ -111,7 +111,7 @@ export default function GpsControls({ onRegionClick, onOpenMuniManager }: GpsCon
     <>
       {/* 현재 지역 배너 (상단 중앙) - 현 · 시정촌 표시 */}
       {gpsActive && targetId && targetLabel && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2.5 bg-card border border-line rounded-full shadow-[0_2px_10px_rgba(38,35,28,0.12)] pl-3.5 pr-1.5 py-1.5 text-sm max-w-[calc(100%-24px)]">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2.5 bg-card border border-line rounded-full shadow-[0_2px_10px_rgba(38,35,28,0.12)] pl-3.5 pr-1.5 py-1.5 text-sm max-w-[calc(100%-190px)] lg:max-w-[calc(100%-24px)]">
           <span className="flex items-center gap-1.5 font-semibold text-ink whitespace-nowrap overflow-hidden text-ellipsis">
             <Icon name="pin" size={14} className="text-seal shrink-0" />
             {targetLabel}

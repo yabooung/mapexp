@@ -7,6 +7,7 @@ import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
 import Icon from '@/components/common/Icon'
 import { useT, useLang, Lang } from '@/lib/i18n'
+import { parseImportFile, downloadDataFile } from '@/lib/dataFile'
 import toast from 'react-hot-toast'
 
 interface SettingsModalProps {
@@ -38,22 +39,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   }
 
-  // 데이터 내보내기 (JSON 다운로드)
+  // 데이터 내보내기 (JSON 다운로드 - 스키마 봉투 포함)
   const handleExport = () => {
     try {
-      const data = exportData()
-      const jsonString = JSON.stringify(data, null, 2)
-      const blob = new Blob([jsonString], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `mapexp-data-${new Date().toISOString().slice(0, 10)}.json`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-
+      downloadDataFile(exportData())
       toast.success(t('settings.exportDone'))
     } catch (err) {
       console.error(err)
@@ -72,18 +61,25 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
     const reader = new FileReader()
     reader.onload = (event) => {
-      try {
-        const json = event.target?.result as string
-        const data = JSON.parse(json)
-
-        if (confirm(t('settings.importConfirm'))) {
-          importData(data)
-          toast.success(t('settings.importDone'))
-          onClose()
-        }
-      } catch (err) {
-        console.error(err)
+      // 신뢰 불가 입력: 타입 검증에 실패하면 상태를 건드리지 않고 조용히 실패
+      const data = parseImportFile(String(event.target?.result ?? ''))
+      if (!data) {
         toast.error(t('settings.importFail'))
+        return
+      }
+
+      // 유일하게 데이터를 잃을 수 있는 경로 - 교체 규모를 구체적으로 알리고,
+      // 진행 시 기존 데이터를 자동 백업 다운로드한 뒤 덮어쓴다
+      const current = exportData()
+      if (confirm(t('settings.importConfirmDetail', { a: current.regions.length, b: data.regions.length }))) {
+        try {
+          if (current.regions.length > 0) downloadDataFile(current, 'backup')
+        } catch {
+          // 백업 실패해도 사용자가 확인한 가져오기는 진행
+        }
+        importData(data)
+        toast.success(t('settings.importDone'))
+        onClose()
       }
     }
     reader.readAsText(file)

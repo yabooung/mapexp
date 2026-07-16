@@ -201,7 +201,7 @@ const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLe
 }
 
 export default function MapView({ onRegionClick, showBoth = false, onToggleBoth, onOpenMuniManager }: MapViewProps) {
-  const { country: storeCountry, getRegionById, addRegion, updateRegion, updateSettings, settings, isViewer, compareMine } = useMapExpStore()
+  const { country: storeCountry, setCountry, getRegionById, addRegion, updateRegion, updateSettings, settings, isViewer, compareMine } = useMapExpStore()
   const country = storeCountry as Country
   const otherCountry: Country = country === 'japan' ? 'korea' : 'japan'
   const [baseGeoData, setBaseGeoData] = useState<GeoJsonObject | null>(null)
@@ -812,6 +812,28 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
           />
         ))}
       </MapContainer>
+
+      {/* 국가 전환 - 지도 우상단(1시 방향): 헤더 밀도를 낮추고, 지도 대상과 붙어 있어 인지가 쉽다 */}
+      <div className="absolute top-3 right-3 z-[1000] inline-flex rounded-full border border-line bg-card p-0.5 shadow-[0_2px_8px_rgba(38,35,28,0.14)]">
+        {(
+          [
+            ['japan', 'JP'],
+            ['korea', 'KR'],
+          ] as const
+        ).map(([c, label]) => (
+          <button
+            key={c}
+            onClick={() => setCountry(c)}
+            className={`px-3 py-1 rounded-full text-[12px] font-bold tracking-wide transition-colors ${
+              country === c ? 'bg-ink text-paper' : 'text-muted hover:text-ink'
+            }`}
+            aria-label={t(c === 'japan' ? 'common.japan' : 'common.korea')}
+            title={t(c === 'japan' ? 'common.japan' : 'common.korea')}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* GPS 컨트롤 (내 위치, 트랙 기록, 현재 지역 배너) + 시정촌 도장 버튼 */}
       <GpsControls onRegionClick={onRegionClick} onOpenMuniManager={onOpenMuniManager} />

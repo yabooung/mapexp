@@ -5,13 +5,11 @@ import ShareModal from '@/components/share/ShareModal'
 import SettingsModal from '@/components/common/SettingsModal'
 import Icon from '@/components/common/Icon'
 import LanguageSwitcher from '@/components/common/LanguageSwitcher'
-import { useMapExpStore } from '@/store'
 import { useT } from '@/lib/i18n'
 
 export default function Header() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
-  const { country, setCountry } = useMapExpStore()
   const t = useT()
 
   return (
@@ -34,39 +32,19 @@ export default function Header() {
               </div>
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              {/* 국가 전환 (모든 화면 크기에서 노출) */}
-              <div className="inline-flex rounded-md border border-line bg-card p-0.5">
-                {(
-                  [
-                    ['japan', 'JP'],
-                    ['korea', 'KR'],
-                  ] as const
-                ).map(([c, label]) => (
-                  <button
-                    key={c}
-                    onClick={() => setCountry(c)}
-                    className={`px-2 py-1 rounded-[4px] text-[11px] font-bold tracking-wide transition-colors ${
-                      country === c ? 'bg-ink text-paper' : 'text-muted hover:text-ink'
-                    }`}
-                    aria-label={t(c === 'japan' ? 'common.japan' : 'common.korea')}
-                    title={t(c === 'japan' ? 'common.japan' : 'common.korea')}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
+            {/* 국가 전환 토글은 지도 우상단으로 이동 - 모바일 헤더 밀도 완화 */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {/* 언어 전환 */}
               <LanguageSwitcher />
 
-              {/* 공유 버튼 - 언어별 텍스트 폭 차이로 헤더가 흔들리지 않게 최소 폭 고정 */}
+              {/* 공유 버튼 - 모바일은 아이콘만 (텍스트 폭 차이로 흔들리지 않게 sm 이상만 최소 폭) */}
               <button
                 onClick={() => setIsShareModalOpen(true)}
-                className="flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 min-w-[5.25rem] sm:min-w-[5.75rem] bg-ink text-paper rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
+                className="flex items-center justify-center gap-1.5 p-2 sm:px-3.5 sm:py-2 sm:min-w-[5.75rem] bg-ink text-paper rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
+                aria-label={t('common.share')}
               >
-                <Icon name="share" size={15} />
-                {t('common.share')}
+                <Icon name="share" size={16} />
+                <span className="hidden sm:inline">{t('common.share')}</span>
               </button>
 
               {/* 설정 버튼 */}

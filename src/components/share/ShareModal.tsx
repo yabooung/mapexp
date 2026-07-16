@@ -17,6 +17,7 @@ import Button from '@/components/common/Button'
 import Icon from '@/components/common/Icon'
 import toast from 'react-hot-toast'
 import QRCode from 'qrcode'
+import { parseImportFile, shareDataFile } from '@/lib/dataFile'
 
 interface ShareModalProps {
   isOpen: boolean
@@ -108,16 +109,13 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     if (!isOpen) setShowQr(false)
   }, [isOpen])
 
-  // 파일 교환: 내보내기(백업과 동일 포맷) / 받은 파일은 뷰어 모드로 안전하게 열기
-  const handleFileExport = () => {
+  // 파일 교환: 모바일은 Web Share로 메신저에 바로, 미지원이면 다운로드 폴백.
+  // 이름(선택)을 넣으면 파일명에 들어가 여러 친구의 파일을 구분할 수 있다.
+  const handleFileExport = async () => {
     try {
-      const blob = new Blob([JSON.stringify(exportData(), null, 2)], { type: 'application/json' })
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = `mapexp-${new Date().toISOString().slice(0, 10)}.json`
-      a.click()
-      URL.revokeObjectURL(a.href)
-      ev('share_file_export')
+      const name = window.prompt(t('share.fileNamePrompt')) // 취소(null)·빈값이면 생략
+      const result = await shareDataFile(exportData(), name)
+      ev('share_file_export', { via: result })
     } catch {
       toast.error(t('settings.exportFail'))
     }
@@ -129,16 +127,16 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      try {
-        const data = JSON.parse(String(reader.result))
-        if (!Array.isArray(data?.regions)) throw new Error('invalid')
-        enterViewerMode(data)
-        ev('share_file_open')
-        onClose()
-        toast.success(tNow('viewer.loaded'))
-      } catch {
+      // 신뢰 불가 입력: 스키마/타입 검증 통과분만 뷰어 모드로 (내 기록은 백업됨)
+      const data = parseImportFile(String(reader.result ?? ''))
+      if (!data) {
         toast.error(tNow('share.fileInvalid'))
+        return
       }
+      enterViewerMode(data)
+      ev('share_file_open')
+      onClose()
+      toast.success(tNow('viewer.loaded'))
     }
     reader.readAsText(file)
   }
