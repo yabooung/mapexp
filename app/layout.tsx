@@ -27,8 +27,11 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ??
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
   ),
-  title: "MAPEXP - 지역 경험치 맵",
-  description: "방문한 지역을 기록하고 경험치를 쌓는 지도 서비스. GPS로 이동 경로를 추적하고 새 지역 방문을 자동으로 기록하세요.",
+  title: "MAPEXP - 여행 도장 지도",
+  // 検索 노출용 설명: 経県値는 uub.jp 상표라 제품명이 아닌 '방식 참조'로만 언급 (지시적 사용)
+  description:
+    "일본의 経県値(경현치, uub.jp) 방식으로 방문 지역을 6단계 도장으로 기록하는 지도. 도도부현·시도부터 시정촌·시군구까지, GPS 자동 감지와 공유 지원.",
+  keywords: ["経県値", "경현치", "여행 지도", "여행 기록", "도장", "旅スタンプ", "keikenchi map"],
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

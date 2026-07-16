@@ -200,6 +200,12 @@ const STRINGS = {
 
   // 지역 상세 모달
   'region.levelLabel': ['도장 등급', 'Stamp grade', 'スタンプランク'],
+  // 지시적 사용: 등급 기준의 출처를 밝히는 설명문 (제품명이 아니라 uub.jp 귀속 참조)
+  'region.levelNote': [
+    '経県値(경현치·uub.jp)와 같은 6단계 기준입니다',
+    'Same 6-level scale as 経県値 (uub.jp)',
+    '経県値®（uub.jp）と同じ6段階基準です',
+  ],
   'region.levelDesc.0': ['미답 (스친 적도 없다) - 0점', 'Never been (0 pt)', '未踏 (かすったこともない) - 0点'],
   'region.levelDesc.1': ['통과했다 (철도/차 통과, 배 기항. 항공기 제외) - 1점', 'Passed through by rail/car/ship (1 pt)', '通過した (鉄道・車・船。航空機は除く) - 1点'],
   'region.levelDesc.2': ['내렸다 (환승이나 휴게소 휴식 등) - 2점', 'Set foot (transfer, rest stop) (2 pt)', '降り立った (乗換や休憩など) - 2点'],
