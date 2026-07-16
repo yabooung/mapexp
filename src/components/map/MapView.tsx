@@ -14,7 +14,7 @@ import GpsControls from './GpsControls'
 import Icon from '@/components/common/Icon'
 import { municipalityName, loadPrefectures, loadMunicipalities, featureContainsPoint, type Country } from '@/lib/geo'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
-import { useT, tNow, muniTerm, regionDisplayName, mapLangNow, useMapLang, I18nKey, type Lang } from '@/lib/i18n'
+import { useT, tNow, useLang, muniTerm, regionDisplayName, mapLangNow, useMapLang, I18nKey, type Lang } from '@/lib/i18n'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
 import { getRegionMetadata } from '@/data/regions'
 import { showLevelUndoToast } from '@/lib/undoToast'
@@ -36,6 +36,8 @@ interface MapViewProps {
   /** 양국(일본+한국) 지도를 동시에 표시 */
   showBoth?: boolean
   onToggleBoth?: () => void
+  /** 기초 지역(시정촌/시군구) 도장 모달 열기 - 지도에서 바로 진입할 수 있게 */
+  onOpenMuniManager?: () => void
 }
 
 interface RegionLabelNames {
@@ -198,7 +200,7 @@ const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLe
   return null
 }
 
-export default function MapView({ onRegionClick, showBoth = false, onToggleBoth }: MapViewProps) {
+export default function MapView({ onRegionClick, showBoth = false, onToggleBoth, onOpenMuniManager }: MapViewProps) {
   const { country: storeCountry, getRegionById, addRegion, updateRegion, updateSettings, settings, isViewer } = useMapExpStore()
   const country = storeCountry as Country
   const otherCountry: Country = country === 'japan' ? 'korea' : 'japan'
@@ -229,6 +231,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   const [panelOpen, setPanelOpen] = useState(false) // 모바일: 범례/컨트롤 패널 토글
   const [retryKey, setRetryKey] = useState(0) // 지도 데이터 로드 실패 시 재시도
   const t = useT()
+  const uiLang = useLang()
   // 지도 지명 언어 (auto = UI 언어 따름) - 툴팁/라벨 전용
   const mapLang = useMapLang()
 
@@ -802,6 +805,20 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
       {/* Controls */}
       <div className={`${panelOpen ? 'block' : 'hidden'} sm:block absolute bottom-[8.5rem] right-4 sm:bottom-4 bg-card border border-line rounded-[10px] shadow-[0_2px_10px_rgba(38,35,28,0.12)] p-3 text-xs z-[1000] w-[172px] max-h-[55%] overflow-y-auto`}>
         <div className="flex flex-col gap-1.5 mb-3">
+            {/* 세부 지역 도장 진입 - 이 앱의 핵심 기능이라 지도에서 바로 갈 수 있어야 한다 */}
+            {onOpenMuniManager && (
+              <button
+                onClick={() => {
+                  setPanelOpen(false)
+                  onOpenMuniManager()
+                }}
+                className="w-full py-2 px-2.5 rounded-md bg-seal text-white font-semibold flex items-center justify-center gap-1.5 hover:bg-seal-hover active:scale-[0.99] transition-all"
+              >
+                <Icon name="building" size={14} />
+                {t('page.manageMunisLong', { term: muniTerm(country, uiLang) })}
+              </button>
+            )}
+
             <button
               onClick={cycleLabelMode}
               className="w-full py-1.5 px-2.5 rounded-md border border-line font-medium flex items-center justify-between text-ink hover:bg-paper transition-colors"
