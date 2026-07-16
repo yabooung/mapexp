@@ -338,6 +338,11 @@ const STRINGS = {
   'share.fileInvalid': ['파일이 손상되었거나 이 앱의 파일이 아닙니다.', 'The file is damaged or not a MAPEXP file.', 'ファイルが破損しているか、このアプリのファイルではありません。'],
   'share.fileNamePrompt': ['파일에 표시할 이름 (선택 - 친구들이 구분하기 쉽게)', 'Name for the file (optional - helps friends tell files apart)', 'ファイルに入れる名前（任意 - 友達が区別しやすく）'],
 
+  // 카드 옵션
+  'share.optLabels': ['지명 표시', 'Place names', '地名を表示'],
+  'share.optBadges': ['도장첩 표시', 'Badges', 'スタンプ帳を表示'],
+  'muni.captureLabels': ['캡처 이미지에 지명 라벨 넣기', 'Include place names in the captured image', 'キャプチャ画像に地名ラベルを入れる'],
+
   // 공유 뷰어
   'viewer.banner': ['공유된 지도를 보는 중 — 내 기록은 안전하게 보관돼 있어요', 'Viewing a shared map — your own records are safe', '共有地図を表示中 — 自分の記録は保管されています'],
   'viewer.compare': ['내 지도와 비교', 'Compare with mine', '自分と比較'],
