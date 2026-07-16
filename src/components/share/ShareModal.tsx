@@ -436,7 +436,12 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             width: 420,
             padding: '32px 34px',
             backgroundColor: '#f5f3ec',
-            fontFamily: 'var(--font-sans-kr), sans-serif',
+            // html2canvas가 가변 폰트·tabular-nums(body 상속)를 잘못 측정해
+            // 숫자 주변이 벌어지므로 카드에서는 시스템 폰트 + 기본 메트릭으로 고정
+            fontFamily: "'Apple SD Gothic Neo', 'Malgun Gothic', 'Yu Gothic', sans-serif",
+            fontFeatureSettings: 'normal',
+            fontVariantNumeric: 'normal',
+            letterSpacing: 'normal',
             color: '#26231c',
           }}
         >
@@ -460,15 +465,6 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             </div>
           </div>
 
-          {/* 점수 - 한눈에 들어오게 크게 (우리 편집 스타일: 좌측 정렬 큰 타이포) */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 44, fontWeight: 700, color: '#26231c', lineHeight: '44px' }}>
-              {t('stats.exp', { n: cardScore })}
-            </div>
-            <div style={{ marginTop: 8, fontSize: 14, color: '#7c766a', lineHeight: '14px' }}>
-              {t('stats.travelerLevel')} {cardLevel} · <span style={{ color: '#be3a2b', fontWeight: 700 }}>{tierLabel}</span>
-            </div>
-          </div>
 
           {/* 색칠된 지도 (비교의 핵심) — 2장이면 나란히 + 캡션, 1장이면 전폭 */}
           {multiMap ? (
@@ -498,8 +494,18 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
             )
           )}
 
+          {/* 점수 - 한눈에 들어오게 크게 (지도 다음, 기존 순서) */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 44, fontWeight: 700, color: '#26231c', lineHeight: '44px' }}>
+              {t('stats.exp', { n: cardScore })}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 14, color: '#7c766a', lineHeight: '14px' }}>
+              {t('stats.travelerLevel')} {cardLevel} · <span style={{ color: '#be3a2b', fontWeight: 700 }}>{tierLabel}</span>
+            </div>
+          </div>
+
           {/* 방문/달성률 */}
-          <div style={{ display: 'flex', gap: 24, paddingTop: 4 }}>
+          <div style={{ display: 'flex', gap: 24, paddingTop: 16, borderTop: '1px solid #e3dfd3' }}>
             <div>
               <div style={{ fontSize: 11, color: '#7c766a' }}>{t('stats.visited')}</div>
               <div style={{ fontSize: 22, fontWeight: 700 }}>
