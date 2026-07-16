@@ -17,6 +17,7 @@ import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { useT, tNow, muniTerm, regionDisplayName, mapLangNow, useMapLang, I18nKey, type Lang } from '@/lib/i18n'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
 import { getRegionMetadata } from '@/data/regions'
+import { showLevelUndoToast } from '@/lib/undoToast'
 import toast from 'react-hot-toast'
 
 /** 광역 지명: 지도 언어 설정에 따라 (메타데이터 없으면 GeoJSON 원어 폴백) */
@@ -198,7 +199,7 @@ const ZoomHandler = ({ setMapLevel, setViewPrefecture, baseGeoData }: { setMapLe
 }
 
 export default function MapView({ onRegionClick, showBoth = false, onToggleBoth }: MapViewProps) {
-  const { country: storeCountry, getRegionById, addRegion, updateRegion, updateSettings, settings } = useMapExpStore()
+  const { country: storeCountry, getRegionById, addRegion, updateRegion, updateSettings, settings, isViewer } = useMapExpStore()
   const country = storeCountry as Country
   const otherCountry: Country = country === 'japan' ? 'korea' : 'japan'
   const [baseGeoData, setBaseGeoData] = useState<GeoJsonObject | null>(null)
@@ -479,6 +480,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
     // 툴팁은 열릴 때만 내용을 만들므로, 떠 있는 동안 탭하면 이전 등급이 보인다 → 즉시 갱신
     const regionName = (feature.properties?.name_ko || feature.properties?.name) as string
     ;(e.target as L.Path).setTooltipContent(buildTooltip(regionId, prefDisplayName(regionId, regionName)))
+    showLevelUndoToast(regionId, prefDisplayName(regionId, regionName), currentVal, nextVal)
   }
 
   const onEachFeature = (feature: Feature, layer: Layer) => {
@@ -496,6 +498,11 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
 
     layer.on({
       click: (e: LeafletMouseEvent) => cycleLevelOnClick(e, regionId, baseStyleRef, feature),
+      // 우클릭/롱프레스(터치) = 상세 모달 (Shift+클릭의 터치 대체 수단)
+      contextmenu: (e: LeafletMouseEvent) => {
+        e.originalEvent.preventDefault()
+        onRegionClick(regionId)
+      },
       mouseover: (e: LeafletMouseEvent) => {
         const target = e.target
         target.setStyle({ weight: 3, color: '#000', fillOpacity: 0.9 })
@@ -752,6 +759,19 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
 
       {/* GPS 컨트롤 (내 위치, 트랙 기록, 현재 지역 배너) */}
       <GpsControls onRegionClick={onRegionClick} />
+
+      {/* 공유 지도 열람 중에는 범례를 상시 노출 - 처음 보는 사람이 색의 의미를 바로 알 수 있게
+          (뷰어 배너가 레이아웃을 아래로 밀어 bottom-20은 하단 탭에 가려짐 → 여유 있게 bottom-32) */}
+      {isViewer && (
+        <div className="absolute bottom-32 lg:bottom-4 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2.5 bg-card border border-line rounded-full shadow-[0_2px_10px_rgba(38,35,28,0.12)] px-3.5 py-1.5 max-w-[calc(100%-24px)] overflow-x-auto">
+          {([5, 4, 3, 2, 1] as ExperienceGrade[]).map((lvl) => (
+            <span key={lvl} className="flex items-center gap-1 shrink-0">
+              <span className="w-2.5 h-2.5 rounded-[2px] border border-black/10" style={{ backgroundColor: EXP_COLORS[lvl] }} />
+              <span className="text-[10px] font-medium text-ink whitespace-nowrap">{t(`level.${lvl}` as I18nKey)}</span>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* 모바일: 패널 토글 버튼 */}
       <button

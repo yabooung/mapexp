@@ -67,6 +67,16 @@ export default function MunicipalityManagerModal({
     setViewMode('list')
   }, [isOpen, initialPrefectureId, country])
 
+  // ESC로 닫기 (공용 Modal을 쓰지 않는 커스텀 레이아웃이라 직접 처리)
+  useEffect(() => {
+    if (!isOpen) return
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, onClose])
+
   // 광역 변경 시 탭/검색 초기화
   useEffect(() => {
     setActiveTab('all')

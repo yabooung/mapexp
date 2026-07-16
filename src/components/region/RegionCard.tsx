@@ -3,11 +3,14 @@
 import { RegionExp, RegionMetadata, GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
 import { useLang, useT, levelLabel, regionDisplayName, I18nKey } from '@/lib/i18n'
+import Icon from '@/components/common/Icon'
 
 interface RegionCardProps {
   regionInfo: RegionMetadata
   regionExp?: RegionExp
   onClick: (e: React.MouseEvent) => void
+  /** 상세 모달 열기 (메모·방문 기록) - 터치에서도 접근 가능한 진입점 */
+  onDetail?: () => void
 }
 
 /**
@@ -18,6 +21,7 @@ export default function RegionCard({
   regionInfo,
   regionExp,
   onClick,
+  onDetail,
 }: RegionCardProps) {
   const lang = useLang()
   const t = useT()
@@ -73,6 +77,21 @@ export default function RegionCard({
             {lang === 'en' ? regionInfo.nameLocal : regionInfo.nameEn}
           </p>
         </div>
+
+        {/* 상세(메모·방문 기록) 진입 버튼 */}
+        {onDetail && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDetail()
+            }}
+            className="shrink-0 p-1.5 -m-1 rounded-md text-faint hover:text-ink hover:bg-paper transition-colors"
+            aria-label={t('gps.detail')}
+            title={t('gps.detail')}
+          >
+            <Icon name="pen" size={14} />
+          </button>
+        )}
 
         {/* 등급 라벨 + 진행 점 */}
         <div className="flex flex-col items-end gap-1 shrink-0">

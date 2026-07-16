@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { useGpsStore } from '@/store/gps'
 import { useMapExpStore } from '@/store'
 import { detectRegionAt, detectMunicipalityAt } from '@/lib/geo'
+import { loadJpMuniNames } from '@/lib/muniNames'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { tNow } from '@/lib/i18n'
 
@@ -93,6 +94,7 @@ export default function GpsManager() {
         lastDetectRef.current = now
 
         const country = useMapExpStore.getState().country
+        if (country === 'japan') loadJpMuniNames() // 배너 표시명 다국어화 사전 (1회 캐시)
         detectRegionAt(pos.coords.latitude, pos.coords.longitude, country)
           .then(async (region) => {
             const state = useGpsStore.getState()
@@ -104,7 +106,7 @@ export default function GpsManager() {
               muni = await detectMunicipalityAt(pos.coords.latitude, pos.coords.longitude, region.id, country)
             }
             const prevMuniId = state.currentMuniId
-            useGpsStore.getState().setCurrentMuni(muni?.id ?? null, muni?.name ?? null)
+            useGpsStore.getState().setCurrentMuni(muni?.id ?? null, muni?.name ?? null, muni?.props ?? null)
 
             // 자동 방문 감지: 새 지역 진입 시 GPS 인증 '통과(1)' 기록
             // 시정촌이 감지되면 시정촌 단위로 기록 (부모 현은 자동 롤업)
