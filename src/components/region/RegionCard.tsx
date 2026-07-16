@@ -35,8 +35,17 @@ export default function RegionCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`${displayName} · ${gradeLabel}`}
       onClick={(e) => onClick(e)}
-      className={`relative bg-card border rounded-[10px] p-3 pl-4 cursor-pointer select-none transition-all overflow-hidden ${
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick(e as unknown as React.MouseEvent)
+        }
+      }}
+      className={`relative bg-card border rounded-[10px] p-3 pl-4 cursor-pointer select-none transition-all overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal/60 ${
         isUnvisited
           ? 'border-line hover:border-faint'
           : 'border-line hover:border-seal/50 hover:shadow-[0_2px_10px_rgba(190,58,43,0.08)]'

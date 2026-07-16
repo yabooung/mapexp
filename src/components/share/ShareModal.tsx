@@ -238,7 +238,8 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
           <Button variant="secondary" onClick={onClose}>
             {t('common.close')}
           </Button>
-          <Button variant="primary" onClick={handleCopy}>
+          {/* 네이티브 공유가 있으면(모바일) 그쪽이 주 CTA - 링크 복사는 보조로 */}
+          <Button variant={canNativeShare ? 'secondary' : 'primary'} onClick={handleCopy}>
             {t('share.copy')}
           </Button>
         </div>
@@ -322,7 +323,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
         {/* 공유 액션 */}
         <div className="grid grid-cols-2 gap-2">
           {canNativeShare && (
-            <Button variant="secondary" onClick={handleNativeShare} className="gap-1.5">
+            <Button variant="primary" onClick={handleNativeShare} className="gap-1.5">
               <Icon name="share" size={15} />
               {t('share.native')}
             </Button>

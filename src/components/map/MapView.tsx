@@ -415,9 +415,12 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
     const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
 
     if (gyeonghyeonchi === GyeongHyeonChi.UNVISITED) {
+        // 타일 표시 중에도 종이톤 반투명을 덮어 도로·지명을 가라앉힌다.
+        // (완전 투명이면 미답 지역의 타일 디테일이 방문 지역의 플랫 색보다 시끄러워
+        //  시각적 주인공이 반전됨)
         return {
-            fillColor: showTiles ? 'transparent' : '#ffffff', 
-            fillOpacity: showTiles ? 0 : 1.0,
+            fillColor: '#f5f3ec',
+            fillOpacity: showTiles ? 0.55 : 1.0,
             color: '#999',
             weight: 0.5,
             dashArray: '3',
@@ -441,6 +444,9 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
         <div style="font-weight: bold; font-size: 14px;">${regionName}</div>
         <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;">
           ${tNow('level.term')}: ${tNow(`level.${lvl}` as I18nKey)} (${lvl})
+        </div>
+        <div style="font-size: 11px; margin-top: 2px; opacity: 0.7;">
+          ${tNow(`level.hint.${lvl}` as I18nKey)}
         </div>
       </div>
     `
@@ -858,7 +864,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
         <div className="text-[10px] font-semibold tracking-[0.08em] text-muted uppercase mb-2">{t('level.term')}</div>
         <div className="space-y-1">
           {([5, 4, 3, 2, 1, 0] as ExperienceGrade[]).map((lvl) => (
-            <div key={lvl} className="flex items-center gap-2">
+            <div key={lvl} className="flex items-center gap-2" title={t(`level.hint.${lvl}` as I18nKey)}>
                <span className="w-3 h-3 rounded-[3px] border border-black/10" style={{ backgroundColor: EXP_COLORS[lvl] }} />
                <span className="text-ink">{t(`level.${lvl}` as I18nKey)}</span>
                <span className="ml-auto text-faint tabular-nums">{lvl}</span>

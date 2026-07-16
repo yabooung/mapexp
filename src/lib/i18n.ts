@@ -43,6 +43,13 @@ const STRINGS = {
   'level.short.3': ['방', 'V', '訪'],
   'level.short.4': ['숙', 'S', '泊'],
   'level.short.5': ['거', 'R', '住'],
+  // 등급 한 줄 설명 (지도 툴팁 - '접지' 같은 용어를 처음 보는 사용자용)
+  'level.hint.0': ['스친 적도 없다', 'Never even passed', 'かすったこともない'],
+  'level.hint.1': ['지나가기만 했다', 'Just passed through', '通っただけ'],
+  'level.hint.2': ['잠깐 내렸다 (환승 등)', 'Briefly set foot', '降り立った'],
+  'level.hint.3': ['걸어서 돌아다녔다', 'Walked around', '歩き回った'],
+  'level.hint.4': ['하룻밤 이상 묵었다', 'Stayed overnight', '泊まった'],
+  'level.hint.5': ['살았다 (3개월 이상)', 'Lived there (3+ months)', '住んだ (3ヶ月以上)'],
 
   // 페이지 (데스크톱)
   'page.title': ['나의 여행 도장', 'My Travel Stamps', 'わたしの経県値マップ'],
@@ -62,7 +69,7 @@ const STRINGS = {
   // 통계
   'stats.travelerLevel': ['여행자 레벨', 'Traveler Level', '旅行者レベル'],
   'stats.exp': ['도장 {n}점', '{n} pts', '経県値 {n}'],
-  'stats.toNext': ['/ 다음 레벨까지 {n}', '/ {n} to next level', '/ 次のレベルまで {n}'],
+  'stats.toNext': ['/ 다음 레벨까지 {n}점', '/ {n} pts to next level', '/ 次のレベルまで {n}点'],
   'stats.visited': ['방문 지역', 'Visited', '訪問地域'],
   'stats.completion': ['달성률', 'Completion', '達成率'],
   'stats.distribution': ['도장 분포', 'Distribution', '経県値分布'],
@@ -140,6 +147,23 @@ const STRINGS = {
   'settings.importConfirm': ['기존 데이터가 덮어씌워집니다. 계속하시겠습니까?', 'Existing data will be overwritten. Continue?', '既存のデータが上書きされます。続行しますか？'],
   'settings.importDone': ['데이터를 성공적으로 불러왔습니다.', 'Data imported.', 'データを読み込みました。'],
   'settings.importFail': ['잘못된 데이터 파일입니다.', 'Invalid data file.', '無効なデータファイルです。'],
+
+  // 리스트 그룹(지방/권역) 이름
+  'group.hokkaido': ['홋카이도', 'Hokkaido', '北海道'],
+  'group.tohoku': ['도호쿠', 'Tohoku', '東北'],
+  'group.kanto': ['간토', 'Kanto', '関東'],
+  'group.chubu': ['주부', 'Chubu', '中部'],
+  'group.kansai': ['간사이', 'Kansai', '関西'],
+  'group.chugoku': ['주고쿠', 'Chugoku', '中国'],
+  'group.shikoku': ['시코쿠', 'Shikoku', '四国'],
+  'group.kyushu': ['규슈·오키나와', 'Kyushu & Okinawa', '九州・沖縄'],
+  'group.capital': ['수도권', 'Capital Area', '首都圏'],
+  'group.gangwon': ['강원', 'Gangwon', '江原'],
+  'group.chungcheong': ['충청', 'Chungcheong', '忠清'],
+  'group.jeolla': ['전라', 'Jeolla', '全羅'],
+  'group.gyeongsang': ['경상', 'Gyeongsang', '慶尚'],
+  'group.jeju': ['제주', 'Jeju', '済州'],
+  'group.hidden': ['히든', 'Hidden', '隠しエリア'],
 
   // 리스트
   'list.search': ['지역 검색...', 'Search regions…', '地域を検索…'],
@@ -269,19 +293,14 @@ const STRINGS = {
   // 온보딩
   'onboard.title': ['여행 도장 지도에 오신 것을 환영합니다', 'Welcome to your travel stamp map', '経県値マップへようこそ'],
   'onboard.tap': [
-    '지도의 지역을 탭하면 도장이 찍힙니다 (탭할 때마다 미답→통과→접지→방문→숙박→거주)',
-    'Tap a region to stamp it — each tap cycles the level (Passed → Landed → Visited → Stayed → Lived)',
-    '地域をタップすると判が押せます (タップごとに 通過→接地→訪問→宿泊→居住)',
+    '지도의 지역을 탭해 첫 도장을 찍어보세요 — 탭할 때마다 등급이 올라갑니다',
+    'Tap a region to place your first stamp — each tap raises the grade',
+    '地域をタップして最初の判を押しましょう — タップごとにランクが上がります',
   ],
-  'onboard.gps': [
-    '좌하단 조준 버튼을 켜면 지금 있는 지역을 GPS로 자동 감지합니다',
-    'Turn on the locate button to auto-detect where you are with GPS',
-    '左下の照準ボタンでGPSが現在の地域を自動検知します',
-  ],
-  'onboard.share': [
-    '기록은 내 기기에만 저장되고, 공유 버튼으로 내 지도를 자랑할 수 있습니다',
-    'Everything stays on your device — share your map with the share button',
-    '記録は端末にのみ保存され、共有ボタンで自分の地図を自慢できます',
+  'onboard.sub': [
+    '조준 버튼 = GPS 자동 감지 · 공유 버튼 = 내 지도 자랑 (기록은 내 기기에만 저장)',
+    'Locate button = GPS auto-detect · Share button = show off your map (data stays on your device)',
+    '照準ボタン = GPS自動検知・共有ボタン = 地図を自慢 (記録は端末にのみ保存)',
   ],
   'onboard.start': ['시작하기', 'Get started', 'はじめる'],
 

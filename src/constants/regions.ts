@@ -198,25 +198,26 @@ export function isRegionOfCountry(regionId: string, country: 'japan' | 'korea'):
 
 /**
  * 리스트 그룹핑용 지방/권역 구분
+ * name은 i18n 키 (group.*) - 표시할 때 t()로 해석
  */
 export const REGION_GROUPS: Record<'japan' | 'korea', Array<{ name: string; ids: string[] }>> = {
   japan: [
-    { name: '홋카이도', ids: ['hokkaido'] },
-    { name: '도호쿠', ids: ['aomori', 'iwate', 'miyagi', 'akita', 'yamagata', 'fukushima'] },
-    { name: '간토', ids: ['ibaraki', 'tochigi', 'gunma', 'saitama', 'chiba', 'tokyo', 'kanagawa'] },
-    { name: '주부', ids: ['niigata', 'toyama', 'ishikawa', 'fukui', 'yamanashi', 'nagano', 'gifu', 'shizuoka', 'aichi'] },
-    { name: '간사이', ids: ['mie', 'shiga', 'kyoto', 'osaka', 'hyogo', 'nara', 'wakayama'] },
-    { name: '주고쿠', ids: ['tottori', 'shimane', 'okayama', 'hiroshima', 'yamaguchi'] },
-    { name: '시코쿠', ids: ['tokushima', 'kagawa', 'ehime', 'kochi'] },
-    { name: '규슈·오키나와', ids: ['fukuoka', 'saga', 'nagasaki', 'kumamoto', 'oita', 'miyazaki', 'kagoshima', 'okinawa'] },
+    { name: 'group.hokkaido', ids: ['hokkaido'] },
+    { name: 'group.tohoku', ids: ['aomori', 'iwate', 'miyagi', 'akita', 'yamagata', 'fukushima'] },
+    { name: 'group.kanto', ids: ['ibaraki', 'tochigi', 'gunma', 'saitama', 'chiba', 'tokyo', 'kanagawa'] },
+    { name: 'group.chubu', ids: ['niigata', 'toyama', 'ishikawa', 'fukui', 'yamanashi', 'nagano', 'gifu', 'shizuoka', 'aichi'] },
+    { name: 'group.kansai', ids: ['mie', 'shiga', 'kyoto', 'osaka', 'hyogo', 'nara', 'wakayama'] },
+    { name: 'group.chugoku', ids: ['tottori', 'shimane', 'okayama', 'hiroshima', 'yamaguchi'] },
+    { name: 'group.shikoku', ids: ['tokushima', 'kagawa', 'ehime', 'kochi'] },
+    { name: 'group.kyushu', ids: ['fukuoka', 'saga', 'nagasaki', 'kumamoto', 'oita', 'miyazaki', 'kagoshima', 'okinawa'] },
   ],
   korea: [
-    { name: '수도권', ids: ['seoul', 'incheon', 'gyeonggi'] },
-    { name: '강원', ids: ['gangwon'] },
-    { name: '충청', ids: ['daejeon', 'sejong', 'chungbuk', 'chungnam'] },
-    { name: '전라', ids: ['jeonbuk', 'jeonnamgwangju'] },
-    { name: '경상', ids: ['busan', 'daegu', 'ulsan', 'gyeongbuk', 'gyeongnam'] },
-    { name: '제주', ids: ['jeju'] },
+    { name: 'group.capital', ids: ['seoul', 'incheon', 'gyeonggi'] },
+    { name: 'group.gangwon', ids: ['gangwon'] },
+    { name: 'group.chungcheong', ids: ['daejeon', 'sejong', 'chungbuk', 'chungnam'] },
+    { name: 'group.jeolla', ids: ['jeonbuk', 'jeonnamgwangju'] },
+    { name: 'group.gyeongsang', ids: ['busan', 'daegu', 'ulsan', 'gyeongbuk', 'gyeongnam'] },
+    { name: 'group.jeju', ids: ['jeju'] },
   ],
 }
 
