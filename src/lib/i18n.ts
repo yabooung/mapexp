@@ -12,7 +12,8 @@ const LANG_INDEX: Record<Lang, number> = { ko: 0, en: 1, ja: 2 }
 const STRINGS = {
   // 공통 / 헤더 / 내비게이션
   // 용어는 언어별 현지화: KR=도장(직관), JA=経県値(원조 문화·검색성), EN=stamps
-  'app.subtitle': ['일본·한국 여행 도장', 'Japan & Korea travel stamps', '日本・韓国 経県値マップ'],
+  // 국가 병기는 브랜딩에서 제외 (중립 유지 - 표기 순서 등 불필요한 논쟁 여지 차단)
+  'app.subtitle': ['여행 도장 지도', 'Travel stamp map', '経県値マップ'],
   'nav.map': ['지도', 'Map', '地図'],
   'nav.list': ['리스트', 'List', 'リスト'],
   'nav.stats': ['통계', 'Stats', '統計'],

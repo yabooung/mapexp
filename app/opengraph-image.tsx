@@ -104,7 +104,7 @@ export default async function OgImage() {
             color: '#a8a294',
           }}
         >
-          일본 47 도도부현 · 한국 16 시도 · GPS 도장
+          광역 63 · 기초 지역 2,100+ · GPS 도장
         </div>
       </div>
     ),

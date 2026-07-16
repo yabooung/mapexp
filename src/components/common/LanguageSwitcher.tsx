@@ -58,7 +58,9 @@ export default function LanguageSwitcher() {
               role="option"
               aria-selected={lang === opt.value}
               onClick={() => {
-                updateSettings({ language: opt.value })
+                // 지명 언어를 '자동'으로 되돌려 지도 라벨도 새 언어를 따르게 한다.
+                // (지도 패널에서 지명 언어를 직접 고르면 그때부터 지도만 따로 감)
+                updateSettings({ language: opt.value, mapLanguage: 'auto' })
                 setOpen(false)
               }}
               className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
