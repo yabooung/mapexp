@@ -218,7 +218,9 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   const [regionLabels, setRegionLabels] = useState<RegionLabel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showTiles, setShowTiles] = useState(true) // 기본값: 타일 표시
-  const [labelMode, setLabelMode] = useState<LabelMode>('native') // Default to native for Japan focus
+  // 기본 '직접 표시': 타일 원본 라벨(CARTO)은 로마자 위주라 지명 언어 설정이 안 먹는다.
+  // 자체 라벨은 지명 언어(자동=UI 언어)를 따르므로 이쪽이 기본.
+  const [labelMode, setLabelMode] = useState<LabelMode>('custom')
   const [mapLevel, setMapLevel] = useState<'prefecture' | 'municipality'>('prefecture')
   const [viewPrefectureId, setViewPrefectureId] = useState<string | null>(null) // ID of the prefecture to show details for
   // 시정촌 표시 모드: 켜면 전국 기초 지역을 보여준다 (읽기 전용 - 수정은 관리 모달에서만)
@@ -231,10 +233,12 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
   const mapLang = useMapLang()
 
   // 라벨 표시명: 지도 언어별 선택 (ja는 한국 지역이면 한자+가나, 없으면 원어 폴백)
+  // 지도 라벨은 공간이 좁아 ja의 가나 병기 괄호를 뗀다 - '江原特別自治道(カンウォン)' → '江原特別自治道'
+  // (툴팁은 발음 학습용으로 가나를 유지)
   const labelText = (l: RegionLabel) =>
     mapLang === 'ko' ? (l.nameKo ?? l.name)
     : mapLang === 'en' ? (l.nameEn ?? l.name)
-    : (l.nameJa ?? l.name)
+    : (l.nameJa ?? l.name).replace(/\s*[(（].*?[)）]/g, '')
 
   // 타일 URL (CARTO Voyager - 무료 사용 가능한 합법 타일만 사용)
   const getTileUrl = (mode: LabelMode) =>
@@ -343,30 +347,35 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth 
       setRegionLabels(labels)
     } else if (baseGeoData && baseCountry === country && (baseGeoData as FeatureCollection).type === 'FeatureCollection') {
       const labels: RegionLabel[] = []
-      ;(baseGeoData as FeatureCollection).features.forEach((feat) => {
-        const props = feat.properties as Record<string, string | null>
-        if (!props?.id) return
-        const id = props.id
-        let position: [number, number]
-        if (LABEL_OVERRIDES[id]) position = LABEL_OVERRIDES[id]
-        else {
-          const centroid = geoCentroid(feat)
-          position = [centroid[1], centroid[0]]
-        }
-        const meta = getRegionMetadata(id)
-        if (meta?.hidden) return
-        labels.push({
-          id,
-          name: props.name as string,
-          nameKo: meta?.name,
-          nameEn: meta?.nameEn,
-          nameJa: meta ? regionDisplayName(meta, 'ja') : undefined,
-          position,
+      const collectPrefLabels = (fc: FeatureCollection) => {
+        fc.features.forEach((feat) => {
+          const props = feat.properties as Record<string, string | null>
+          if (!props?.id) return
+          const id = props.id
+          let position: [number, number]
+          if (LABEL_OVERRIDES[id]) position = LABEL_OVERRIDES[id]
+          else {
+            const centroid = geoCentroid(feat)
+            position = [centroid[1], centroid[0]]
+          }
+          const meta = getRegionMetadata(id)
+          if (meta?.hidden) return
+          labels.push({
+            id,
+            name: props.name as string,
+            nameKo: meta?.name,
+            nameEn: meta?.nameEn,
+            nameJa: meta ? regionDisplayName(meta, 'ja') : undefined,
+            position,
+          })
         })
-      })
+      }
+      collectPrefLabels(baseGeoData as FeatureCollection)
+      // 양국 동시 표시 중엔 반대 국가 라벨도 함께 (없으면 한쪽만 이름이 뜬다)
+      if (showBoth && secondaryGeoData) collectPrefLabels(secondaryGeoData)
       setRegionLabels(labels)
     }
-  }, [showMuniLayer, mapLevel, viewPrefectureId, overlayGeoData, baseGeoData, baseCountry, country])
+  }, [showMuniLayer, mapLevel, viewPrefectureId, overlayGeoData, baseGeoData, baseCountry, country, showBoth, secondaryGeoData])
 
   // 양국 동시 표시: 반대 국가 광역 데이터 로드 (geo.ts 공용 로더 - ID 주입·캐싱)
   // 국가 전환 시 스테일 데이터가 새 key로 박제되지 않도록 즉시 비운다
