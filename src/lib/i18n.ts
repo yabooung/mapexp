@@ -169,6 +169,11 @@ const STRINGS = {
   'settings.exportDone': ['데이터가 다운로드되었습니다.', 'Data downloaded.', 'データをダウンロードしました。'],
   'settings.exportFail': ['데이터 내보내기 실패', 'Export failed', 'エクスポートに失敗しました'],
   'settings.importConfirm': ['기존 데이터가 덮어씌워집니다. 계속하시겠습니까?', 'Existing data will be overwritten. Continue?', '既存のデータが上書きされます。続行しますか？'],
+  'settings.importConfirmDetail': [
+    '기존 기록 {a}개 지역이 파일의 {b}개 지역으로 교체됩니다.\n진행하면 현재 데이터가 자동으로 백업 다운로드됩니다. 계속하시겠습니까?',
+    'Your {a} recorded regions will be replaced with {b} from the file.\nYour current data will be auto-downloaded as a backup first. Continue?',
+    '既存の記録{a}地域がファイルの{b}地域に置き換わります。\n続行すると現在のデータが自動でバックアップ保存されます。よろしいですか？',
+  ],
   'settings.importDone': ['데이터를 성공적으로 불러왔습니다.', 'Data imported.', 'データを読み込みました。'],
   'settings.importFail': ['잘못된 데이터 파일입니다.', 'Invalid data file.', '無効なデータファイルです。'],
 
@@ -324,7 +329,8 @@ const STRINGS = {
   'share.fileExport': ['파일로 내보내기', 'Export file', 'ファイルに書き出し'],
   'share.fileOpen': ['받은 파일 열기', 'Open received file', '受け取ったファイルを開く'],
   'share.fileOpenHint': ['친구의 JSON 파일을 열면 내 기록은 그대로 두고 보기 모드로 열립니다', "Opens a friend's JSON in view mode — your records stay untouched", '友達のJSONを閲覧モードで開きます — 自分の記録はそのまま'],
-  'share.fileInvalid': ['잘못된 파일입니다.', 'Invalid file.', '無効なファイルです。'],
+  'share.fileInvalid': ['파일이 손상되었거나 이 앱의 파일이 아닙니다.', 'The file is damaged or not a MAPEXP file.', 'ファイルが破損しているか、このアプリのファイルではありません。'],
+  'share.fileNamePrompt': ['파일에 표시할 이름 (선택 - 친구들이 구분하기 쉽게)', 'Name for the file (optional - helps friends tell files apart)', 'ファイルに入れる名前（任意 - 友達が区別しやすく）'],
 
   // 공유 뷰어
   'viewer.banner': ['공유된 지도를 보는 중 — 내 기록은 안전하게 보관돼 있어요', 'Viewing a shared map — your own records are safe', '共有地図を表示中 — 自分の記録は保管されています'],
