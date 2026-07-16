@@ -141,15 +141,15 @@ export default function GpsControls({ onRegionClick, onOpenMuniManager }: GpsCon
 
       {/* GPS 버튼 그룹 (좌측 하단, 모바일에서는 하단 탭 위로) */}
       <div className="absolute bottom-20 lg:bottom-4 left-4 z-[1000] flex flex-col gap-2">
-        {/* 시정촌/시군구 도장 (핵심 기능 - 지도에서 바로 진입) */}
+        {/* 시정촌/시군구 도장 (핵심 기능 - 지도에서 바로 진입)
+            아이콘만으로는 무슨 버튼인지 알 수 없어 텍스트 알약으로 */}
         {onOpenMuniManager && (
           <button
             onClick={onOpenMuniManager}
-            className={`${circleBtn} bg-seal border-seal text-white hover:bg-seal-hover`}
-            aria-label={t('page.manageMunisLong', { term: muniTerm(country, lang) })}
-            title={t('page.manageMunisLong', { term: muniTerm(country, lang) })}
+            className="h-11 w-fit px-4 rounded-full bg-seal border border-seal text-white text-[13px] font-bold flex items-center gap-1.5 shadow-[0_2px_8px_rgba(38,35,28,0.14)] hover:bg-seal-hover active:scale-95 transition-all whitespace-nowrap"
           >
-            <Icon name="building" size={18} />
+            <Icon name="building" size={15} />
+            {t('page.manageMunis', { term: muniTerm(country, lang) })}
           </button>
         )}
 

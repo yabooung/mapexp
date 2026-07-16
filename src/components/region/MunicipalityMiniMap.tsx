@@ -20,6 +20,8 @@ const TILES_KEY = 'mapexp_minimap_tiles' // 배경 지도 토글 기억 (모달�
 interface Props {
   country: Country
   prefectureId: string
+  /** 현 위치 도장 등으로 특정 세부 지역에 초점 - 지도가 그 지역으로 줌 이동 */
+  focusMuniId?: string | null
 }
 
 /**
@@ -28,7 +30,7 @@ interface Props {
  * 광역은 전체 bounds로 맞추면 본토가 점처럼 작아지므로, 중앙값에서 크게 벗어난
  * 이상치(먼 섬) 폴리곤을 제외하고 본체 위주로 맞춘다.
  */
-const FitToData = ({ data }: { data: FeatureCollection | null }) => {
+const FitToData = ({ data, focusMuniId }: { data: FeatureCollection | null; focusMuniId?: string | null }) => {
   const map = useMap()
   useEffect(() => {
     if (!data || data.features.length === 0) return
@@ -37,6 +39,22 @@ const FitToData = ({ data }: { data: FeatureCollection | null }) => {
     const timer = setTimeout(() => {
     try {
       map.invalidateSize()
+
+      // 초점 지역이 지정되면(현 위치 도장) 그 세부 지역 주변으로 줌
+      if (focusMuniId) {
+        let fb: L.LatLngBounds | null = null
+        data.features.forEach((f) => {
+          if ((f.properties as Record<string, unknown> | null)?.id !== focusMuniId) return
+          try {
+            const b = L.geoJSON(f).getBounds()
+            fb = fb ? fb.extend(b) : b
+          } catch { /* 지오메트리 오류 무시 */ }
+        })
+        if (fb) {
+          map.fitBounds((fb as L.LatLngBounds).pad(2), { padding: [10, 10], maxZoom: 12 })
+          return
+        }
+      }
 
       const entries = data.features
         .map((f) => {
@@ -72,7 +90,7 @@ const FitToData = ({ data }: { data: FeatureCollection | null }) => {
     }
     }, 120)
     return () => clearTimeout(timer)
-  }, [data, map])
+  }, [data, focusMuniId, map])
   return null
 }
 
@@ -88,7 +106,7 @@ interface MiniLabel {
   position: [number, number]
 }
 
-export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
+export default function MunicipalityMiniMap({ country, prefectureId, focusMuniId }: Props) {
   // selector 없이 구독 → 레벨 변경 시 리렌더되어 아래 재스타일 effect가 돈다
   useMapExpStore()
   const { getRegionById, addRegion, updateRegion } = useMapExpStore.getState()
@@ -279,7 +297,7 @@ export default function MunicipalityMiniMap({ country, prefectureId }: Props) {
             })}
           />
         ))}
-        <FitToData data={geo} />
+        <FitToData data={geo} focusMuniId={focusMuniId} />
       </MapContainer>
 
       {/* 배경 지도 켬/끔 - 기억 단서(도로·역)가 필요할 때와 깔끔한 색 지도가 필요할 때 */}
