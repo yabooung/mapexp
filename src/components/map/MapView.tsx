@@ -18,7 +18,7 @@ import { useT, tNow, useLang, muniTerm, regionDisplayName, mapLangNow, useMapLan
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
 import { getRegionMetadata } from '@/data/regions'
 import { showLevelUndoToast } from '@/lib/undoToast'
-import toast from 'react-hot-toast'
+import toast from '@/lib/appToast'
 
 /** 광역 지명: 지도 언어 설정에 따라 (메타데이터 없으면 GeoJSON 원어 폴백) */
 const prefDisplayName = (regionId: string, fallback: string): string => {

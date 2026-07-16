@@ -8,7 +8,7 @@ import Button from '@/components/common/Button'
 import Icon from '@/components/common/Icon'
 import { useT, useLang, Lang } from '@/lib/i18n'
 import { parseImportFile, downloadDataFile } from '@/lib/dataFile'
-import toast from 'react-hot-toast'
+import toast from '@/lib/appToast'
 
 interface SettingsModalProps {
   isOpen: boolean

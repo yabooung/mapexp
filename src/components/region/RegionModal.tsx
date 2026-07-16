@@ -7,7 +7,7 @@ import { ExpLevel, Visit, GyeongHyeonChi, ExperienceGrade } from '@/types'
 import Modal from '@/components/common/Modal'
 import Button from '@/components/common/Button'
 import Icon from '@/components/common/Icon'
-import toast from 'react-hot-toast'
+import toast from '@/lib/appToast'
 import VisitList from './VisitList'
 import { useT, useLang, levelLabel, muniTerm, I18nKey } from '@/lib/i18n'
 

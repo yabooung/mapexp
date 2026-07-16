@@ -1,6 +1,6 @@
 'use client'
 
-import toast from 'react-hot-toast'
+import toast from '@/lib/appToast'
 import { useMapExpStore } from '@/store'
 import { useT } from '@/lib/i18n'
 import { ev } from '@/lib/analytics'

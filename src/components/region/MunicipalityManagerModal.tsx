@@ -8,10 +8,12 @@ import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { getRegionsByCountry } from '@/data/regions'
-import { loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
+import { loadMunicipalities, municipalityName, detectRegionAt, detectMunicipalityAt, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
-import { useT, useLang, regionDisplayName, muniTerm, I18nKey } from '@/lib/i18n'
+import { useT, useLang, regionDisplayName, muniTerm, tNow, I18nKey } from '@/lib/i18n'
 import Icon, { IconName } from '@/components/common/Icon'
+import toast from '@/lib/appToast'
+import { ev } from '@/lib/analytics'
 
 // 지도 뷰는 Leaflet(window 의존) → SSR 비활성화 후 필요할 때만 로드
 const MunicipalityMiniMap = dynamic(() => import('./MunicipalityMiniMap'), { ssr: false })
@@ -45,7 +47,7 @@ export default function MunicipalityManagerModal({
   onClose,
   initialPrefectureId,
 }: MunicipalityManagerModalProps) {
-  const { getRegionById, addRegion, updateRegion, regions, country } = useMapExpStore()
+  const { getRegionById, addRegion, updateRegion, addGpsRecord, regions, country } = useMapExpStore()
   const t = useT()
   const lang = useLang()
   const [prefectureId, setPrefectureId] = useState<string>('')
@@ -55,6 +57,7 @@ export default function MunicipalityManagerModal({
   const [search, setSearch] = useState('')
   // 지도가 기본 - 어디를 갔는지 공간으로 찍는 게 주 흐름, 목록은 검색·일괄용 보조
   const [viewMode, setViewMode] = useState<ViewMode>('map')
+  const [locating, setLocating] = useState(false)
 
   const prefectures = useMemo(() => getRegionsByCountry(country), [country])
   const term = muniTerm(country, lang)
@@ -144,6 +147,48 @@ export default function MunicipalityManagerModal({
     }
   }
 
+  // 현 위치 도장: GPS로 현재 시정촌/시군구를 감지해 그 광역으로 이동 + 접지(2) GPS 인증 기록
+  const handleLocateStamp = () => {
+    if (locating) return
+    if (!('geolocation' in navigator)) {
+      toast.error(t('gps.notSupported'))
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude: lat, longitude: lng } = pos.coords
+          const region = await detectRegionAt(lat, lng, country as Country)
+          if (!region) {
+            toast.error(tNow('muni.locateFail'))
+            return
+          }
+          setPrefectureId(region.id) // 해당 광역 화면으로 점프
+          const muni = await detectMunicipalityAt(lat, lng, region.id, country as Country)
+          const targetId = muni ? muni.id : region.id
+          const prefName = (() => {
+            const meta = prefectures.find((p) => p.id === region.id)
+            return meta ? regionDisplayName(meta, lang) : region.name
+          })()
+          const label = muni
+            ? `${prefName} · ${muniDisplayName(country as Country, muni.props, muni.name, lang)}`
+            : prefName
+          addGpsRecord(targetId, GyeongHyeonChi.LANDED)
+          ev('muni_locate_stamp', { muni: !!muni })
+          toast.success(tNow('gps.quickToast', { label }))
+        } finally {
+          setLocating(false)
+        }
+      },
+      () => {
+        toast.error(tNow('gps.denied'))
+        setLocating(false)
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+    )
+  }
+
   const prefMeta = prefectures.find((p) => p.id === prefectureId)
   const prefName = prefMeta ? regionDisplayName(prefMeta, lang) : prefectureId
   const prefIndex = prefectures.findIndex((p) => p.id === prefectureId)
@@ -230,6 +275,19 @@ export default function MunicipalityManagerModal({
                 aria-label={t('muni.nextPref')}
               >
                 <Icon name="chevron-right" size={16} />
+              </button>
+              {/* 현 위치 도장 - 지금 있는 세부 지역으로 점프해서 GPS 인증 접지 기록 */}
+              <button
+                onClick={handleLocateStamp}
+                className="w-8 h-8 shrink-0 rounded-md border border-seal/40 bg-seal-soft text-seal hover:bg-seal hover:text-white flex items-center justify-center transition-colors"
+                aria-label={t('muni.locate')}
+                title={t('muni.locate')}
+              >
+                {locating ? (
+                  <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full" />
+                ) : (
+                  <Icon name="locate" size={15} />
+                )}
               </button>
               <span className="hidden sm:inline text-sm text-muted whitespace-nowrap ml-2">
                 {t('muni.count', { kind: term, n: total })}
