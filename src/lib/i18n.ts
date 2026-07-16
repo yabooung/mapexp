@@ -11,9 +11,10 @@ const LANG_INDEX: Record<Lang, number> = { ko: 0, en: 1, ja: 2 }
 
 const STRINGS = {
   // 공통 / 헤더 / 내비게이션
-  // 용어는 언어별 현지화: KR=도장(직관), JA=経県値(원조 문화·검색성), EN=stamps
+  // 용어는 언어별 현지화: KR=도장, JA=スタンプ, EN=stamps
+  // 주의: 経県値는 uub.jp 등록상표 - 서비스명/기능명으로 쓰지 않는다 (푸터의 출처 표기만 지시적 사용으로 유지)
   // 국가 병기는 브랜딩에서 제외 (중립 유지 - 표기 순서 등 불필요한 논쟁 여지 차단)
-  'app.subtitle': ['여행 도장 지도', 'Travel stamp map', '経県値マップ'],
+  'app.subtitle': ['여행 도장 지도', 'Travel stamp map', '旅スタンプマップ'],
   'nav.map': ['지도', 'Map', '地図'],
   'nav.list': ['리스트', 'List', 'リスト'],
   'nav.stats': ['통계', 'Stats', '統計'],
@@ -37,8 +38,8 @@ const STRINGS = {
   'level.3': ['방문', 'Visited', '訪問'],
   'level.4': ['숙박', 'Stayed', '宿泊'],
   'level.5': ['거주', 'Lived', '居住'],
-  // 각 지역 도장의 등급 (툴팁·지도 범례). JA는 경현치 문화 인지를 위해 経県値 유지
-  'level.term': ['등급', 'Grade', '経県値'],
+  // 각 지역 도장의 등급 (툴팁·지도 범례)
+  'level.term': ['등급', 'Grade', 'ランク'],
   // 등급 한 글자 (카드 도장용)
   'level.short.0': ['미', '·', '未'],
   'level.short.1': ['통', 'P', '通'],
@@ -55,15 +56,15 @@ const STRINGS = {
   'level.hint.5': ['살았다 (3개월 이상)', 'Lived there (3+ months)', '住んだ (3ヶ月以上)'],
 
   // 페이지 (데스크톱)
-  'page.title': ['나의 여행 도장', 'My Travel Stamps', 'わたしの経県値マップ'],
+  'page.title': ['나의 여행 도장', 'My Travel Stamps', 'わたしの旅スタンプ地図'],
   'page.tagline': [
     '지나가고, 내리고, 걷고, 묵은 자리마다 도장이 쌓입니다',
     'Every pass, stop, walk, and stay leaves a stamp',
     '通って、降りて、歩いて、泊まった場所に判が積もる',
   ],
-  // '관리'는 관리자 느낌이라 사용자 언어(도장 찍기)로 - ja는 経県値 문화 용어 활용
-  'page.manageMunis': ['{term} 도장', '{term}', '{term}の経県値'],
-  'page.manageMunisLong': ['{term} 도장 찍기', 'Stamp {term}', '{term}の経県値を付ける'],
+  // '관리'는 관리자 느낌이라 사용자 언어(도장 찍기)로
+  'page.manageMunis': ['{term} 도장', '{term}', '{term}スタンプ'],
+  'page.manageMunisLong': ['{term} 도장 찍기', 'Stamp {term}', '{term}にスタンプを押す'],
   'page.guide': [
     '지도 클릭으로 레벨 변경 (0→5→0) · 우클릭/길게 누르기로 상세 설정 · 좌하단 조준 버튼으로 GPS 추적',
     'Click map to cycle level (0→5→0) · Right-click / long-press for details · Use the locate button for GPS',
@@ -72,11 +73,11 @@ const STRINGS = {
 
   // 통계
   'stats.travelerLevel': ['여행자 레벨', 'Traveler Level', '旅行者レベル'],
-  'stats.exp': ['도장 {n}점', '{n} pts', '経県値 {n}'],
+  'stats.exp': ['도장 {n}점', '{n} pts', 'スタンプ {n}点'],
   'stats.toNext': ['/ 다음 레벨까지 {n}점', '/ {n} pts to next level', '/ 次のレベルまで {n}点'],
   'stats.visited': ['방문 지역', 'Visited', '訪問地域'],
   'stats.completion': ['달성률', 'Completion', '達成率'],
-  'stats.distribution': ['도장 분포', 'Distribution', '経県値分布'],
+  'stats.distribution': ['도장 분포', 'Distribution', 'スタンプ分布'],
   'stats.progress': ['진행도', 'Progress', '進行度'],
   'stats.regions': ['{a} / {b} 지역', '{a} / {b} regions', '{a} / {b} 地域'],
   'stats.points': ['{n}점', '{n}pt', '{n}点'],
@@ -198,8 +199,8 @@ const STRINGS = {
   'list.noResult': ["'{q}'에 해당하는 지역이 없습니다", "No regions match '{q}'", '「{q}」に該当する地域がありません'],
 
   // 지역 상세 모달
-  'region.levelLabel': ['도장 등급', 'Stamp grade', '経県値レベル'],
-  'region.levelDesc.0': ['미경현 (스친 적도 없다) - 0점', 'Never been (0 pt)', '未経県 (かすったこともない) - 0点'],
+  'region.levelLabel': ['도장 등급', 'Stamp grade', 'スタンプランク'],
+  'region.levelDesc.0': ['미답 (스친 적도 없다) - 0점', 'Never been (0 pt)', '未踏 (かすったこともない) - 0点'],
   'region.levelDesc.1': ['통과했다 (철도/차 통과, 배 기항. 항공기 제외) - 1점', 'Passed through by rail/car/ship (1 pt)', '通過した (鉄道・車・船。航空機は除く) - 1点'],
   'region.levelDesc.2': ['내렸다 (환승이나 휴게소 휴식 등) - 2점', 'Set foot (transfer, rest stop) (2 pt)', '降り立った (乗換や休憩など) - 2点'],
   'region.levelDesc.3': ['걸었다 (묵었던 적은 없다) - 3점', 'Walked around, never stayed (3 pt)', '歩いた (泊まったことはない) - 3点'],
@@ -270,7 +271,7 @@ const STRINGS = {
   'map.mapLang': ['지명 언어', 'Place names', '地名の言語'],
   'map.langAuto': ['자동', 'Auto', '自動'],
   'map.muniLayer': ['기초 지역', 'Municipalities', '市区町村'],
-  'map.muniReadOnly': ['{term} 도장은 "{term} 도장" 메뉴에서 찍을 수 있어요', 'Stamp {term} in the "{term}" menu', '{term}の判は「{term}の経県値」で押せます'],
+  'map.muniReadOnly': ['{term} 도장은 "{term} 도장" 메뉴에서 찍을 수 있어요', 'Stamp {term} in the "{term}" menu', '{term}の判は「{term}スタンプ」で押せます'],
   'map.label': ['라벨', 'Labels', 'ラベル'],
   'map.labelCustom': ['직접 표시', 'Custom', '独自表示'],
   'map.labelNative': ['지도 원본', 'Map default', '地図標準'],
@@ -294,7 +295,7 @@ const STRINGS = {
   'share.copied': ['공유 링크가 복사되었습니다!', 'Link copied!', 'リンクをコピーしました！'],
   'share.copyFail': ['링크 복사에 실패했습니다.', 'Copy failed.', 'コピーに失敗しました。'],
   'share.native': ['공유하기', 'Share…', '共有…'],
-  'share.shareText': ['내 여행 도장 지도를 확인해보세요!', 'Check out my travel stamp map!', '私の経県値マップを見てください！'],
+  'share.shareText': ['내 여행 도장 지도를 확인해보세요!', 'Check out my travel stamp map!', '私の旅スタンプ地図を見てください！'],
   'share.image': ['이미지 카드 저장', 'Save image card', '画像カードを保存'],
   'share.imageDone': ['이미지 카드를 저장했습니다!', 'Image saved!', '画像を保存しました！'],
   'share.imageFail': ['이미지 생성에 실패했습니다.', 'Image generation failed.', '画像の生成に失敗しました。'],
@@ -333,7 +334,7 @@ const STRINGS = {
   'viewer.exited': ['내 지도로 돌아왔습니다', 'Back to your map', '自分の地図に戻りました'],
 
   // 온보딩 (첫 방문 웰컴 모달: 언어 선택 + 간단 매뉴얼)
-  'onboard.title': ['여행 도장 지도에 오신 것을 환영합니다', 'Welcome to your travel stamp map', '経県値マップへようこそ'],
+  'onboard.title': ['여행 도장 지도에 오신 것을 환영합니다', 'Welcome to your travel stamp map', '旅スタンプマップへようこそ'],
   'onboard.tap': [
     '지역을 탭하면 도장이 찍히고, 탭할 때마다 등급이 올라갑니다',
     'Tap a region to stamp it — each tap raises the grade',
@@ -347,7 +348,7 @@ const STRINGS = {
   'onboard.muni': [
     '더 촘촘하게 — {term} 단위 도장은 "{term} 도장" 메뉴에서 찍습니다',
     'Go deeper — stamp individual {term} from the "{term}" menu',
-    'もっと細かく — {term}単位の判は「{term}の経県値」から押せます',
+    'もっと細かく — {term}単位の判は「{term}スタンプ」から押せます',
   ],
   'onboard.gps': [
     '좌하단 조준 버튼을 켜면 지금 있는 지역을 GPS로 자동 감지합니다',
