@@ -8,21 +8,39 @@ import { tNow, levelLabel, type Lang } from '@/lib/i18n'
  * 지도/리스트의 탭 순환은 실수 시 한 바퀴(5번 탭)를 돌아야 복구되므로,
  * 변경 직후 한 번의 탭으로 직전 등급에 되돌릴 수단을 준다.
  * 같은 지역 연속 탭은 id로 토스트를 갱신 - 실행취소는 마지막 탭 직전 등급으로 복원.
+ * onMuni가 있으면 '세부 도장' 버튼도 함께 - 광역을 찍은 김에 시정촌/시군구로 이어지는 흐름.
  */
-export function showLevelUndoToast(regionId: string, name: string, prev: ExperienceGrade, next: ExperienceGrade) {
+export function showLevelUndoToast(
+  regionId: string,
+  name: string,
+  prev: ExperienceGrade,
+  next: ExperienceGrade,
+  opts?: { onMuni?: () => void },
+) {
   const lang = (useMapExpStore.getState().settings.language ?? 'ko') as Lang
   toast(
     (tk) => (
-      <span className="flex items-center gap-3">
-        <span className="text-sm">
+      <span className="flex items-center gap-2.5">
+        <span className="text-sm whitespace-nowrap">
           {name} · <b>{levelLabel(next, lang)}</b>
         </span>
+        {opts?.onMuni && (
+          <button
+            onClick={() => {
+              toast.dismiss(tk.id)
+              opts.onMuni!()
+            }}
+            className="shrink-0 px-2 py-1 rounded-full bg-seal text-white text-xs font-bold whitespace-nowrap"
+          >
+            {tNow('undo.muni')}
+          </button>
+        )}
         <button
           onClick={() => {
             useMapExpStore.getState().updateRegion(regionId, { gyeonghyeonchi: prev })
             toast.dismiss(tk.id)
           }}
-          className="shrink-0 text-xs font-bold text-seal underline underline-offset-2"
+          className="shrink-0 text-xs font-bold text-seal underline underline-offset-2 whitespace-nowrap"
         >
           {tNow('common.undo')}
         </button>

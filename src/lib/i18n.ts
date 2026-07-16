@@ -25,6 +25,8 @@ const STRINGS = {
   'common.delete': ['삭제', 'Delete', '削除'],
   'common.edit': ['수정', 'Edit', '編集'],
   'common.undo': ['실행취소', 'Undo', '元に戻す'],
+  // 도장 토스트의 세부 지역 진입 버튼 (짧게)
+  'undo.muni': ['세부 도장', 'Go deeper', '細かく押す'],
   'common.japan': ['일본', 'Japan', '日本'],
   'common.korea': ['한국', 'Korea', '韓国'],
 
