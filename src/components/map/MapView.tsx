@@ -93,6 +93,18 @@ const BoundaryTileLayer = ({ url, boundary, attribution }: { url: string, bounda
   return null
 }
 
+/** Leaflet 맵 인스턴스를 부모 ref로 노출 (오버레이 버튼이 지도 중심을 읽을 수 있게) */
+const MapRefCapture = ({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) => {
+  const map = useMap()
+  useEffect(() => {
+    mapRef.current = map
+    return () => {
+      mapRef.current = null
+    }
+  }, [map, mapRef])
+  return null
+}
+
 /** 양국 동시 표시 시 일본+한국이 모두 보이도록 뷰를 맞춘다 */
 const FitBoth = ({ active }: { active: boolean }) => {
   const map = useMap()
@@ -209,6 +221,8 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
   // 양국 동시 표시: 반대 국가의 광역 지도 (읽기·클릭만, 시정촌 오버레이 없음)
   const [secondaryGeoData, setSecondaryGeoData] = useState<FeatureCollection | null>(null)
 
+  const leafletMapRef = useRef<L.Map | null>(null)
+
   // 성능/안정성: 데이터 변경 시 레이어를 재마운트하지 않고 setStyle로 갱신한다.
   // (재마운트 방식은 클릭 직후 레이어가 파괴되어 연속 클릭·줌 중 클릭이 유실되던 원인)
   const baseLayerRef = useRef<L.GeoJSON | null>(null)
@@ -228,7 +242,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
   // 시정촌 표시 모드: 켜면 전국 기초 지역을 보여준다 (읽기 전용 - 수정은 관리 모달에서만)
   // 기본 끔: 첫 방문자는 광역 탭-도장 흐름(온보딩 안내)이 바로 동작해야 한다
   const [showMuniLayer, setShowMuniLayer] = useState(false)
-  const [panelOpen, setPanelOpen] = useState(false) // 모바일: 범례/컨트롤 패널 토글
+  const [panelOpen, setPanelOpen] = useState(false) // 범례/컨트롤 패널 토글 (데스크톱은 기본 열림)
   const [retryKey, setRetryKey] = useState(0) // 지도 데이터 로드 실패 시 재시도
   const t = useT()
   const uiLang = useLang()
@@ -250,6 +264,11 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
       : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png'
 
   const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+
+  // 데스크톱은 패널 기본 열림 (접었다 펼 수 있음), 모바일은 기본 닫힘
+  useEffect(() => {
+    if (window.matchMedia('(min-width: 640px)').matches) setPanelOpen(true)
+  }, [])
 
   // 국가 전환 시 오버레이/뷰 상태 초기화
   useEffect(() => {
@@ -412,6 +431,33 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
   const muniStyleRef = useRef<(f?: Feature) => PathOptions>(() => ({}))
   // 기초 지역 표시 중에는 지도 전체가 읽기 전용 (광역 탭 수정도 금지)
   const readOnlyRef = useRef(false)
+
+  // 지금 보고 있는 지도 중심의 광역 - 세부 지도 진입 시 이 광역으로 바로 열리게
+  const prefAtMapCenter = (): string | undefined => {
+    const m = leafletMapRef.current
+    const fc = baseGeoData as FeatureCollection | null
+    if (!m || !fc?.features) return undefined
+    const c = m.getCenter()
+    const found = fc.features.find(
+      (f) => (f.properties as Record<string, unknown> | null)?.id && featureContainsPoint(f as Feature, c.lng, c.lat),
+    )
+    const foundId = found?.properties?.id as string | undefined
+    if (foundId && !isHiddenRegion(foundId)) return foundId
+    // 중심이 바다 위면 가장 가까운 광역으로 (히든 제외)
+    let minDist = Infinity
+    let closest: string | undefined
+    fc.features.forEach((f) => {
+      const id = (f.properties as Record<string, unknown> | null)?.id as string | undefined
+      if (!id || isHiddenRegion(id)) return
+      const cent = geoCentroid(f as Feature)
+      const d = Math.hypot(cent[0] - c.lng, cent[1] - c.lat)
+      if (d < minDist) {
+        minDist = d
+        closest = id
+      }
+    })
+    return closest
+  }
 
   // 겹쳐보기(비교) 모드: 뷰어 중 내 백업 기록과 상대 기록의 방문 여부를 대비
   const COMPARE_COLORS = { mine: '#be3a2b', theirs: '#4a86c8', both: '#8e5bb8' } as const
@@ -780,6 +826,7 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
         )}
 
         {/* 양국 뷰 맞춤 */}
+        <MapRefCapture mapRef={leafletMapRef} />
         <FitBoth active={showBoth} />
         <ZoomHandler setMapLevel={setMapLevel} setViewPrefecture={setViewPrefectureId} baseGeoData={baseGeoData} />
         <AutoResize />
@@ -835,8 +882,12 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
         ))}
       </div>
 
-      {/* GPS 컨트롤 (내 위치, 트랙 기록, 현재 지역 배너) + 시정촌 도장 버튼 */}
-      <GpsControls onRegionClick={onRegionClick} onOpenMuniManager={onOpenMuniManager} />
+      {/* GPS 컨트롤 (내 위치, 트랙 기록, 현재 지역 배너) + 시정촌 도장 버튼
+          세부 지도는 지금 보고 있는 화면 중심의 광역으로 바로 열린다 */}
+      <GpsControls
+        onRegionClick={onRegionClick}
+        onOpenMuniManager={onOpenMuniManager ? () => onOpenMuniManager(prefAtMapCenter()) : undefined}
+      />
 
       {/* 공유 지도 열람 중에는 범례를 상시 노출 - 처음 보는 사람이 색의 의미를 바로 알 수 있게
           (뷰어 배너가 레이아웃을 아래로 밀어 bottom-20은 하단 탭에 가려짐 → 여유 있게 bottom-32)
@@ -865,11 +916,11 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
         </div>
       )}
 
-      {/* 모바일: 패널 토글 버튼 */}
+      {/* 패널 토글 버튼 (모바일·데스크톱 공통 - 지도를 넓게 보고 싶을 때 접기) */}
       <button
         onClick={() => setPanelOpen(!panelOpen)}
-        className={`sm:hidden absolute bottom-20 right-4 z-[1001] w-11 h-11 rounded-full border flex items-center justify-center transition-all active:scale-90 shadow-[0_2px_8px_rgba(38,35,28,0.14)] ${
-          panelOpen ? 'bg-ink border-ink text-paper' : 'bg-card border-line text-muted'
+        className={`absolute bottom-20 sm:bottom-4 right-4 z-[1001] w-11 h-11 rounded-full border flex items-center justify-center transition-all active:scale-90 shadow-[0_2px_8px_rgba(38,35,28,0.14)] ${
+          panelOpen ? 'bg-ink border-ink text-paper' : 'bg-card border-line text-muted hover:text-ink'
         }`}
         aria-label={t('map.settingsAria')}
       >
@@ -877,14 +928,14 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
       </button>
 
       {/* Controls */}
-      <div className={`${panelOpen ? 'block' : 'hidden'} sm:block absolute bottom-[8.5rem] right-4 sm:bottom-4 bg-card border border-line rounded-[10px] shadow-[0_2px_10px_rgba(38,35,28,0.12)] p-3 text-xs z-[1000] w-[172px] max-h-[55%] overflow-y-auto`}>
+      <div className={`${panelOpen ? 'block' : 'hidden'} absolute bottom-[8.5rem] sm:bottom-16 right-4 bg-card border border-line rounded-[10px] shadow-[0_2px_10px_rgba(38,35,28,0.12)] p-3 text-xs z-[1000] w-[172px] max-h-[55%] overflow-y-auto`}>
         <div className="flex flex-col gap-1.5 mb-3">
             {/* 세부 지역 도장 진입 - 이 앱의 핵심 기능이라 지도에서 바로 갈 수 있어야 한다 */}
             {onOpenMuniManager && (
               <button
                 onClick={() => {
                   setPanelOpen(false)
-                  onOpenMuniManager()
+                  onOpenMuniManager(prefAtMapCenter())
                 }}
                 className="w-full py-2 px-2.5 rounded-md bg-seal text-white font-semibold flex items-center justify-center gap-1.5 hover:bg-seal-hover active:scale-[0.99] transition-all"
               >
