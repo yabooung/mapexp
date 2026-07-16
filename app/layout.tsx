@@ -76,9 +76,11 @@ export default function RootLayout({
               background: "var(--card)",
               color: "var(--ink)",
               border: "1px solid var(--line)",
-              borderRadius: "8px",
-              boxShadow: "0 4px 16px rgba(38, 35, 28, 0.12)",
+              borderRadius: "12px",
+              // 레이어드 섀도: 가까운 접촉면 + 부드러운 확산 (플랫 단일 그림자보다 마감이 정돈됨)
+              boxShadow: "0 1px 2px rgba(38, 35, 28, 0.08), 0 8px 28px rgba(38, 35, 28, 0.14)",
               fontSize: "14px",
+              padding: "10px 16px",
             },
           }}
         />

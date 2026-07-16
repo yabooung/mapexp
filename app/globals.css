@@ -36,6 +36,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* 폼 컨트롤(라디오·체크박스·토글)도 인주 레드로 - 브라우저 기본 파랑 제거 */
+input[type='radio'],
+input[type='checkbox'],
+input[type='date'],
+progress {
+  accent-color: var(--seal);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -45,7 +53,16 @@ body {
   word-break: keep-all; /* 한국어 어절 단위 줄바꿈 ("내보내/기" 같은 중간 절단 방지) */
 }
 
-/* 도장 실행취소 토스트: 모바일 하단 탭 바(64px) 위로 띄운다 */
+/* 도장 실행취소 토스트: 지도 위에 뜨는 주 피드백이라 알약형으로 마감 */
+.undo-toast {
+  border-radius: 9999px !important;
+  padding: 8px 8px 8px 18px !important; /* 우측은 버튼이 곡률에 맞닿게 타이트하게 */
+  box-shadow:
+    0 1px 2px rgba(38, 35, 28, 0.1),
+    0 10px 32px rgba(38, 35, 28, 0.18) !important;
+}
+
+/* 모바일 하단 탭 바(64px) 위로 띄운다 */
 @media (max-width: 1023px) {
   .undo-toast {
     margin-bottom: 76px !important;

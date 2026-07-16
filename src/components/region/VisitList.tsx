@@ -102,44 +102,44 @@ export default function VisitList({ visits, onChange }: VisitListProps) {
       </div>
 
       {isAdding && (
-        <div className="bg-gray-50 p-4 rounded-lg space-y-3 border border-gray-200">
+        <div className="bg-paper p-4 rounded-lg space-y-3 border border-line">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">{t('visits.start')}</label>
+              <label className="block text-xs text-muted mb-1">{t('visits.start')}</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full text-sm border-gray-300 rounded-md"
+                className="w-full text-sm bg-card border border-line rounded-md px-2.5 py-1.5 text-ink focus:outline-none focus:border-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">{t('visits.end')}</label>
+              <label className="block text-xs text-muted mb-1">{t('visits.end')}</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full text-sm border-gray-300 rounded-md"
+                className="w-full text-sm bg-card border border-line rounded-md px-2.5 py-1.5 text-ink focus:outline-none focus:border-ink"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">{t('visits.visitTitle')}</label>
+            <label className="block text-xs text-muted mb-1">{t('visits.visitTitle')}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('visits.titlePlaceholder')}
-              className="w-full text-sm border-gray-300 rounded-md"
+              className="w-full text-sm bg-card border border-line rounded-md px-2.5 py-1.5 text-ink focus:outline-none focus:border-ink"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">메모 (선택)</label>
+            <label className="block text-xs text-muted mb-1">메모 (선택)</label>
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               rows={2}
-              className="w-full text-sm border-gray-300 rounded-md"
+              className="w-full text-sm bg-card border border-line rounded-md px-2.5 py-1.5 text-ink focus:outline-none focus:border-ink"
             />
           </div>
           <div className="flex justify-end gap-2">
