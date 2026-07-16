@@ -507,12 +507,17 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
     const regionId = feature.properties.id as string
     const regionName = (feature.properties.name_ko || feature.properties.name) as string
 
-    // 열릴 때마다 지도 언어 설정으로 광역 지명 해석 (시정촌과 언어 통일)
-    layer.bindTooltip(() => buildTooltip(regionId, prefDisplayName(regionId, regionName)), {
-      permanent: false,
-      direction: 'top',
-      className: 'region-tooltip',
-    })
+    // 툴팁은 호버 가능한 기기(데스크톱)에서만 - 터치에서는 탭한 지역 위에 떠서
+    // 지도를 가리고, 등급 피드백은 하단 실행취소 토스트가 이미 담당한다
+    const canHover = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
+    if (canHover) {
+      // 열릴 때마다 지도 언어 설정으로 광역 지명 해석 (시정촌과 언어 통일)
+      layer.bindTooltip(() => buildTooltip(regionId, prefDisplayName(regionId, regionName)), {
+        permanent: false,
+        direction: 'top',
+        className: 'region-tooltip',
+      })
+    }
 
     layer.on({
       click: (e: LeafletMouseEvent) => cycleLevelOnClick(e, regionId, baseStyleRef, feature),
@@ -775,8 +780,8 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
         ))}
       </MapContainer>
 
-      {/* GPS 컨트롤 (내 위치, 트랙 기록, 현재 지역 배너) */}
-      <GpsControls onRegionClick={onRegionClick} />
+      {/* GPS 컨트롤 (내 위치, 트랙 기록, 현재 지역 배너) + 시정촌 도장 버튼 */}
+      <GpsControls onRegionClick={onRegionClick} onOpenMuniManager={onOpenMuniManager} />
 
       {/* 공유 지도 열람 중에는 범례를 상시 노출 - 처음 보는 사람이 색의 의미를 바로 알 수 있게
           (뷰어 배너가 레이아웃을 아래로 밀어 bottom-20은 하단 탭에 가려짐 → 여유 있게 bottom-32) */}

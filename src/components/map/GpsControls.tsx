@@ -6,7 +6,7 @@ import { useMapExpStore } from '@/store'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { trackDistanceMeters, formatDistance } from '@/lib/geo'
 import Icon from '@/components/common/Icon'
-import { useT, useLang, levelLabel, regionDisplayName } from '@/lib/i18n'
+import { useT, useLang, levelLabel, regionDisplayName, muniTerm } from '@/lib/i18n'
 import { ev } from '@/lib/analytics'
 import { getRegionMetadata } from '@/data/regions'
 import { muniDisplayName } from '@/lib/muniNames'
@@ -14,6 +14,8 @@ import type { Country } from '@/lib/geo'
 
 interface GpsControlsProps {
   onRegionClick: (regionId: string) => void
+  /** 기초 지역(시정촌/시군구) 도장 모달 - 지도 위 버튼으로 바로 진입 */
+  onOpenMuniManager?: () => void
 }
 
 /**
@@ -22,7 +24,7 @@ interface GpsControlsProps {
  * - 트랙 로그 기록 시작/정지 + 거리 표시 + 삭제
  * - 현재 지역 배너 (현 · 시정촌) + 빠른 방문 기록
  */
-export default function GpsControls({ onRegionClick }: GpsControlsProps) {
+export default function GpsControls({ onRegionClick, onOpenMuniManager }: GpsControlsProps) {
   const status = useGpsStore((s) => s.status)
   const watchEnabled = useGpsStore((s) => s.watchEnabled)
   const followMode = useGpsStore((s) => s.followMode)
@@ -139,6 +141,18 @@ export default function GpsControls({ onRegionClick }: GpsControlsProps) {
 
       {/* GPS 버튼 그룹 (좌측 하단, 모바일에서는 하단 탭 위로) */}
       <div className="absolute bottom-20 lg:bottom-4 left-4 z-[1000] flex flex-col gap-2">
+        {/* 시정촌/시군구 도장 (핵심 기능 - 지도에서 바로 진입) */}
+        {onOpenMuniManager && (
+          <button
+            onClick={onOpenMuniManager}
+            className={`${circleBtn} bg-seal border-seal text-white hover:bg-seal-hover`}
+            aria-label={t('page.manageMunisLong', { term: muniTerm(country, lang) })}
+            title={t('page.manageMunisLong', { term: muniTerm(country, lang) })}
+          >
+            <Icon name="building" size={18} />
+          </button>
+        )}
+
         {/* 트랙 거리/삭제 (기록이 있을 때) */}
         {trackPoints.length >= 2 && (
           <div className="flex items-center gap-1.5 bg-card border border-line rounded-full shadow-[0_2px_8px_rgba(38,35,28,0.12)] px-3 py-1.5 text-xs font-semibold text-ink tabular-nums">
