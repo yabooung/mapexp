@@ -18,6 +18,8 @@
   --seal: #be3a2b; /* 인주 레드 */
   --seal-hover: #a93325;
   --seal-soft: #f8eae4;
+  --region: #2f5b93; /* 藍(쪽빛) - 지역 완주 도장 전용 */
+  --region-soft: #e6ecf4;
 }
 
 @theme inline {
@@ -32,6 +34,8 @@
   --color-seal: var(--seal);
   --color-seal-hover: var(--seal-hover);
   --color-seal-soft: var(--seal-soft);
+  --color-region: var(--region);
+  --color-region-soft: var(--region-soft);
   --font-sans: var(--font-sans-kr), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --font-mono: var(--font-geist-mono);
 }

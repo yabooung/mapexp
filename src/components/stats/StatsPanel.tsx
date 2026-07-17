@@ -34,9 +34,9 @@ export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
   const jp = countryStats(regions, 'japan')
   const kr = countryStats(regions, 'korea')
 
-  // 여행자 레벨은 항상 양국 합산 - 국가 탭 전환으로 '나의 레벨'이 출렁이지 않게 한다
-  const totalGyeonghyeonchi = jp.score + kr.score
-  const systemLevel = levelFromScore(totalGyeonghyeonchi)
+  // 여행자 레벨은 국가 탭을 따라감 - 단일 뷰는 현재 국가만, 양국 뷰는 합산
+  const levelScore = showBoth ? jp.score + kr.score : country === 'japan' ? jp.score : kr.score
+  const systemLevel = levelFromScore(levelScore)
   const visitedCount = showBoth ? jp.visited + kr.visited : getVisitedCount()
   const totalRegions = showBoth ? jp.total + kr.total : TOTAL_REGIONS[country]
   const completionRate = showBoth
@@ -74,20 +74,22 @@ export default function StatsPanel({ showBoth = false }: StatsPanelProps) {
         <div className="flex items-baseline justify-between">
           <span className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">
             {t('stats.travelerLevel')}
-            <span className="ml-1.5 normal-case tracking-normal">· {t('common.japan')} × {t('common.korea')}</span>
+            <span className="ml-1.5 normal-case tracking-normal">
+              · {showBoth ? `${t('common.japan')} × ${t('common.korea')}` : t(country === 'japan' ? 'common.japan' : 'common.korea')}
+            </span>
           </span>
-          <span className="text-xs text-muted tabular-nums">{t('stats.exp', { n: totalGyeonghyeonchi })}</span>
+          <span className="text-xs text-muted tabular-nums">{t('stats.exp', { n: levelScore })}</span>
         </div>
         <div className="mt-1 flex items-baseline gap-2">
           <span className="text-[40px] leading-none font-bold text-ink tabular-nums tracking-tight">
             {systemLevel}
           </span>
-          <span className="text-sm text-muted">{t('stats.toNext', { n: 10 - (totalGyeonghyeonchi % 10) })}</span>
+          <span className="text-sm text-muted">{t('stats.toNext', { n: 10 - (levelScore % 10) })}</span>
         </div>
         <div className="mt-3 w-full bg-line/50 rounded-full h-1.5 overflow-hidden">
           <div
             className="bg-seal h-full rounded-full transition-all duration-700"
-            style={{ width: `${(totalGyeonghyeonchi % 10) * 10}%` }}
+            style={{ width: `${(levelScore % 10) * 10}%` }}
           />
         </div>
 

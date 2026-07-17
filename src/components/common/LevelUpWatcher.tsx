@@ -8,7 +8,7 @@ import { TOTAL_REGIONS } from '@/constants'
 import { computeBadges } from '@/lib/badges'
 import { countryStats, levelFromScore } from '@/lib/stats'
 import { trackDistanceMeters } from '@/lib/geo'
-import { tNow, useT, I18nKey } from '@/lib/i18n'
+import { tNow, useT, useLang, I18nKey } from '@/lib/i18n'
 import { ev } from '@/lib/analytics'
 
 /**
@@ -27,16 +27,15 @@ export default function LevelUpWatcher() {
   const prevCountryRef = useRef(country)
   const [celebration, setCelebration] = useState<number | null>(null)
   const t = useT()
+  const lang = useLang()
 
   useEffect(() => {
-    // 여행자 레벨은 양국 합산 - 국가 전환으로 출렁이지 않음
-    const level = levelFromScore(countryStats(regions, 'japan').score + countryStats(regions, 'korea').score)
+    // 여행자 레벨은 국가 탭을 따라감 (StatsPanel과 동일). 국가 전환 시엔 아래에서 기준값만
+    // 리셋해 가짜 레벨업이 뜨지 않게 한다.
+    const level = levelFromScore(countryStats(regions, country).score)
     const trackKm = trackDistanceMeters(trackPoints) / 1000
-    const achieved = new Set(
-      computeBadges(regions, TOTAL_REGIONS[country], trackKm, country)
-        .filter((b) => b.achieved)
-        .map((b) => b.id),
-    )
+    const badges = computeBadges(regions, TOTAL_REGIONS[country], trackKm, country, lang)
+    const achieved = new Set(badges.filter((b) => b.achieved).map((b) => b.id))
 
     // 첫 실행 또는 국가 전환: 기준값만 저장
     // (뱃지는 국가별 집계라, 전환 직후 비교하면 이미 달성한 뱃지가 새로 딴 것처럼 토스트됨)
@@ -55,14 +54,17 @@ export default function LevelUpWatcher() {
     }
     prevLevelRef.current = level
 
-    // 새 뱃지 감지
-    const badges = computeBadges(regions, TOTAL_REGIONS[country], trackKm, country)
+    // 새 뱃지 감지 (위에서 계산한 badges 재사용)
     for (const badge of badges) {
       if (badge.achieved && !prevBadgesRef.current.has(badge.id)) {
-        toast(tNow('levelup.badgeToast', { name: tNow(`badge.${badge.id}.name` as I18nKey) }), {
+        // 광역 완주 도장은 동적 생성이라 i18n 키가 없음 → badge.name 사용
+        const badgeName = badge.id.startsWith('pref-complete-')
+          ? badge.name
+          : tNow(`badge.${badge.id}.name` as I18nKey)
+        toast(tNow('levelup.badgeToast', { name: badgeName }), {
           duration: 4000,
           style: {
-            background: 'var(--seal)',
+            background: badge.kind === 'region' ? 'var(--region)' : 'var(--seal)',
             color: '#fff',
             border: 'none',
             fontWeight: 600,
@@ -71,7 +73,7 @@ export default function LevelUpWatcher() {
       }
     }
     prevBadgesRef.current = achieved
-  }, [regions, country, trackPoints])
+  }, [regions, country, trackPoints, lang])
 
   if (celebration === null) return null
 
