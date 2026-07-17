@@ -27,12 +27,12 @@ Based on Japan's [経県値 (Keikenchi)](https://uub.jp/kkn/) concept, reimagine
 ## Features
 
 - **Stamp records** — Tap a region to cycle its grade: Unvisited(0) → Passed(1) → Landed(2) → Visited(3) → Stayed(4) → Lived(5). Mis-taps can be undone from a toast; long-press opens details (memos, visit log)
-- **Dual-country view** — Show Japan and Korea on one screen; your traveler level always combines both countries, with per-country stats
+- **Dual-country view** — Show Japan and Korea on one screen with per-country stats (your traveler level follows the country you're viewing)
 - **Municipality level** — Stamp individual municipalities in the stamping view (list or mini-map); a "Municipalities" toggle renders the whole country at municipal detail
 - **Place names in 3 languages** — Japanese municipalities in Hangul and romaji (from official MIC readings), Korean municipalities in kanji + katakana. Map place-name language is selectable independently of the UI language
-- **GPS** — Auto-detects your current region (province + municipality), records travel tracks, auto-logs visits
+- **GPS location stamp** — One tap detects the region you're currently in (province + municipality) and stamps it, auto-recognizing which country you're in
   - GPS-verified records can't be edited or deleted; manual records allow free past-date entry
-- **Gamification** — Traveler level, kanji seal stamp book (12 badges), per-region and municipal score breakdowns
+- **Gamification** — Per-country traveler level, kanji seal stamp book — milestone stamps plus **region-completion stamps** (earned by stamping every municipality of a province, or completing a regional block like Shikoku or Jeolla; shown in indigo blue), per-region and municipal score breakdowns
 - **Sharing** — SNS image card (game-style Lv/EXP score, rank tier, optional place-name labels and badge row, Japan/Korea/both × regions/municipalities), per-region card with share preview, QR codes, read-only share links, JSON file exchange. Overlay a friend's map on yours in a 3-color compare view (only me / only them / both)
 - **i18n UI** — Korean · English · Japanese
 - **PWA** — Home-screen install, offline map caching
