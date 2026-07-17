@@ -72,15 +72,12 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       const data = exportData()
       setShareUrl(generateShareUrl(data))
 
-      // 기본 스코프: 양국 기록이 있으면 양국, 아니면 현재 국가
-      const j = countryStats(regions, 'japan')
-      const k = countryStats(regions, 'korea')
-      setScope(j.visited > 0 && k.visited > 0 ? 'both' : (country as Country))
+      // 기본 스코프 = 지금 보고 있는 국가 (양국 기록이 있어도 현재 국가 우선)
+      setScope(country as Country)
       setDetail('pref')
       ev('share_open', { country })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, exportData, country, regions, lang])
+  }, [isOpen, exportData, country])
 
   // 지명 라벨 함수 (옵션 켬일 때만) - 히든 지역은 라벨 없음
   const labelFor = (c: Country) => {

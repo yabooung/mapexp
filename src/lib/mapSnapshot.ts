@@ -589,7 +589,7 @@ export async function renderPrefectureCardImage(
   ctx.font = `700 48px ${CARD_FONT}`
   ctx.fillText(regionName, pad, pad + 96 + 20 + 48)
 
-  // ── 지도: 먼 섬 이상치 컷 후 본체 확대 ──
+  // ── 지도: 먼 섬(부속도서)은 컷하지 않고 인셋 박스로 떼어 표시 ──
   const boxes = feats.map(({ feature }) => {
     try {
       return geoBounds(feature) // [[minLng,minLat],[maxLng,maxLat]]
@@ -608,14 +608,27 @@ export async function renderPrefectureCardImage(
   const dists = valid.map((c) => Math.hypot(c[0] - medLng, c[1] - medLat))
   const cut = Math.max(0.35, median(dists) * 2.5)
 
-  let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity
+  // 본체(중앙값 근처) vs 먼 섬 이상치로 분리
+  const mainIdx: number[] = []
+  const outlierIdx: number[] = []
   boxes.forEach((b, i) => {
     const c = centers[i]
-    if (!b || !c || Math.hypot(c[0] - medLng, c[1] - medLat) > cut) return
-    minLng = Math.min(minLng, b[0][0]); minLat = Math.min(minLat, b[0][1])
-    maxLng = Math.max(maxLng, b[1][0]); maxLat = Math.max(maxLat, b[1][1])
+    if (b && c && Math.hypot(c[0] - medLng, c[1] - medLat) > cut) outlierIdx.push(i)
+    else mainIdx.push(i)
   })
-  if (!Number.isFinite(minLng)) return null
+
+  const boundsOf = (idxs: number[]): [[number, number], [number, number]] | null => {
+    let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity
+    for (const i of idxs) {
+      const bb = boxes[i]
+      if (!bb) continue
+      a = Math.min(a, bb[0][0]); b = Math.min(b, bb[0][1])
+      c = Math.max(c, bb[1][0]); d = Math.max(d, bb[1][1])
+    }
+    return Number.isFinite(a) ? [[a, b], [c, d]] : null
+  }
+  const mainBounds = boundsOf(mainIdx) ?? boundsOf(feats.map((_, i) => i))
+  if (!mainBounds) return null
 
   const mapTop = pad + 180
   const projection = geoMercator().fitExtent(
@@ -626,40 +639,48 @@ export async function renderPrefectureCardImage(
     {
       type: 'Feature',
       properties: {},
-      geometry: { type: 'MultiPoint', coordinates: [[minLng, minLat], [maxLng, maxLat]] },
+      geometry: { type: 'MultiPoint', coordinates: mainBounds },
     } as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
   )
   const path = geoPath(projection, ctx)
 
-  // 지도 영역 클리핑 (이상치 섬이 텍스트 위로 튀지 않게)
+  // 등급색 채우기 (본체·인셋 공용)
+  const paintFeats = (
+    p: ReturnType<typeof geoPath>,
+    list: Array<{ feature: Feature; id: string | null }>,
+  ) => {
+    const ordered = [...list].sort((a, b) => ((getLevel(a.id ?? '') > 0 ? 1 : 0) - (getLevel(b.id ?? '') > 0 ? 1 : 0)))
+    for (const { feature, id } of ordered) {
+      const level = id ? getLevel(id) : (0 as ExperienceGrade)
+      ctx.beginPath()
+      p(feature)
+      if (level > 0) {
+        ctx.fillStyle = EXP_COLORS[level]
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(38, 35, 28, 0.35)'
+        ctx.lineWidth = 1
+      } else {
+        ctx.fillStyle = '#ffffff'
+        ctx.fill()
+        ctx.strokeStyle = '#d8d4c8'
+        ctx.lineWidth = 0.8
+      }
+      ctx.stroke()
+    }
+  }
+
+  // 본체 지도 (클리핑)
+  const mainFeats = mainIdx.map((i) => feats[i])
   ctx.save()
   ctx.beginPath()
   ctx.rect(0, mapTop - 24, width, mapH + 48)
   ctx.clip()
+  paintFeats(path, mainFeats)
 
-  const sorted = [...feats].sort((a, b) => ((getLevel(a.id ?? '') > 0 ? 1 : 0) - (getLevel(b.id ?? '') > 0 ? 1 : 0)))
-  for (const { feature, id } of sorted) {
-    const level = id ? getLevel(id) : (0 as ExperienceGrade)
-    ctx.beginPath()
-    path(feature)
-    if (level > 0) {
-      ctx.fillStyle = EXP_COLORS[level]
-      ctx.fill()
-      ctx.strokeStyle = 'rgba(38, 35, 28, 0.35)'
-      ctx.lineWidth = 1
-    } else {
-      ctx.fillStyle = '#ffffff'
-      ctx.fill()
-      ctx.strokeStyle = '#d8d4c8'
-      ctx.lineWidth = 0.8
-    }
-    ctx.stroke()
-  }
-
-  // 기초 지명 라벨 (선택) - 좁은 지역·겹침은 생략
+  // 기초 지명 라벨 (본체만 - 인셋은 너무 작아 생략)
   if (getLabel) {
     const items: LabelItem[] = []
-    for (const { feature, id } of feats) {
+    for (const { feature, id } of mainFeats) {
       if (!id) continue
       const props = feature.properties as Record<string, string | null> | null
       const name = id.slice(id.indexOf('_') + 1)
@@ -671,6 +692,54 @@ export async function renderPrefectureCardImage(
     drawLabels(ctx, items, 16)
   }
   ctx.restore()
+
+  // ── 먼 섬 인셋: 우하단 박스에 떼어 표시 (전체 지도의 오키나와 인셋과 같은 방식) ──
+  // 인셋 범위는 먼 섬들 중에서도 밀집 군집에 맞춘다 — 극단 무인암초(도쿄 南鳥島 등)가
+  // 인셋을 뭉개 이즈제도 같은 실제 방문 섬이 점처럼 작아지지 않도록.
+  const insetFitBounds = ((): [[number, number], [number, number]] | null => {
+    const oc = outlierIdx.map((i) => centers[i]).filter((c): c is [number, number] => !!c)
+    if (oc.length === 0) return boundsOf(outlierIdx)
+    const oMedLng = median(oc.map((c) => c[0]))
+    const oMedLat = median(oc.map((c) => c[1]))
+    const oDists = oc.map((c) => Math.hypot(c[0] - oMedLng, c[1] - oMedLat))
+    const oCut = Math.max(0.5, median(oDists) * 3)
+    const clustered = outlierIdx.filter((i) => {
+      const c = centers[i]
+      return c && Math.hypot(c[0] - oMedLng, c[1] - oMedLat) <= oCut
+    })
+    return boundsOf(clustered.length ? clustered : outlierIdx)
+  })()
+  if (outlierIdx.length > 0 && insetFitBounds) {
+    const iw = Math.round(width * 0.34)
+    const ih = Math.round(mapH * 0.36)
+    const ix = width - pad - iw
+    const iy = mapTop + mapH - ih - 10
+    ctx.fillStyle = '#f5f3ec'
+    ctx.strokeStyle = '#c9c4b6'
+    ctx.lineWidth = 1.2
+    ctx.beginPath()
+    ctx.rect(ix, iy, iw, ih)
+    ctx.fill()
+    ctx.stroke()
+    const innerPad = Math.round(Math.min(iw, ih) * 0.08)
+    const insetProj = geoMercator().fitExtent(
+      [
+        [ix + innerPad, iy + innerPad],
+        [ix + iw - innerPad, iy + ih - innerPad],
+      ],
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'MultiPoint', coordinates: insetFitBounds },
+      } as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
+    )
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(ix, iy, iw, ih)
+    ctx.clip()
+    paintFeats(geoPath(insetProj, ctx), outlierIdx.map((i) => feats[i]))
+    ctx.restore()
+  }
 
   // ── 방문/달성률/EXP (국가 카드와 동일 형식) ──
   const statsY = mapTop + mapH + 44
