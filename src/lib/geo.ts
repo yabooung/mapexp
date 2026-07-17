@@ -148,6 +148,26 @@ export async function detectRegionAt(
 }
 
 /**
+ * 좌표가 속한 국가와 광역 지역을 함께 감지한다.
+ * 두 나라 광역 폴리곤에 point-in-polygon을 돌려 실제로 포함하는 쪽을 반환.
+ * (bbox는 대마도 부근 등에서 모호하므로 폴리곤 판정을 쓴다)
+ * 어느 나라에도 속하지 않으면 null → 호출부가 "여행지 밖" 안내.
+ */
+export async function detectCountryRegionAt(
+  lat: number,
+  lng: number,
+): Promise<{ country: Country; region: DetectedRegion } | null> {
+  const countries: Country[] = ['korea', 'japan']
+  const results = await Promise.all(
+    countries.map((c) => detectRegionAt(lat, lng, c).then((region) => ({ c, region }))),
+  )
+  for (const { c, region } of results) {
+    if (region) return { country: c, region }
+  }
+  return null
+}
+
+/**
  * 기초(시정촌/시군구) GeoJSON 로드 (국가별 1회만 fetch — 서비스 워커가 cache-first로 캐싱)
  */
 export async function loadMunicipalities(country: Country = 'japan'): Promise<FeatureCollection | null> {

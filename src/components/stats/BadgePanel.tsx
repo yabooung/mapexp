@@ -7,7 +7,7 @@ import { TOTAL_REGIONS } from '@/constants'
 import { computeBadges } from '@/lib/badges'
 import { trackDistanceMeters } from '@/lib/geo'
 import Card from '@/components/common/Card'
-import { useT, I18nKey } from '@/lib/i18n'
+import { useT, useLang, I18nKey } from '@/lib/i18n'
 
 type BadgeView = 'list' | 'grid'
 
@@ -22,6 +22,7 @@ export default function BadgePanel() {
   const { country, regions } = useMapExpStore()
   const trackPoints = useGpsStore((s) => s.trackPoints)
   const t = useT()
+  const lang = useLang()
 
   useEffect(() => {
     if (window.matchMedia('(min-width: 1024px)').matches) setView('grid')
@@ -31,12 +32,22 @@ export default function BadgePanel() {
   if (!mounted) return null
 
   const trackKm = trackDistanceMeters(trackPoints) / 1000
-  const badges = computeBadges(regions, TOTAL_REGIONS[country], trackKm, country)
+  const badges = computeBadges(regions, TOTAL_REGIONS[country], trackKm, country, lang)
   const achievedCount = badges.filter((b) => b.achieved).length
 
-  const stampClass = (achieved: boolean, iconLen: number, size: 'sm' | 'md') =>
+  // 광역 완주 도장은 동적 생성이라 i18n 키가 없다 → badge.name/description을 그대로 쓴다
+  const badgeName = (b: (typeof badges)[number]) =>
+    b.id.startsWith('pref-complete-') ? b.name : t(`badge.${b.id}.name` as I18nKey)
+  const badgeDesc = (b: (typeof badges)[number]) =>
+    b.id.startsWith('pref-complete-') ? b.description : t(`badge.${b.id}.desc` as I18nKey)
+
+  const stampClass = (achieved: boolean, iconLen: number, size: 'sm' | 'md', kind: 'region' | 'milestone') =>
     `${size === 'md' ? 'w-11 h-11' : 'w-10 h-10'} rounded-full flex items-center justify-center font-bold select-none leading-none shrink-0 ${
-      achieved ? 'bg-seal text-white' : 'border-[1.5px] border-dashed border-line text-faint bg-transparent'
+      achieved
+        ? kind === 'region'
+          ? 'bg-region text-white'
+          : 'bg-seal text-white'
+        : 'border-[1.5px] border-dashed border-line text-faint bg-transparent'
     } ${iconLen > 1 ? 'text-[13px]' : size === 'md' ? 'text-lg' : 'text-[17px]'}`
 
   return (
@@ -69,12 +80,12 @@ export default function BadgePanel() {
       {view === 'grid' ? (
         <div className="grid grid-cols-4 gap-x-2 gap-y-4">
           {badges.map((badge, i) => {
-            const name = t(`badge.${badge.id}.name` as I18nKey)
-            const desc = t(`badge.${badge.id}.desc` as I18nKey)
+            const name = badgeName(badge)
+            const desc = badgeDesc(badge)
             return (
               <div key={badge.id} className="flex flex-col items-center text-center" title={`${name}: ${desc}`}>
                 <span
-                  className={stampClass(badge.achieved, badge.icon.length, 'md')}
+                  className={stampClass(badge.achieved, badge.icon.length, 'md', badge.kind)}
                   style={badge.achieved ? { transform: `rotate(${((i % 5) - 2) * 4}deg)` } : undefined}
                 >
                   {badge.icon}
@@ -90,13 +101,13 @@ export default function BadgePanel() {
         /* 데스크톱 사이드바에서 카드가 한없이 길어지지 않게 내부 스크롤 (지역별 점수 카드와 동일 패턴) */
         <div className="lg:max-h-80 lg:overflow-y-auto lg:pr-1">
           {badges.map((badge, i) => {
-            const name = t(`badge.${badge.id}.name` as I18nKey)
-            const desc = t(`badge.${badge.id}.desc` as I18nKey)
+            const name = badgeName(badge)
+            const desc = badgeDesc(badge)
             const pct = Math.round(badge.progress * 100)
             return (
               <div key={badge.id} className="flex items-center gap-3 py-2.5 border-b border-line/60 last:border-0 last:pb-0 first:pt-0">
                 <span
-                  className={stampClass(badge.achieved, badge.icon.length, 'sm')}
+                  className={stampClass(badge.achieved, badge.icon.length, 'sm', badge.kind)}
                   style={badge.achieved ? { transform: `rotate(${((i % 5) - 2) * 4}deg)` } : undefined}
                 >
                   {badge.icon}
@@ -107,7 +118,7 @@ export default function BadgePanel() {
                       {name}
                     </span>
                     {badge.achieved ? (
-                      <span className="shrink-0 text-[10px] font-bold text-seal tracking-wide">{t('badges.achieved')}</span>
+                      <span className={`shrink-0 text-[10px] font-bold tracking-wide ${badge.kind === 'region' ? 'text-region' : 'text-seal'}`}>{t('badges.achieved')}</span>
                     ) : (
                       <span className="shrink-0 text-[11px] text-faint tabular-nums">{pct}%</span>
                     )}

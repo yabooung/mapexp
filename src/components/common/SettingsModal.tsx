@@ -9,6 +9,7 @@ import Icon from '@/components/common/Icon'
 import { useT, useLang, Lang } from '@/lib/i18n'
 import { parseImportFile, downloadDataFile } from '@/lib/dataFile'
 import toast from '@/lib/appToast'
+import { ENABLE_GPS_TRACKING } from '@/constants'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -146,35 +147,40 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         <div className="border-t border-line"></div>
 
-        {/* GPS 설정 */}
-        <div>
-          <h3 className="text-sm font-semibold text-ink mb-3">{t('settings.gpsSection')}</h3>
-          <label className="flex items-center justify-between gap-3 p-3 bg-paper rounded-lg cursor-pointer border border-line">
+        {/* GPS 설정 — 연속 추적(자동 방문 감지) 자산. ENABLE_GPS_TRACKING 꺼짐 시엔
+            워처가 동작하지 않아 토글이 무의미하므로 섹션 전체를 숨긴다. */}
+        {ENABLE_GPS_TRACKING && (
+          <>
             <div>
-              <p className="text-sm font-medium text-ink">{t('settings.autoDetect')}</p>
-              <p className="text-xs text-muted mt-0.5">{t('settings.autoDetectDesc')}</p>
+              <h3 className="text-sm font-semibold text-ink mb-3">{t('settings.gpsSection')}</h3>
+              <label className="flex items-center justify-between gap-3 p-3 bg-paper rounded-lg cursor-pointer border border-line">
+                <div>
+                  <p className="text-sm font-medium text-ink">{t('settings.autoDetect')}</p>
+                  <p className="text-xs text-muted mt-0.5">{t('settings.autoDetectDesc')}</p>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={autoDetectVisit}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleAutoDetectToggle()
+                  }}
+                  className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${
+                    autoDetectVisit ? 'bg-seal' : 'bg-line'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                      autoDetectVisit ? 'translate-x-5' : ''
+                    }`}
+                  />
+                </button>
+              </label>
             </div>
-            <button
-              role="switch"
-              aria-checked={autoDetectVisit}
-              onClick={(e) => {
-                e.preventDefault()
-                handleAutoDetectToggle()
-              }}
-              className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${
-                autoDetectVisit ? 'bg-seal' : 'bg-line'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  autoDetectVisit ? 'translate-x-5' : ''
-                }`}
-              />
-            </button>
-          </label>
-        </div>
 
-        <div className="border-t border-line"></div>
+            <div className="border-t border-line"></div>
+          </>
+        )}
 
         {/* 데이터 백업/복원 */}
         <div>

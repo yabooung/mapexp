@@ -8,7 +8,8 @@ import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { EXP_COLORS } from '@/constants'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { getRegionsByCountry } from '@/data/regions'
-import { loadMunicipalities, municipalityName, detectRegionAt, detectMunicipalityAt, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
+import { loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
+import { locateStamp, locateFailToast } from '@/lib/locate'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
 import { renderPrefectureCardImage } from '@/lib/mapSnapshot'
 import { isTouchDevice } from '@/lib/dataFile'
@@ -49,7 +50,7 @@ export default function MunicipalityManagerModal({
   onClose,
   initialPrefectureId,
 }: MunicipalityManagerModalProps) {
-  const { getRegionById, addRegion, updateRegion, addGpsRecord, regions, country } = useMapExpStore()
+  const { getRegionById, addRegion, updateRegion, regions, country } = useMapExpStore()
   const t = useT()
   const lang = useLang()
   const [prefectureId, setPrefectureId] = useState<string>('')
@@ -162,48 +163,24 @@ export default function MunicipalityManagerModal({
     }
   }
 
-  // 현 위치 도장: GPS로 현재 시정촌/시군구를 감지해 그 광역으로 이동 + 접지(2) GPS 인증 기록
+  // 현 위치 도장: GPS로 현재 국가·시정촌/시군구를 감지해(국가 자동 전환) 그 광역으로 이동 + 접지(2) GPS 인증 기록
   const handleLocateStamp = () => {
     if (locating) return
-    if (!('geolocation' in navigator)) {
-      toast.error(t('gps.notSupported'))
-      return
-    }
     setLocating(true)
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude: lat, longitude: lng } = pos.coords
-          const region = await detectRegionAt(lat, lng, country as Country)
-          if (!region) {
-            toast.error(tNow('muni.locateFail'))
-            return
-          }
-          setPrefectureId(region.id) // 해당 광역 화면으로 점프
-          setViewMode('map') // 지도에서 바로 확인할 수 있게
-          const muni = await detectMunicipalityAt(lat, lng, region.id, country as Country)
-          setFocusMuniId(muni ? muni.id : null) // 미니맵이 이 세부 지역으로 줌
-          const targetId = muni ? muni.id : region.id
-          const prefName = (() => {
-            const meta = prefectures.find((p) => p.id === region.id)
-            return meta ? regionDisplayName(meta, lang) : region.name
-          })()
-          const label = muni
-            ? `${prefName} · ${muniDisplayName(country as Country, muni.props, muni.name, lang)}`
-            : prefName
-          addGpsRecord(targetId, GyeongHyeonChi.LANDED)
-          ev('muni_locate_stamp', { muni: !!muni })
-          toast.success(tNow('gps.quickToast', { label }))
-        } finally {
-          setLocating(false)
+    locateStamp(lang)
+      .then((res) => {
+        if (!res.ok) {
+          const { key, error } = locateFailToast(res.reason)
+          ;(error ? toast.error : toast)(tNow(key))
+          return
         }
-      },
-      () => {
-        toast.error(tNow('gps.denied'))
-        setLocating(false)
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
-    )
+        setPrefectureId(res.region.id) // 감지된 광역 화면으로 점프 (국가는 헬퍼가 전환)
+        setViewMode('map') // 지도에서 바로 확인할 수 있게
+        setFocusMuniId(res.muni ? res.muni.id : null) // 미니맵이 이 세부 지역으로 줌
+        ev('muni_locate_stamp', { muni: !!res.muni })
+        toast.success(tNow('gps.quickToast', { label: res.label }))
+      })
+      .finally(() => setLocating(false))
   }
 
   const prefMeta = prefectures.find((p) => p.id === prefectureId)

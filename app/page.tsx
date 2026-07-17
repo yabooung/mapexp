@@ -65,6 +65,23 @@ function HomeContent() {
     }
   }, [])
 
+  // 홍보용 딥링크: ?c=jp|kr → 초기 지도 국가 지정 (예: 일본 커뮤니티 유입 링크는 일본 지도로 열림)
+  // UI 언어는 건드리지 않음(브라우저 언어 유지). 공유 링크(share)가 있으면 그쪽이 우선.
+  // 첫 방문 언어 판정 이후에 실행돼야 해당 판정을 덮으므로 그 효과 뒤에 둔다.
+  useEffect(() => {
+    if (searchParams.get('share')) return
+    const c = (searchParams.get('c') || '').toLowerCase()
+    const target = c === 'jp' || c === 'japan' ? 'japan' : c === 'kr' || c === 'korea' ? 'korea' : null
+    if (!target) return
+    useMapExpStore.getState().setCountry(target)
+    ev('deeplink_country', { c: target })
+    // c만 제거하고 나머지 쿼리(utm_* 등 유입 추적 파라미터)는 보존
+    const params = new URLSearchParams(Array.from(searchParams.entries()))
+    params.delete('c')
+    const qs = params.toString()
+    router.replace(qs ? `/?${qs}` : '/')
+  }, [searchParams, router])
+
   // 새로고침 후에도 뷰어 모드 유지
   useEffect(() => {
     initViewerFromStorage()

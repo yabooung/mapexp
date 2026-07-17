@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import toast from '@/lib/appToast'
 import { useGpsStore } from '@/store/gps'
 import { useMapExpStore } from '@/store'
@@ -10,6 +11,8 @@ import { useT, useLang, levelLabel, regionDisplayName, muniTerm } from '@/lib/i1
 import { ev } from '@/lib/analytics'
 import { getRegionMetadata } from '@/data/regions'
 import { muniDisplayName } from '@/lib/muniNames'
+import { locateStamp, locateFailToast } from '@/lib/locate'
+import { ENABLE_GPS_TRACKING } from '@/constants'
 import type { Country } from '@/lib/geo'
 
 interface GpsControlsProps {
@@ -20,14 +23,11 @@ interface GpsControlsProps {
 
 /**
  * 지도 위 GPS 컨트롤 오버레이
- * - 내 위치 버튼 (위치 추적 켜기/팔로우)
- * - 트랙 로그 기록 시작/정지 + 거리 표시 + 삭제
- * - 현재 지역 배너 (현 · 시정촌) + 빠른 방문 기록
+ * - 현재 위치 도장 (원샷: getCurrentPosition 1회 → 국가 자동 판정 → 접지 GPS 인증 도장)
+ * - 연속 추적 UI(트랙 로그/현재 지역 배너)는 ENABLE_GPS_TRACKING 자산 플래그 뒤에 보존
  */
 export default function GpsControls({ onRegionClick, onOpenMuniManager }: GpsControlsProps) {
-  const status = useGpsStore((s) => s.status)
   const watchEnabled = useGpsStore((s) => s.watchEnabled)
-  const followMode = useGpsStore((s) => s.followMode)
   const isTracking = useGpsStore((s) => s.isTracking)
   const trackPoints = useGpsStore((s) => s.trackPoints)
   const currentRegionId = useGpsStore((s) => s.currentRegionId)
@@ -36,11 +36,13 @@ export default function GpsControls({ onRegionClick, onOpenMuniManager }: GpsCon
   const currentMuniName = useGpsStore((s) => s.currentMuniName)
   const currentMuniProps = useGpsStore((s) => s.currentMuniProps)
   const autoDetectVisit = useGpsStore((s) => s.autoDetectVisit)
-  const { setWatchEnabled, setFollowMode, startTracking, stopTracking, clearTrack } = useGpsStore()
+  const { setWatchEnabled, startTracking, stopTracking, clearTrack } = useGpsStore()
 
   const { getRegionById, addGpsRecord, country } = useMapExpStore()
   const t = useT()
   const lang = useLang()
+
+  const [locating, setLocating] = useState(false)
 
   const gpsActive = watchEnabled || isTracking || autoDetectVisit
   const distance = trackDistanceMeters(trackPoints)
@@ -60,18 +62,21 @@ export default function GpsControls({ onRegionClick, onOpenMuniManager }: GpsCon
     return exp?.gyeonghyeonchi ?? (exp?.level as ExperienceGrade) ?? GyeongHyeonChi.UNVISITED
   })()
 
-  const handleLocateClick = () => {
-    if (!watchEnabled) {
-      setWatchEnabled(true)
-      setFollowMode(true)
-      ev('gps_on')
-      toast(t('gps.locating'), { duration: 2000 })
-    } else if (!followMode) {
-      setFollowMode(true)
-    } else {
-      // 이미 팔로우 중이면 위치 추적 끄기
-      setFollowMode(false)
-      setWatchEnabled(false)
+  // 현재 위치 도장 (원샷) — 국가 자동 판정 후 접지 GPS 인증 기록
+  const handleLocateStamp = async () => {
+    if (locating) return
+    setLocating(true)
+    ev('gps_locate')
+    try {
+      const res = await locateStamp(lang)
+      if (res.ok) {
+        toast.success(t('gps.quickToast', { label: res.label }))
+      } else {
+        const { key, error } = locateFailToast(res.reason)
+        ;(error ? toast.error : toast)(t(key))
+      }
+    } finally {
+      setLocating(false)
     }
   }
 
@@ -109,8 +114,8 @@ export default function GpsControls({ onRegionClick, onOpenMuniManager }: GpsCon
 
   return (
     <>
-      {/* 현재 지역 배너 (상단 중앙) - 현 · 시정촌 표시 */}
-      {gpsActive && targetId && targetLabel && (
+      {/* 현재 지역 배너 (연속 추적 자산) - 현 · 시정촌 표시 */}
+      {ENABLE_GPS_TRACKING && gpsActive && targetId && targetLabel && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2.5 bg-card border border-line rounded-full shadow-[0_2px_10px_rgba(38,35,28,0.12)] pl-3.5 pr-1.5 py-1.5 text-sm max-w-[calc(100%-190px)] lg:max-w-[calc(100%-24px)]">
           <span className="flex items-center gap-1.5 font-semibold text-ink whitespace-nowrap overflow-hidden text-ellipsis">
             <Icon name="pin" size={14} className="text-seal shrink-0" />
@@ -153,8 +158,8 @@ export default function GpsControls({ onRegionClick, onOpenMuniManager }: GpsCon
           </button>
         )}
 
-        {/* 트랙 거리/삭제 (기록이 있을 때) */}
-        {trackPoints.length >= 2 && (
+        {/* 트랙 거리/삭제 (연속 추적 자산) */}
+        {ENABLE_GPS_TRACKING && trackPoints.length >= 2 && (
           <div className="flex items-center gap-1.5 bg-card border border-line rounded-full shadow-[0_2px_8px_rgba(38,35,28,0.12)] px-3 py-1.5 text-xs font-semibold text-ink tabular-nums">
             <Icon name="route" size={13} className="text-seal" />
             {formatDistance(distance)}
@@ -169,34 +174,31 @@ export default function GpsControls({ onRegionClick, onOpenMuniManager }: GpsCon
           </div>
         )}
 
-        {/* 트랙 기록 버튼 */}
-        <button
-          onClick={handleTrackToggle}
-          className={`${circleBtn} ${
-            isTracking
-              ? 'bg-seal border-seal text-white'
-              : 'bg-card border-line text-muted hover:text-ink'
-          }`}
-          aria-label={t('gps.trackAria')}
-          title={t('gps.trackAria')}
-        >
-          {isTracking ? <Icon name="pause" size={16} /> : <Icon name="route" size={18} />}
-        </button>
-
-        {/* 내 위치 버튼 */}
-        <button
-          onClick={handleLocateClick}
-          className={`${circleBtn} ${
-            followMode && gpsActive
-              ? 'bg-ink border-ink text-paper'
-              : gpsActive
-                ? 'bg-card border-ink text-ink'
+        {/* 트랙 기록 버튼 (연속 추적 자산) */}
+        {ENABLE_GPS_TRACKING && (
+          <button
+            onClick={handleTrackToggle}
+            className={`${circleBtn} ${
+              isTracking
+                ? 'bg-seal border-seal text-white'
                 : 'bg-card border-line text-muted hover:text-ink'
-          }`}
-          aria-label={t('gps.locateAria')}
-          title={t('gps.locateAria')}
+            }`}
+            aria-label={t('gps.trackAria')}
+            title={t('gps.trackAria')}
+          >
+            {isTracking ? <Icon name="pause" size={16} /> : <Icon name="route" size={18} />}
+          </button>
+        )}
+
+        {/* 현재 위치 도장 (원샷) */}
+        <button
+          onClick={handleLocateStamp}
+          disabled={locating}
+          className={`${circleBtn} bg-card border-line text-muted hover:text-seal disabled:opacity-60`}
+          aria-label={t('gps.locateStamp')}
+          title={t('gps.locateStamp')}
         >
-          {status === 'locating' ? (
+          {locating ? (
             <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
           ) : (
             <Icon name="locate" size={18} />

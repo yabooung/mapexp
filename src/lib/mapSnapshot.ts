@@ -257,7 +257,8 @@ export interface ShareCardData {
   counts: Record<ExperienceGrade, number>
   total: number
   gradeLabels: Record<ExperienceGrade, string>
-  badgeIcons: string[]
+  /** 달성 도장 (region=지역 완주 도장은 藍 파랑, 그 외 인주 레드) */
+  badges: Array<{ icon: string; region?: boolean }>
   siteUrl: string
 }
 
@@ -277,7 +278,7 @@ export async function renderShareCardImage(data: ShareCardData): Promise<string 
   const mapH = mapW // 지도 스냅샷은 정사각
   const mapBlockH = mapH + (data.maps.some((m) => m.caption) ? 44 : 0)
 
-  const hasBadges = data.badgeIcons.length > 0
+  const hasBadges = data.badges.length > 0
   const H = pad + 96 + 24 + mapBlockH + 30 + 150 + 24 + 108 + 26 + 78 + (hasBadges ? 104 : 0) + 70 + pad - 40
 
   // 2배 해상도 렌더 (SNS 확대·좁은 기초 지역 시인성)
@@ -452,13 +453,13 @@ export async function renderShareCardImage(data: ShareCardData): Promise<string 
 
   // ── 달성 도장 (8개 초과면 7개 + '+N' 표기) ──
   if (hasBadges) {
-    const maxShow = data.badgeIcons.length > 8 ? 7 : 8
+    const maxShow = data.badges.length > 8 ? 7 : 8
     let bx = pad + 34
-    data.badgeIcons.slice(0, maxShow).forEach((icon, i) => {
+    data.badges.slice(0, maxShow).forEach(({ icon, region }, i) => {
       ctx.save()
       ctx.translate(bx, y + 40)
       ctx.rotate((((i % 5) - 2) * 4 * Math.PI) / 180)
-      ctx.fillStyle = '#be3a2b'
+      ctx.fillStyle = region ? '#2f5b93' : '#be3a2b' // 지역 완주 = 藍 파랑
       ctx.beginPath()
       ctx.arc(0, 0, 34, 0, Math.PI * 2)
       ctx.fill()
@@ -470,12 +471,12 @@ export async function renderShareCardImage(data: ShareCardData): Promise<string 
       ctx.restore()
       bx += 84
     })
-    if (data.badgeIcons.length > maxShow) {
+    if (data.badges.length > maxShow) {
       ctx.fillStyle = '#7c766a'
       ctx.font = `700 26px ${CARD_FONT}`
       ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
-      ctx.fillText(`+${data.badgeIcons.length - maxShow}`, bx - 16, y + 40)
+      ctx.fillText(`+${data.badges.length - maxShow}`, bx - 16, y + 40)
     }
     ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'

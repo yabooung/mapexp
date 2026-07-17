@@ -250,10 +250,10 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
 
   const achievedBadges = (() => {
     if (scope !== 'both') {
-      return computeBadges(regions, TOTAL_REGIONS[scope], trackKm, scope).filter((b) => b.achieved)
+      return computeBadges(regions, TOTAL_REGIONS[scope], trackKm, scope, lang).filter((b) => b.achieved)
     }
-    const jp = computeBadges(regions, TOTAL_REGIONS.japan, trackKm, 'japan').filter((b) => b.achieved)
-    const kr = computeBadges(regions, TOTAL_REGIONS.korea, trackKm, 'korea').filter((b) => b.achieved)
+    const jp = computeBadges(regions, TOTAL_REGIONS.japan, trackKm, 'japan', lang).filter((b) => b.achieved)
+    const kr = computeBadges(regions, TOTAL_REGIONS.korea, trackKm, 'korea', lang).filter((b) => b.achieved)
     const seen = new Set<string>()
     return [...jp, ...kr].filter((b) => (seen.has(b.id) ? false : (seen.add(b.id), true)))
   })()
@@ -326,7 +326,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
       gradeLabels: Object.fromEntries(
         ([0, 1, 2, 3, 4, 5] as ExperienceGrade[]).map((l) => [l, levelLabel(l, lang)]),
       ) as Record<ExperienceGrade, string>,
-      badgeIcons: optBadges ? achievedBadges.map((b) => b.icon) : [],
+      badges: optBadges ? achievedBadges.map((b) => ({ icon: b.icon, region: b.kind === 'region' })) : [],
       siteUrl: 'mapexp.vercel.app',
     }).then((url) => {
       if (!cancelled) setCardImg(url)

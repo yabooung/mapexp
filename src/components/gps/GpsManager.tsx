@@ -8,6 +8,7 @@ import { detectRegionAt, detectMunicipalityAt } from '@/lib/geo'
 import { loadJpMuniNames } from '@/lib/muniNames'
 import { GyeongHyeonChi, ExperienceGrade } from '@/types'
 import { tNow } from '@/lib/i18n'
+import { ENABLE_GPS_TRACKING } from '@/constants'
 
 /**
  * 헤드리스 GPS 매니저
@@ -27,12 +28,14 @@ export default function GpsManager() {
   const lastDetectRef = useRef(0)
   const lastAutoRecordRegionRef = useRef<string | null>(null)
 
-  const shouldWatch = watchEnabled || isTracking || autoDetectVisit
+  // 연속 추적은 네이티브 앱 전환 시 되살릴 자산 — 플래그가 꺼져 있으면 워처를 절대 시작하지 않는다.
+  // (기본 GPS 동선은 "현재 위치 도장" 원샷 = lib/locate.ts)
+  const shouldWatch = ENABLE_GPS_TRACKING && (watchEnabled || isTracking || autoDetectVisit)
 
   // 트랙 기록 중에는 화면이 꺼지지 않도록 Wake Lock 유지
   // (웹은 화면이 꺼지면 GPS 추적이 멈추므로, 내비처럼 켜둔 채 쓰는 시나리오 지원)
   useEffect(() => {
-    if (!isTracking || !('wakeLock' in navigator)) return
+    if (!ENABLE_GPS_TRACKING || !isTracking || !('wakeLock' in navigator)) return
 
     let lock: { release: () => Promise<void>; addEventListener?: unknown } | null = null
     let released = false
