@@ -56,7 +56,7 @@ export const MUNI_COUNT_BY_PREF: Record<string, number> = {
   shizuoka: 43,
   tochigi: 25,
   tokushima: 24,
-  tokyo: 60,
+  tokyo: 62,
   tottori: 18,
   toyama: 15,
   ulsan: 5,
