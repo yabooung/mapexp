@@ -512,6 +512,9 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
     const isResided = gyeonghyeonchi === GyeongHyeonChi.RESIDED
 
     if (gyeonghyeonchi === GyeongHyeonChi.UNVISITED) {
+        // 미획득 히든 지역(GPS로 아직 안 찍음)은 화면에 표시하지 않는다.
+        // 찍고 나면(레벨>0) 아래 색칠 분기로 떨어져 그때부터 지도에 나타난다.
+        if (isHiddenRegion(regionId)) return { fillOpacity: 0, opacity: 0 }
         // 타일 표시 중에도 종이톤 반투명을 덮어 도로·지명을 가라앉힌다.
         // (완전 투명이면 미답 지역의 타일 디테일이 방문 지역의 플랫 색보다 시끄러워
         //  시각적 주인공이 반전됨)
@@ -557,6 +560,8 @@ export default function MapView({ onRegionClick, showBoth = false, onToggleBoth,
     feature: Feature,
   ) => {
     e.originalEvent.preventDefault()
+    // 히든 지역은 지도 클릭으로 찍을 수 없다 — GPS로 현지에 갔을 때만 획득. 획득 후에도 클릭 변경 불가.
+    if (isHiddenRegion(regionId)) return
     if (e.originalEvent.shiftKey) {
       onRegionClick(regionId)
       return
