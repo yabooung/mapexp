@@ -1,3 +1,5 @@
+import { HIDDEN_REGIONS } from '@/data/hiddenOverlay'
+
 /**
  * 일본 지역 ID 상수 (47개 도도부현)
  */
@@ -59,7 +61,7 @@ export const TOTAL_REGIONS = {
   korea: 16, // 2026-07 전남광주통합특별시 출범으로 17 → 16개 시도
 } as const
 
-export const HIDDEN_REGION_IDS = new Set(['dokdo'])
+export const HIDDEN_REGION_IDS = new Set<string>(HIDDEN_REGIONS.map((h) => h.id))
 
 export function isHiddenRegion(regionId: string): boolean {
   const parentId = regionId.includes('_') ? regionId.split('_')[0] : regionId
@@ -146,7 +148,6 @@ export const REGION_ID_MAP: Record<string, Record<string, string>> = {
     '경상남도': 'gyeongnam',
     '제주특별자치도': 'jeju',
     '전남광주통합특별시': 'jeonnamgwangju',
-    '독도': 'dokdo',
     // 구 명칭 → 통합시로 흡수 (구버전 데이터/공유 링크 호환)
     '광주광역시': 'jeonnamgwangju',
     '전라남도': 'jeonnamgwangju',
@@ -188,8 +189,14 @@ export const KOREA_PROV_CODE_BY_ID: Record<string, string> = {
 /**
  * 지역 ID가 해당 국가 소속인지 판별 (시군구/시정촌 ID는 부모 기준)
  */
-const KOREA_ID_SET = new Set([...Object.keys(KOREA_PROV_CODE_BY_ID), 'dokdo'])
+const KOREA_ID_SET = new Set<string>(Object.keys(KOREA_PROV_CODE_BY_ID))
 const JAPAN_ID_SET = new Set<string>(JAPAN_REGION_IDS)
+
+// 오버레이 보너스 지역을 국가 매핑/집합에 병합 (데이터는 env로만 주입, 없으면 no-op)
+HIDDEN_REGIONS.forEach((h) => {
+  REGION_ID_MAP[h.country][h.nameKey] = h.id
+  ;(h.country === 'korea' ? KOREA_ID_SET : JAPAN_ID_SET).add(h.id)
+})
 
 export function isRegionOfCountry(regionId: string, country: 'japan' | 'korea'): boolean {
   const parentId = regionId.includes('_') ? regionId.split('_')[0] : regionId

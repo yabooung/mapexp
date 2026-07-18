@@ -1,4 +1,5 @@
 import { RegionMetadata } from '@/types'
+import { HIDDEN_REGIONS } from '@/data/hiddenOverlay'
 
 /**
  * 일본 지역 메타데이터 (47개 도도부현)
@@ -94,14 +95,15 @@ export const KOREA_REGIONS: RegionMetadata[] = [
   { id: 'gyeongbuk', name: '경상북도', nameEn: 'Gyeongsangbuk-do', nameLocal: '경상북도', nameJa: '慶尚北道(キョンサンプクト)', country: 'korea', type: 'province' },
   { id: 'gyeongnam', name: '경상남도', nameEn: 'Gyeongsangnam-do', nameLocal: '경상남도', nameJa: '慶尚南道(キョンサンナムド)', country: 'korea', type: 'province' },
   { id: 'jeju', name: '제주특별자치도', nameEn: 'Jeju', nameLocal: '제주특별자치도', nameJa: '済州特別自治道(チェジュ)', country: 'korea', type: 'province' },
-  { id: 'dokdo', name: '독도', nameEn: 'Dokdo', nameLocal: '독도', nameJa: '独島(トクト)', country: 'korea', type: 'province', hidden: true },
 ]
 
 /**
  * 지역 ID로 메타데이터 찾기
  */
 export const getRegionMetadata = (regionId: string): RegionMetadata | undefined => {
-  return [...JAPAN_REGIONS, ...KOREA_REGIONS].find((region) => region.id === regionId)
+  return [...JAPAN_REGIONS, ...KOREA_REGIONS, ...HIDDEN_REGIONS.map((h) => h.meta)].find(
+    (region) => region.id === regionId,
+  )
 }
 
 /**

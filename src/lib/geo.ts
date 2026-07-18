@@ -2,6 +2,7 @@ import { booleanPointInPolygon, point as turfPoint, rewind } from '@turf/turf'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import { REGION_ID_MAP, KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { getRegionMetadata } from '@/data/regions'
+import { HIDDEN_REGIONS } from '@/data/hiddenOverlay'
 
 /**
  * GPS 위치 → 지역 감지 유틸리티 (일본/한국)
@@ -97,6 +98,15 @@ export async function loadPrefectures(country: Country = 'japan'): Promise<Featu
         feat.properties = { ...props, id: mappedId, name: localName }
       }
     })
+    // 오버레이 보너스 지역 주입 (데이터는 env로만 주입, 없으면 no-op). 감김 방향은
+    // 나머지 피처와 동일하게 정규화한다.
+    for (const h of HIDDEN_REGIONS) {
+      if (h.country !== country) continue
+      const feat = JSON.parse(JSON.stringify(h.feature)) as Feature
+      feat.properties = { ...(feat.properties as Record<string, unknown>), id: h.id, name: h.nameKey }
+      rewind(feat, { reverse: true, mutate: true })
+      fc.features.push(feat)
+    }
   })
 }
 

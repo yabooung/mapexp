@@ -96,6 +96,7 @@ export function regionScoreRows(regions: RegionExp[], countries: Country[]): Reg
     const parentId = isMuni ? reg.regionId.split('_')[0] : reg.regionId
     const c = countries.find((cc) => isRegionOfCountry(parentId, cc))
     if (!c) continue
+    if (isHiddenRegion(parentId)) continue // 히든 지역은 지역별 점수에도 노출하지 않음
     const lvl = (reg.gyeonghyeonchi ?? reg.level ?? 0) as ExperienceGrade
     if (lvl <= 0) continue
     const row = rowOf(parentId, c)
