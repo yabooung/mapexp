@@ -60,3 +60,9 @@ node scripts/gen-muni-names.mjs
 - 배경 타일: [CARTO](https://carto.com/attributions) / [OpenStreetMap](https://www.openstreetmap.org/copyright)
 
 '경현치(経県値Ⓡ)' 개념 원조: [都道府県市区町村 (uub.jp)](https://uub.jp/kkn/) · 経県値는 uub.jp의 등록상표입니다.
+
+## 라이선스
+
+- **코드**: [MIT](LICENSE) © 2026 yabooung
+- **지도 데이터**: 위 '데이터 출처'의 각 제공처 라이선스를 따릅니다(일본 国土数値情報 이용약관, 한국 통계청·southkorea-maps, 총무성 코드 등). 번들된 GeoJSON을 재사용할 때는 원 출처 약관을 확인하세요.
+- **経県値Ⓡ**는 uub.jp의 등록상표이며, 본 프로젝트는 개념 참조·출처 표기 목적의 지시적 사용만 합니다.
