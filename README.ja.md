@@ -60,3 +60,9 @@ node scripts/gen-muni-names.mjs
 - 背景タイル: [CARTO](https://carto.com/attributions) / [OpenStreetMap](https://www.openstreetmap.org/copyright)
 
 「経県値Ⓡ」の概念元は[都道府県市区町村 (uub.jp)](https://uub.jp/kkn/) です。経県値は uub.jp の登録商標です。
+
+## ライセンス
+
+- **コード**: [MIT](LICENSE) © 2026 yabooung
+- **地図データ**: 上記「データ出典」の各提供元のライセンスに従います（日本 国土数値情報の利用約款、韓国 統計庁・southkorea-maps、総務省コード等）。同梱の GeoJSON を再利用する際は原典の規約をご確認ください。
+- **経県値Ⓡ** は uub.jp の登録商標であり、本プロジェクトは概念の参照・出典表記を目的とした指示的使用のみを行います。

@@ -60,3 +60,9 @@ node scripts/gen-muni-names.mjs
 - Base tiles: [CARTO](https://carto.com/attributions) / [OpenStreetMap](https://www.openstreetmap.org/copyright)
 
 The 経県値Ⓡ (Keikenchi) concept originates from [都道府県市区町村 (uub.jp)](https://uub.jp/kkn/). 経県値 is a registered trademark of uub.jp.
+
+## License
+
+- **Code**: [MIT](LICENSE) © 2026 yabooung
+- **Map data**: covered by the licenses of the respective sources listed under "Data sources" (Japan MLIT KSJ terms, Korea KOSTAT / southkorea-maps, MIC codes, etc.). Check the original terms before reusing the bundled GeoJSON.
+- **経県値Ⓡ** is a registered trademark of uub.jp; this project makes only nominative/reference use of the concept with attribution.
