@@ -2,7 +2,7 @@
 
 **English** · [한국어](README.ko.md) · [日本語](README.ja.md)
 
-**▶ https://mapexp.vercel.app — no install, works right away**
+**▶ https://mapexp.app — no install, works right away**
 
 A map that stamps every region you've traveled to, building up your travel footprint.
 Records Japan's 47 prefectures & 1,897 municipalities and Korea's 16 provinces & 250 municipalities — **on one map**.

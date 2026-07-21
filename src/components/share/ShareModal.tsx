@@ -324,7 +324,7 @@ export default function ShareModal({ isOpen, onClose }: ShareModalProps) {
         ([0, 1, 2, 3, 4, 5] as ExperienceGrade[]).map((l) => [l, levelLabel(l, lang)]),
       ) as Record<ExperienceGrade, string>,
       badges: optBadges ? achievedBadges.map((b) => ({ icon: b.icon, region: b.kind === 'region' })) : [],
-      siteUrl: 'mapexp.vercel.app',
+      siteUrl: 'mapexp.app',
     }).then((url) => {
       if (!cancelled) setCardImg(url)
     })

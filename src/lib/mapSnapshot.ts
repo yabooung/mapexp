@@ -520,7 +520,7 @@ export async function renderPrefectureCardImage(
   getLevel: (regionId: string) => ExperienceGrade,
   opts: PrefectureCardOpts,
 ): Promise<string | null> {
-  const { regionName, subtitle, stats, getLabel, siteUrl = 'mapexp.vercel.app' } = opts
+  const { regionName, subtitle, stats, getLabel, siteUrl = 'mapexp.app' } = opts
   const muniFc = await loadMunicipalities(country)
   if (!muniFc) return null
 
