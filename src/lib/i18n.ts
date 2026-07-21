@@ -188,6 +188,15 @@ const STRINGS = {
   'settings.importDone': ['데이터를 성공적으로 불러왔습니다.', 'Data imported.', 'データを読み込みました。'],
   'settings.importFail': ['잘못된 데이터 파일입니다.', 'Invalid data file.', '無効なデータファイルです。'],
 
+  // 백업 알림(넛지) - 데이터는 이 브라우저에만 저장되므로 주기적으로 백업을 유도
+  'backup.remindMessage': [
+    '기록이 이 브라우저에만 저장돼 있어요. 캐시 삭제·기기 변경 시 사라질 수 있으니 지금 백업하세요.',
+    'Your records live only in this browser. Back up now — clearing cache or switching devices will erase them.',
+    '記録はこのブラウザだけに保存されています。キャッシュ削除・機種変更で消えないよう、今バックアップしましょう。',
+  ],
+  'backup.remindAction': ['지금 백업', 'Back up now', '今すぐバックアップ'],
+  'backup.remindLater': ['나중에', 'Later', '後で'],
+
   // 리스트 그룹(지방/권역) 이름
   'group.hokkaido': ['홋카이도', 'Hokkaido', '北海道'],
   'group.tohoku': ['도호쿠', 'Tohoku', '東北'],

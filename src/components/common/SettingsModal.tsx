@@ -8,6 +8,7 @@ import Button from '@/components/common/Button'
 import Icon from '@/components/common/Icon'
 import { useT, useLang, Lang } from '@/lib/i18n'
 import { parseImportFile, downloadDataFile } from '@/lib/dataFile'
+import { recordBackup } from '@/lib/backupReminder'
 import toast from '@/lib/appToast'
 import { ENABLE_GPS_TRACKING } from '@/constants'
 
@@ -43,7 +44,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   // 데이터 내보내기 (JSON 다운로드 - 스키마 봉투 포함)
   const handleExport = () => {
     try {
-      downloadDataFile(exportData())
+      const data = exportData()
+      downloadDataFile(data)
+      recordBackup(data.regions.length, Date.now())
       toast.success(t('settings.exportDone'))
     } catch (err) {
       console.error(err)
@@ -74,7 +77,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       const current = exportData()
       if (confirm(t('settings.importConfirmDetail', { a: current.regions.length, b: data.regions.length }))) {
         try {
-          if (current.regions.length > 0) downloadDataFile(current, 'backup')
+          if (current.regions.length > 0) {
+            downloadDataFile(current, 'backup')
+            recordBackup(current.regions.length, Date.now())
+          }
         } catch {
           // 백업 실패해도 사용자가 확인한 가져오기는 진행
         }
@@ -102,6 +108,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           a.click()
           document.body.removeChild(a)
           URL.revokeObjectURL(url)
+          recordBackup(data.regions.length, Date.now())
         }
       } catch {
         // 백업 실패해도 초기화는 진행

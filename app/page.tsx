@@ -16,6 +16,7 @@ import LevelUpWatcher from '@/components/common/LevelUpWatcher'
 import OnboardingHint from '@/components/common/OnboardingHint'
 import ViewerBanner from '@/components/common/ViewerBanner'
 import StoragePersist from '@/components/common/StoragePersist'
+import BackupReminder from '@/components/common/BackupReminder'
 import { ev } from '@/lib/analytics'
 import BottomNav, { MobileTab } from '@/components/layout/BottomNav'
 import Icon from '@/components/common/Icon'
@@ -124,6 +125,7 @@ function HomeContent() {
       <GpsManager />
       {!isViewer && <LevelUpWatcher />}
       <StoragePersist />
+      {!isViewer && <BackupReminder />}
 
       {/* 공유 지도 열람 모드 배너 */}
       <ViewerBanner />
