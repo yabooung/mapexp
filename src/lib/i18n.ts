@@ -188,6 +188,28 @@ const STRINGS = {
   'settings.importDone': ['데이터를 성공적으로 불러왔습니다.', 'Data imported.', 'データを読み込みました。'],
   'settings.importFail': ['잘못된 데이터 파일입니다.', 'Invalid data file.', '無効なデータファイルです。'],
 
+  // 기기 간 동기화 (코드 방식, 계정 없음)
+  'sync.section': ['기기 간 동기화', 'Sync across devices', '端末間の同期'],
+  'sync.desc': [
+    '코드 하나로 다른 기기(폰↔PC)에 기록을 옮깁니다. 로그인 없이 이 기기의 기록을 클라우드에 잠깐 올려두는 방식이에요.',
+    'Move your records to another device (phone ↔ PC) with a single code. No login — your data is briefly uploaded to the cloud.',
+    'コード1つで別の端末（スマホ↔PC）に記録を移せます。ログイン不要で、この端末の記録を一時的にクラウドへ預ける方式です。',
+  ],
+  'sync.create': ['동기화 코드 만들기', 'Create sync code', '同期コードを作成'],
+  'sync.copy': ['복사', 'Copy', 'コピー'],
+  'sync.copied': ['코드가 복사되었습니다.', 'Code copied.', 'コードをコピーしました。'],
+  'sync.placeholder': ['코드 입력 (6자리)', 'Enter code (6 chars)', 'コード入力 (6桁)'],
+  'sync.load': ['불러오기', 'Load', '読み込み'],
+  'sync.note': [
+    '다른 기기의 설정에서 이 코드를 입력하면 기록을 불러옵니다. 코드는 {days}일 후 만료돼요.',
+    'Enter this code in Settings on another device to load the records. Codes expire after {days} days.',
+    '別の端末の設定でこのコードを入力すると記録を読み込めます。コードは{days}日後に失効します。',
+  ],
+  'sync.invalidCode': ['코드는 6자리입니다.', 'Code must be 6 characters.', 'コードは6桁です。'],
+  'sync.notFound': ['코드를 찾을 수 없거나 만료되었습니다.', 'Code not found or expired.', 'コードが見つからないか失効しています。'],
+  'sync.notConfigured': ['동기화 서버가 아직 설정되지 않았습니다.', 'Sync server is not configured yet.', '同期サーバーが未設定です。'],
+  'sync.error': ['동기화에 실패했습니다. 잠시 후 다시 시도하세요.', 'Sync failed. Please try again.', '同期に失敗しました。後でもう一度お試しください。'],
+
   // 백업 알림(넛지) - 데이터는 이 브라우저에만 저장되므로 주기적으로 백업을 유도
   'backup.remindMessage': [
     '기록이 이 브라우저에만 저장돼 있어요. 캐시 삭제·기기 변경 시 사라질 수 있으니 지금 백업하세요.',

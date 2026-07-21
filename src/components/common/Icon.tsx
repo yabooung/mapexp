@@ -21,6 +21,7 @@ export type IconName =
   | 'building'
   | 'download'
   | 'upload'
+  | 'copy'
   | 'trash'
   | 'pin'
   | 'pen'
@@ -106,6 +107,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M12 13V3" />
       <path d="m8 7 4-4 4 4" />
       <path d="M5 17v3h14v-3" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="1.5" />
+      <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
     </>
   ),
   trash: (
