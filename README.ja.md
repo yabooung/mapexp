@@ -1,6 +1,6 @@
 # MAPEXP — 旅スタンプ地図
 
-[한국어](README.md) · [English](README.en.md) · **日本語**
+[English](README.md) · [한국어](README.ko.md) · **日本語**
 
 **▶ https://mapexp.vercel.app — インストール不要ですぐ使えます**
 

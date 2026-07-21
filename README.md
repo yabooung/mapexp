@@ -1,68 +1,68 @@
-# MAPEXP — 나의 여행 도장
+# MAPEXP — My Travel Stamps
 
-**한국어** · [English](README.en.md) · [日本語](README.ja.md)
+**English** · [한국어](README.ko.md) · [日本語](README.ja.md)
 
-**▶ https://mapexp.vercel.app — 설치 없이 바로 사용**
+**▶ https://mapexp.vercel.app — no install, works right away**
 
-방문한 지역마다 도장을 찍어 여행 발자취를 쌓는 지도 서비스.
-일본 47개 도도부현·1,897개 시정촌과 한국 16개 시도·250개 시군구를 **한 지도에서** 기록합니다.
+A map that stamps every region you've traveled to, building up your travel footprint.
+Records Japan's 47 prefectures & 1,897 municipalities and Korea's 16 provinces & 250 municipalities — **on one map**.
 
-일본의 [経県値](https://uub.jp/kkn/)(경현치) 개념을 바탕으로, 한일 양국 동시 기록·시정촌 정밀도·GPS 도장으로 재해석했습니다. 지도 색상은 経県値 원조 표준 팔레트를 그대로 사용합니다.
+Based on Japan's [経県値 (Keikenchi)](https://uub.jp/kkn/) concept, reimagined with dual-country recording, municipality-level precision, and GPS stamping. The map uses the original Keikenchi standard color palette.
 
 <p align="center">
-  <img src="docs/screenshots/desktop.png" width="800" alt="일본 지도 화면">
+  <img src="docs/screenshots/desktop.en.png" width="800" alt="Japan map view">
 </p>
 <p align="center">
-  <img src="docs/screenshots/desktop-korea.png" width="800" alt="한국 지도 화면">
+  <img src="docs/screenshots/desktop-korea.en.png" width="800" alt="Korea map view">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/mobile-map.png" width="240" alt="GPS 현재 지역 감지">
+  <img src="docs/screenshots/mobile-map.en.png" width="240" alt="GPS region detection">
   &nbsp;
-  <img src="docs/screenshots/mobile-stats.png" width="240" alt="통계와 도장첩">
+  <img src="docs/screenshots/mobile-stats.en.png" width="240" alt="Stats & stamp book">
   &nbsp;
-  <img src="docs/screenshots/share-card.png" width="240" alt="공유 이미지 카드">
+  <img src="docs/screenshots/share-card.en.png" width="240" alt="Shareable image card">
 </p>
 
-## 주요 기능
+## Features
 
-- **도장 기록** — 지역을 탭할 때마다 등급 순환: 미답(0) → 통과(1) → 접지(2) → 방문(3) → 숙박(4) → 거주(5). 잘못 찍으면 토스트에서 바로 실행취소, 길게 누르면 상세(메모·방문 기록)
-- **양국 동시 뷰** — 일본·한국 지도를 한 화면에 띄우고 국가별 여행자 레벨·통계로 기록 (여행자 레벨은 보고 있는 나라를 따라 표시)
-- **시정촌/시군구 단위** — 도장 찍기 화면(목록·미니맵)에서 기초 지역별 도장, '기초 지역' 토글로 전국을 시정촌 단위로 열람
-- **지명 3개 언어** — 일본 시정촌은 한글·로마자 표기(총무성 읽기 기반), 한국 시군구는 한자+가타카나 표기. 지도 지명 언어는 UI 언어와 별도로 선택 가능
-- **GPS 현재 위치 도장** — 버튼 한 번으로 지금 있는 지역(광역+기초)을 자동 판정해 도장. 어느 나라에 있든 자동 인식
-  - GPS 인증 기록은 생성 후 시간 수정·삭제 불가 (수동 기록은 과거 날짜 자유 입력)
-- **게임화** — 여행자 레벨(국가별), 한자 낙관 도장첩 — 마일스톤 도장과 **지역 완주 도장**(한 광역의 모든 기초 방문, 또는 시코쿠·전라 등 권역 완주 시 발급, 藍 파랑), 지역별 점수·기초 점수 통계
-- **공유** — SNS 이미지 카드(Lv·EXP 게임식 점수, 순위 티어, 지명 라벨·도장첩 표시 옵션, 일본/한국/양국 × 광역/기초/둘다), 지역별 카드 프리뷰 공유, QR 코드, 읽기 전용 공유 링크, JSON 파일 교환. 받은 지도는 내 기록과 나만/상대만/둘 다 3색으로 '겹쳐보기' 비교 가능
-- **다국어 UI** — 한국어 · English · 日本語
-- **PWA** — 홈 화면 설치, 지도 데이터 오프라인 캐싱
-- **프라이버시** — 모든 기록과 위치 정보는 사용자 브라우저에만 저장 (서버 없음, 로그인 없음)
+- **Stamp records** — Tap a region to cycle its grade: Unvisited(0) → Passed(1) → Landed(2) → Visited(3) → Stayed(4) → Lived(5). Mis-taps can be undone from a toast; long-press opens details (memos, visit log)
+- **Dual-country view** — Show Japan and Korea on one screen with per-country stats (your traveler level follows the country you're viewing)
+- **Municipality level** — Stamp individual municipalities in the stamping view (list or mini-map); a "Municipalities" toggle renders the whole country at municipal detail
+- **Place names in 3 languages** — Japanese municipalities in Hangul and romaji (from official MIC readings), Korean municipalities in kanji + katakana. Map place-name language is selectable independently of the UI language
+- **GPS location stamp** — One tap detects the region you're currently in (province + municipality) and stamps it, auto-recognizing which country you're in
+  - GPS-verified records can't be edited or deleted; manual records allow free past-date entry
+- **Gamification** — Per-country traveler level, kanji seal stamp book — milestone stamps plus **region-completion stamps** (earned by stamping every municipality of a province, or completing a regional block like Shikoku or Jeolla; shown in indigo blue), per-region and municipal score breakdowns
+- **Sharing** — SNS image card (game-style Lv/EXP score, rank tier, optional place-name labels and badge row, Japan/Korea/both × regions/municipalities), per-region card with share preview, QR codes, read-only share links, JSON file exchange. Overlay a friend's map on yours in a 3-color compare view (only me / only them / both)
+- **i18n UI** — Korean · English · Japanese
+- **PWA** — Home-screen install, offline map caching
+- **Privacy** — All records and location data stay in your browser only (no server, no login)
 
-## 기술 스택
+## Tech Stack
 
-Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Leaflet(react-leaflet) · Zustand · Turf.js · d3-geo
+Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Leaflet (react-leaflet) · Zustand · Turf.js · d3-geo
 
-## 개발
+## Development
 
 ```bash
 npm install
 npm run dev    # http://localhost:3000
-npm run build  # 프로덕션 빌드
+npm run build  # production build
 
-# 일본 시정촌 다국어 이름 데이터 재생성 (public/geojson/jp-muni-names.json)
+# Regenerate localized Japanese municipality names (public/geojson/jp-muni-names.json)
 node scripts/gen-muni-names.mjs
 ```
 
-## 데이터 출처
+## Data Sources
 
-- 일본: [国土数値情報 N03](https://nlftp.mlit.go.jp/ksj/) (가공: [smartnews-smri/japan-topography](https://github.com/smartnews-smri/japan-topography)), 시정촌 읽기: 총무성 전국지방공공단체코드 ([nojimage/local-gov-code-jp](https://github.com/nojimage/local-gov-code-jp))
-- 한국: 통계청 행정구역 ([southkorea/southkorea-maps](https://github.com/southkorea/southkorea-maps)), 2026-07 개편(전남광주통합특별시, 군위군 대구 편입) 반영
-- 배경 타일: [CARTO](https://carto.com/attributions) / [OpenStreetMap](https://www.openstreetmap.org/copyright)
+- Japan: [国土数値情報 N03](https://nlftp.mlit.go.jp/ksj/) (processed by [smartnews-smri/japan-topography](https://github.com/smartnews-smri/japan-topography)); municipality readings from the MIC local government codes ([nojimage/local-gov-code-jp](https://github.com/nojimage/local-gov-code-jp))
+- Korea: KOSTAT administrative boundaries ([southkorea/southkorea-maps](https://github.com/southkorea/southkorea-maps)), reflecting the 2026-07 reorganization
+- Base tiles: [CARTO](https://carto.com/attributions) / [OpenStreetMap](https://www.openstreetmap.org/copyright)
 
-'경현치(経県値Ⓡ)' 개념 원조: [都道府県市区町村 (uub.jp)](https://uub.jp/kkn/) · 経県値는 uub.jp의 등록상표입니다.
+The 経県値Ⓡ (Keikenchi) concept originates from [都道府県市区町村 (uub.jp)](https://uub.jp/kkn/). 経県値 is a registered trademark of uub.jp.
 
-## 라이선스
+## License
 
-- **코드**: [MIT](LICENSE) © 2026 yabooung
-- **지도 데이터**: 위 '데이터 출처'의 각 제공처 라이선스를 따릅니다(일본 国土数値情報 이용약관, 한국 통계청·southkorea-maps, 총무성 코드 등). 번들된 GeoJSON을 재사용할 때는 원 출처 약관을 확인하세요.
-- **経県値Ⓡ**는 uub.jp의 등록상표이며, 본 프로젝트는 개념 참조·출처 표기 목적의 지시적 사용만 합니다.
+- **Code**: [MIT](LICENSE) © 2026 yabooung
+- **Map data**: covered by the licenses of the respective sources listed under "Data sources" (Japan MLIT KSJ terms, Korea KOSTAT / southkorea-maps, MIC codes, etc.). Check the original terms before reusing the bundled GeoJSON.
+- **経県値Ⓡ** is a registered trademark of uub.jp; this project makes only nominative/reference use of the concept with attribution.
