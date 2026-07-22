@@ -36,10 +36,59 @@ const MapView = dynamic(() => import('@/components/map/MapView'), {
   ),
 })
 
-function HomeContent({ initialLang }: { initialLang?: Lang }) {
+/**
+ * URL 쿼리(?share, ?c=)를 처리하는 효과 전용 컴포넌트.
+ * useSearchParams는 정적 프리렌더를 클라이언트 렌더로 강등시키므로,
+ * 이 부분만 Suspense로 격리해 본문(HomeContent)은 정적 HTML로 남긴다
+ * (앱 목적 설명이 정적 HTML에 포함되어 검색·심사 도구가 JS 없이도 읽을 수 있게).
+ */
+function SearchParamEffects() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { country, enterViewerMode, initViewerFromStorage } = useMapExpStore()
+  const t = useT()
+
+  // 홍보용 딥링크: ?c=jp|kr → 초기 지도 국가 지정
+  useEffect(() => {
+    if (searchParams.get('share')) return
+    const c = (searchParams.get('c') || '').toLowerCase()
+    const target = c === 'jp' || c === 'japan' ? 'japan' : c === 'kr' || c === 'korea' ? 'korea' : null
+    if (!target) return
+    useMapExpStore.getState().setCountry(target)
+    ev('deeplink_country', { c: target })
+    const params = new URLSearchParams(Array.from(searchParams.entries()))
+    params.delete('c')
+    const qs = params.toString()
+    router.replace(qs ? `/?${qs}` : '/')
+  }, [searchParams, router])
+
+  // 공유 URL 처리 - 읽기 전용 뷰어로 열기
+  useEffect(() => {
+    const shareCode = searchParams.get('share')
+    if (shareCode) {
+      const data = parseShareUrl(shareCode)
+      if (data && data.regions) {
+        useMapExpStore.getState().enterViewerMode({
+          country: data.country || 'japan',
+          regions: data.regions,
+          version: '1.0.0',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        ev('viewer_open', { country: data.country || 'japan' })
+        toast.success(t('viewer.loaded'))
+      } else {
+        toast.error(t('viewer.invalid'))
+      }
+      router.replace('/')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, router])
+
+  return null
+}
+
+function HomeContent({ initialLang }: { initialLang?: Lang }) {
+  const { country, initViewerFromStorage } = useMapExpStore()
   const isViewer = useMapExpStore((s) => s.isViewer)
 
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
@@ -75,50 +124,10 @@ function HomeContent({ initialLang }: { initialLang?: Lang }) {
     }
   }, [initialLang])
 
-  // 홍보용 딥링크: ?c=jp|kr → 초기 지도 국가 지정 (예: 일본 커뮤니티 유입 링크는 일본 지도로 열림)
-  // UI 언어는 건드리지 않음(브라우저 언어 유지). 공유 링크(share)가 있으면 그쪽이 우선.
-  // 첫 방문 언어 판정 이후에 실행돼야 해당 판정을 덮으므로 그 효과 뒤에 둔다.
-  useEffect(() => {
-    if (searchParams.get('share')) return
-    const c = (searchParams.get('c') || '').toLowerCase()
-    const target = c === 'jp' || c === 'japan' ? 'japan' : c === 'kr' || c === 'korea' ? 'korea' : null
-    if (!target) return
-    useMapExpStore.getState().setCountry(target)
-    ev('deeplink_country', { c: target })
-    // c만 제거하고 나머지 쿼리(utm_* 등 유입 추적 파라미터)는 보존
-    const params = new URLSearchParams(Array.from(searchParams.entries()))
-    params.delete('c')
-    const qs = params.toString()
-    router.replace(qs ? `/?${qs}` : '/')
-  }, [searchParams, router])
-
   // 새로고침 후에도 뷰어 모드 유지
   useEffect(() => {
     initViewerFromStorage()
   }, [initViewerFromStorage])
-
-  // 공유 URL 처리 - 읽기 전용 뷰어로 열기 (내 데이터는 자동 백업, 덮어쓰지 않음)
-  useEffect(() => {
-    const shareCode = searchParams.get('share')
-    if (shareCode) {
-      const data = parseShareUrl(shareCode)
-      if (data && data.regions) {
-        enterViewerMode({
-          country: data.country || 'japan',
-          regions: data.regions,
-          version: '1.0.0',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })
-        ev('viewer_open', { country: data.country || 'japan' })
-        toast.success(t('viewer.loaded'))
-      } else {
-        toast.error(t('viewer.invalid'))
-      }
-      router.replace('/')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, router, enterViewerMode])
 
   const handleRegionClick = (regionId: string) => {
     setSelectedRegionId(regionId)
@@ -277,8 +286,12 @@ function HomeContent({ initialLang }: { initialLang?: Lang }) {
  */
 export default function AppRoot({ initialLang }: { initialLang?: Lang }) {
   return (
-    <Suspense fallback={null}>
+    <>
+      {/* URL 쿼리 처리만 Suspense로 격리 - 본문은 정적 HTML로 렌더 */}
+      <Suspense fallback={null}>
+        <SearchParamEffects />
+      </Suspense>
       <HomeContent initialLang={initialLang} />
-    </Suspense>
+    </>
   )
 }

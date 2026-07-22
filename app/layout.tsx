@@ -28,7 +28,8 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ??
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
   ),
-  title: "MAPEXP - 여행 도장 지도 · 旅スタンプ地図 · Travel Stamp Map",
+  // 앱 이름을 명확히 (OAuth 심사: 동의화면 앱 이름 'MAPEXP'와 홈페이지 이름 일치)
+  title: "MAPEXP — 여행 도장 지도",
   // 検索 노출용 설명: 経県値는 uub.jp 상표라 제품명이 아닌 '방식 참조'로만 언급 (지시적 사용)
   // 한·일·영 검색 모두 걸리도록 3언어 키워드를 담되, 経県値는 지시적(방식 참조) 표현만 사용
   description:
