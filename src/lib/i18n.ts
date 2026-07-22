@@ -261,6 +261,20 @@ const STRINGS = {
     'まだ訪問記録がありません。地図で地域にスタンプを押すと月別に整理されます。',
   ],
   'history.loginNeeded': ['로그인이 필요한 기능입니다.', 'Please sign in to use this.', 'ログインが必要な機能です。'],
+  // 월별 일지 (직접 작성) + 월별/연별 보기
+  'history.viewMonth': ['월별', 'By month', '月別'],
+  'history.viewYear': ['연별', 'By year', '年別'],
+  'history.addEntry': ['일지 쓰기', 'Add note', '記録を追加'],
+  'history.entryPlaceholder': ['이 달의 여행을 기록해보세요', 'Write about this month', 'この月の記録を書く'],
+  'history.month': ['월', 'Month', '月'],
+  'history.date': ['날짜', 'Date', '日付'],
+  'history.deleteConfirm': ['이 일지를 삭제할까요?', 'Delete this note?', 'この記録を削除しますか？'],
+  'history.entrySaved': ['일지를 저장했습니다.', 'Note saved.', '記録を保存しました。'],
+  'history.entryDeleted': ['일지를 삭제했습니다.', 'Note deleted.', '記録を削除しました。'],
+  'history.otherMonth': ['다른 달', 'Other month', '他の月'],
+  'history.otherMonthPrompt': ['일지를 쓸 달을 입력하세요 (예: 2026-03)', 'Enter a month (e.g. 2026-03)', '記録する月を入力 (例: 2026-03)'],
+  'history.yearSummary': ['{regions}곳 · 일지 {entries}개', '{regions} places · {entries} notes', '{regions}か所 · 記録{entries}件'],
+  'history.monthMini': ['{regions}곳 · 일지 {entries}', '{regions} places · {entries} notes', '{regions}か所 · {entries}件'],
 
   // 백업 알림(넛지) - 데이터는 이 브라우저에만 저장되므로 주기적으로 백업을 유도
   'backup.remindMessage': [

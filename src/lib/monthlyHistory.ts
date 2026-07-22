@@ -103,3 +103,96 @@ export async function saveHistoryMemo(userId: string, month: string, memo: strin
   )
   return !error
 }
+
+/* ── 월별 일지(직접 작성) ─────────────────────────────────────
+ * 한 달에 여러 개의 글을 남길 수 있는 본격 일지. journal_entries 테이블.
+ */
+
+const JOURNAL_TABLE = 'journal_entries'
+const BODY_MAX = 4000
+
+export interface JournalEntry {
+  id: string
+  month: string // YYYY-MM
+  entryDate: string | null // YYYY-MM-DD (선택)
+  body: string
+  updatedAt: string
+}
+
+type JournalRow = { id: string; month: string; entry_date: string | null; body: string; updated_at: string }
+
+function toEntry(r: JournalRow): JournalEntry {
+  return { id: r.id, month: r.month, entryDate: r.entry_date, body: r.body, updatedAt: r.updated_at }
+}
+
+/** 내 일지 전부 읽기 (최신 월 → 최신순) */
+export async function fetchJournalEntries(userId: string): Promise<JournalEntry[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from(JOURNAL_TABLE)
+    .select('id, month, entry_date, body, updated_at')
+    .eq('user_id', userId)
+    .order('month', { ascending: false })
+    .order('entry_date', { ascending: false, nullsFirst: false })
+    .order('updated_at', { ascending: false })
+  if (error || !data) return []
+  return (data as JournalRow[]).map(toEntry)
+}
+
+/** 일지 추가 → 생성된 항목 반환 (실패 시 null) */
+export async function addJournalEntry(
+  userId: string,
+  month: string,
+  body: string,
+  entryDate?: string | null,
+): Promise<JournalEntry | null> {
+  const supabase = getSupabase()
+  if (!supabase) return null
+  const trimmed = body.trim().slice(0, BODY_MAX)
+  if (!trimmed || !/^\d{4}-\d{2}$/.test(month)) return null
+  const now = new Date().toISOString()
+  const { data, error } = await supabase
+    .from(JOURNAL_TABLE)
+    .insert({
+      user_id: userId,
+      month,
+      entry_date: entryDate && /^\d{4}-\d{2}-\d{2}$/.test(entryDate) ? entryDate : null,
+      body: trimmed,
+      created_at: now,
+      updated_at: now,
+    })
+    .select('id, month, entry_date, body, updated_at')
+    .single()
+  if (error || !data) return null
+  return toEntry(data as JournalRow)
+}
+
+/** 일지 수정 (본문 + 어느 달인지(month)·날짜까지 변경 가능) */
+export async function updateJournalEntry(
+  userId: string,
+  id: string,
+  updates: { body?: string; month?: string; entryDate?: string | null },
+): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (updates.body !== undefined) {
+    const trimmed = updates.body.trim().slice(0, BODY_MAX)
+    if (!trimmed) return deleteJournalEntry(userId, id)
+    patch.body = trimmed
+  }
+  if (updates.month !== undefined && /^\d{4}-\d{2}$/.test(updates.month)) patch.month = updates.month
+  if (updates.entryDate !== undefined)
+    patch.entry_date = updates.entryDate && /^\d{4}-\d{2}-\d{2}$/.test(updates.entryDate) ? updates.entryDate : null
+  const { error } = await supabase.from(JOURNAL_TABLE).update(patch).eq('user_id', userId).eq('id', id)
+  return !error
+}
+
+/** 일지 삭제 */
+export async function deleteJournalEntry(userId: string, id: string): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+  const { error } = await supabase.from(JOURNAL_TABLE).delete().eq('user_id', userId).eq('id', id)
+  return !error
+}
