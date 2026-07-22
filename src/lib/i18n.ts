@@ -62,6 +62,12 @@ const STRINGS = {
     'Every pass, stop, walk, and stay leaves a stamp',
     '通って、降りて、歩いて、泊まった場所に判が積もる',
   ],
+  // 앱 목적 설명 (홈페이지에 표시 - OAuth 심사 요건: 방문 시 목적 확인 가능해야 함)
+  'page.about': [
+    'MAPEXP는 방문한 지역을 지도에 기록하고 색칠하는 여행 기록 웹앱입니다. 지나간 곳을 6단계 도장으로 남기고, 로그인하면 기록을 클라우드에 저장해 여러 기기에서 동기화할 수 있습니다.',
+    "MAPEXP is a travel-logging web app that records and colors in the regions you've visited. Mark places with 6-level stamps, and sign in to save your records to the cloud and sync them across your devices.",
+    'MAPEXPは、訪れた地域を地図に記録して塗りつぶす旅の記録ウェブアプリです。訪れた場所を6段階のスタンプで残し、ログインすると記録をクラウドに保存して複数の端末で同期できます。',
+  ],
   // '관리'는 관리자 느낌이라 사용자 언어(도장 찍기)로
   'page.manageMunis': ['{term} 도장', '{term}', '{term}スタンプ'],
   'page.manageMunisLong': ['{term} 도장 찍기', 'Stamp {term}', '{term}にスタンプを押す'],

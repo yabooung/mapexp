@@ -35,7 +35,8 @@ export default function Header() {
               </span>
               <div className="leading-none">
                 <h1 className="text-lg sm:text-xl font-bold tracking-tight text-ink">MAPEXP</h1>
-                <p className="hidden sm:block text-[11px] text-muted mt-0.5">{t('app.subtitle')}</p>
+                {/* 앱 목적 한 줄 - 모든 화면에서 표시 (OAuth 심사: 홈에 목적 확인 가능) */}
+                <p className="text-[11px] text-muted mt-0.5">{t('app.subtitle')}</p>
               </div>
             </div>
 

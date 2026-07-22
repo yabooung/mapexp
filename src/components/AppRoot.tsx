@@ -141,12 +141,15 @@ function HomeContent({ initialLang }: { initialLang?: Lang }) {
       <ViewerBanner />
 
       <div className="flex flex-col h-full lg:h-auto lg:block lg:container lg:mx-auto lg:px-4 lg:py-6 lg:max-w-7xl">
-        {/* 데스크톱 타이틀 섹션 (국가 전환은 헤더 JP/KR 토글 하나로 통일) */}
+        {/* 데스크톱 타이틀 섹션 (국가 전환은 헤더 JP/KR 토글 하나로 통일)
+            앱 이름(h1)은 헤더의 'MAPEXP' 하나로 통일하고, 여기 대제목은 h2로 둔다
+            (OAuth 심사: 동의화면 앱 이름과 홈페이지 이름 일치). page.about = 앱 목적 설명. */}
         <div className="hidden lg:block mb-6">
-          <h1 className="text-[28px] font-bold tracking-tight text-ink leading-tight">
+          <h2 className="text-[28px] font-bold tracking-tight text-ink leading-tight">
             {t('page.title')}
-          </h1>
+          </h2>
           <p className="text-muted mt-1 text-[15px]">{t('page.tagline')}</p>
+          <p className="text-muted mt-2 text-sm max-w-2xl leading-relaxed">{t('page.about')}</p>
         </div>
 
         {/* 데스크톱 뷰 모드 전환 */}
