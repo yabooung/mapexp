@@ -2,9 +2,10 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'MAPEXP - 지역 경험치 맵',
+    // 앱 이름은 'MAPEXP'로 통일 (OAuth 동의화면 앱 이름과 일치 - 구글이 manifest name을 읽음)
+    name: 'MAPEXP',
     short_name: 'MAPEXP',
-    description: '방문한 지역을 기록하고 경험치를 쌓는 지도 서비스',
+    description: '방문한 지역을 지도에 기록하고 색칠하는 여행 기록 앱. 로그인하면 기록을 클라우드에 저장하고 여러 기기에서 동기화할 수 있습니다.',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',
