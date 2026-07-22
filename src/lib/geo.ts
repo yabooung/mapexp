@@ -158,16 +158,34 @@ export async function detectRegionAt(
 }
 
 /**
+ * 좌표가 속한 후보 국가 추림 (광역 GeoJSON 다운로드 전에 실행).
+ * 폴리곤 판정 전에 대략적 bbox로 후보를 좁혀, 먼 나라의 광역 파일을
+ * 불필요하게 받지 않게 한다(일본 광역 ~478KB, 한국 ~73KB 절감).
+ * 일본 서남단 섬(오키나와/요나구니)은 경도상 한국과 겹치므로 본토/남서제도
+ * 두 박스로 나눈다. 어느 박스에도 안 들면 둘 다 시도해 기존 동작을 보존한다.
+ */
+function countryCandidates(lat: number, lng: number): Country[] {
+  const inKorea = lat >= 33 && lat <= 39 && lng >= 124.5 && lng <= 131.0
+  const inJapanMain = lat >= 30 && lat <= 46 && lng >= 129.0 && lng <= 146.0
+  const inJapanSW = lat >= 24 && lat <= 31 && lng >= 122.5 && lng <= 131.0
+  const cands: Country[] = []
+  if (inKorea) cands.push('korea')
+  if (inJapanMain || inJapanSW) cands.push('japan')
+  return cands.length ? cands : ['korea', 'japan']
+}
+
+/**
  * 좌표가 속한 국가와 광역 지역을 함께 감지한다.
- * 두 나라 광역 폴리곤에 point-in-polygon을 돌려 실제로 포함하는 쪽을 반환.
- * (bbox는 대마도 부근 등에서 모호하므로 폴리곤 판정을 쓴다)
+ * bbox로 후보 국가를 좁힌 뒤, 후보 나라의 광역 폴리곤에만 point-in-polygon을
+ * 돌려 실제로 포함하는 쪽을 반환한다. (대마도 부근 등 겹치는 곳은 두 나라 모두
+ * 후보가 되어 폴리곤 판정으로 가린다.)
  * 어느 나라에도 속하지 않으면 null → 호출부가 "여행지 밖" 안내.
  */
 export async function detectCountryRegionAt(
   lat: number,
   lng: number,
 ): Promise<{ country: Country; region: DetectedRegion } | null> {
-  const countries: Country[] = ['korea', 'japan']
+  const countries = countryCandidates(lat, lng)
   const results = await Promise.all(
     countries.map((c) => detectRegionAt(lat, lng, c).then((region) => ({ c, region }))),
   )
