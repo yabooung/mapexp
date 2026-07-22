@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Supabase — 백엔드 구조/스키마를 저장소에 공개하지 않음 (schema.sql 포함 전체 무시)
+supabase/
+.supabase
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

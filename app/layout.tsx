@@ -28,11 +28,39 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ??
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
   ),
-  title: "MAPEXP - 여행 도장 지도",
+  title: "MAPEXP - 여행 도장 지도 · 旅スタンプ地図 · Travel Stamp Map",
   // 検索 노출용 설명: 経県値는 uub.jp 상표라 제품명이 아닌 '방식 참조'로만 언급 (지시적 사용)
+  // 한·일·영 검색 모두 걸리도록 3언어 키워드를 담되, 経県値는 지시적(방식 참조) 표현만 사용
   description:
-    "일본의 経県値(경현치, uub.jp) 방식으로 방문 지역을 6단계 도장으로 기록하는 지도. 도도부현·시도부터 시정촌·시군구까지, GPS 자동 감지와 공유 지원.",
-  keywords: ["経県値", "경현치", "여행 지도", "여행 기록", "도장", "旅スタンプ", "keikenchi map"],
+    "訪れた地域を6段階のスタンプで記録する旅の地図。経県値(uub.jp)の考え方を参考に、都道府県・市区町村から韓国の広域・市郡区まで記録・共有できます。 · 방문한 지역을 6단계 도장으로 기록하는 여행 지도 — 経県値(경현치, uub.jp) 방식 참고, GPS 자동 감지·공유 지원. · Track places you've visited on a 6-level stamp map.",
+  keywords: ["経県値", "けいけんち", "旅スタンプ", "都道府県 地図", "경현치", "여행 지도", "여행 기록", "도장", "keikenchi map", "travel stamp map"],
+  alternates: {
+    canonical: "/",
+    // 언어별 라우트로 hreflang 클러스터 구성 (루트 '/'는 x-default = 브라우저 언어 자동 판정)
+    languages: {
+      ko: "/ko",
+      ja: "/ja",
+      en: "/en",
+      "x-default": "/",
+    },
+  },
+  openGraph: {
+    type: "website",
+    siteName: "MAPEXP",
+    url: "/",
+    title: "MAPEXP · 旅スタンプ地図 · 여행 도장 지도",
+    description:
+      "訪れた地域を6段階のスタンプで記録する旅の地図。都道府県・市区町村から韓国の広域・市郡区まで。방문 지역을 6단계 도장으로 기록·공유.",
+    // 기본 로케일 일본어 + 한국어/영어 대체 로케일 (일본 커뮤니티 유입 대비)
+    locale: "ja_JP",
+    alternateLocale: ["ko_KR", "en_US"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MAPEXP · 旅スタンプ地図 · 여행 도장 지도",
+    description:
+      "訪れた地域を6段階のスタンプで記録する旅の地図。방문 지역을 6단계 도장으로 기록·공유. Track visited places on a stamp map.",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

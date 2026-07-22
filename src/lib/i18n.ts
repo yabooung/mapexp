@@ -210,6 +210,52 @@ const STRINGS = {
   'sync.notConfigured': ['동기화 서버가 아직 설정되지 않았습니다.', 'Sync server is not configured yet.', '同期サーバーが未設定です。'],
   'sync.error': ['동기화에 실패했습니다. 잠시 후 다시 시도하세요.', 'Sync failed. Please try again.', '同期に失敗しました。後でもう一度お試しください。'],
 
+  // 회원 인증 (Supabase - 이메일 + 구글)
+  'auth.title': ['로그인', 'Sign in', 'ログイン'],
+  'auth.accountTitle': ['내 계정', 'My account', 'アカウント'],
+  'auth.intro': [
+    '로그인하면 기록이 클라우드에 자동 저장되고, 월별 히스토리를 쓸 수 있어요.',
+    'Sign in to auto-save your records to the cloud and keep a monthly history.',
+    'ログインすると記録がクラウドに自動保存され、月別の履歴を残せます。',
+  ],
+  'auth.google': ['구글로 계속하기', 'Continue with Google', 'Googleで続ける'],
+  'auth.or': ['또는', 'or', 'または'],
+  'auth.email': ['이메일', 'Email', 'メールアドレス'],
+  'auth.password': ['비밀번호 (6자 이상)', 'Password (6+ chars)', 'パスワード (6文字以上)'],
+  'auth.signIn': ['이메일로 로그인', 'Sign in with email', 'メールでログイン'],
+  'auth.signUp': ['이메일로 회원가입', 'Sign up with email', 'メールで登録'],
+  'auth.toSignup': ['계정이 없나요? 회원가입', "No account? Sign up", 'アカウントがない方はこちら'],
+  'auth.toSignin': ['이미 계정이 있나요? 로그인', 'Already have an account? Sign in', 'すでにアカウントをお持ちの方'],
+  'auth.signOut': ['로그아웃', 'Sign out', 'ログアウト'],
+  'auth.member': ['회원', 'Member', '会員'],
+  'auth.syncOn': ['기록이 클라우드에 자동 동기화됩니다.', 'Your records auto-sync to the cloud.', '記録はクラウドに自動同期されます。'],
+  'auth.welcome': ['로그인되었습니다.', 'Signed in.', 'ログインしました。'],
+  'auth.signedOut': ['로그아웃되었습니다.', 'Signed out.', 'ログアウトしました。'],
+  'auth.confirmSent': ['확인 메일을 보냈어요. 메일함을 확인하세요.', 'Confirmation email sent. Check your inbox.', '確認メールを送信しました。メールをご確認ください。'],
+  'auth.invalidInput': ['이메일과 6자 이상 비밀번호를 입력하세요.', 'Enter an email and a 6+ character password.', 'メールと6文字以上のパスワードを入力してください。'],
+  'auth.failed': ['처리에 실패했습니다. 잠시 후 다시 시도하세요.', 'Something went wrong. Please try again.', '処理に失敗しました。後でもう一度お試しください。'],
+  'auth.signinFailed': ['이메일 또는 비밀번호가 올바르지 않습니다.', 'Incorrect email or password.', 'メールまたはパスワードが正しくありません。'],
+  'auth.notConfigured': ['회원 기능이 아직 설정되지 않았습니다.', 'Accounts are not configured yet.', '会員機能はまだ設定されていません。'],
+
+  // 월별 히스토리 (회원 전용)
+  'history.title': ['월별 히스토리', 'Monthly history', '月別の履歴'],
+  'history.open': ['월별 히스토리 열기', 'Open monthly history', '月別履歴を開く'],
+  'history.intro': [
+    '방문 기록을 월별로 자동 정리했어요. 각 달에 메모를 남길 수 있습니다.',
+    'Your visits, grouped by month. Add a note to any month.',
+    '訪問記録を月別に自動整理しました。各月にメモを残せます。',
+  ],
+  'history.summary': ['{regions}곳 · {visits}회', '{regions} places · {visits} visits', '{regions}か所 · {visits}回'],
+  'history.memoPlaceholder': ['이 달의 메모 (여행 소감, 계획 등)', "This month's note (thoughts, plans…)", 'この月のメモ（感想・予定など）'],
+  'history.memoSaved': ['메모를 저장했습니다.', 'Note saved.', 'メモを保存しました。'],
+  'history.memoFailed': ['메모 저장에 실패했습니다.', 'Failed to save note.', 'メモの保存に失敗しました。'],
+  'history.empty': [
+    '아직 방문 기록이 없어요. 지도에서 지역을 찍으면 월별로 정리됩니다.',
+    'No visits yet. Stamp regions on the map and they’ll be organized by month.',
+    'まだ訪問記録がありません。地図で地域にスタンプを押すと月別に整理されます。',
+  ],
+  'history.loginNeeded': ['로그인이 필요한 기능입니다.', 'Please sign in to use this.', 'ログインが必要な機能です。'],
+
   // 백업 알림(넛지) - 데이터는 이 브라우저에만 저장되므로 주기적으로 백업을 유도
   'backup.remindMessage': [
     '기록이 이 브라우저에만 저장돼 있어요. 캐시 삭제·기기 변경 시 사라질 수 있으니 지금 백업하세요.',
@@ -338,6 +384,7 @@ const STRINGS = {
   'map.tileKo': ['한국어', 'Korean', '韓国語'],
   'map.tileJa': ['일본어', 'Japanese', '日本語'],
   'map.baseTiles': ['배경 지도', 'Base map', '背景地図'],
+  'map.labels': ['지명', 'Labels', '地名'],
   'map.both': ['양국 지도', 'Both countries', '日韓を同時'],
   'map.settingsAria': ['지도 설정', 'Map settings', '地図設定'],
   // 이동/구경 중 실수로 지역을 탭해 등급이 바뀌는 걸 막는 잠금

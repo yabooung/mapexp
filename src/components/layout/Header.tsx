@@ -3,14 +3,21 @@
 import { useState } from 'react'
 import ShareModal from '@/components/share/ShareModal'
 import SettingsModal from '@/components/common/SettingsModal'
+import AuthModal from '@/components/auth/AuthModal'
+import HistoryModal from '@/components/history/HistoryModal'
 import Icon from '@/components/common/Icon'
 import LanguageSwitcher from '@/components/common/LanguageSwitcher'
 import { useT } from '@/lib/i18n'
+import { useAuthStore, isAuthEnabled } from '@/store/auth'
 
 export default function Header() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const t = useT()
+  const user = useAuthStore((s) => s.user)
+  const authEnabled = isAuthEnabled()
 
   return (
     <>
@@ -47,6 +54,19 @@ export default function Header() {
                 <span className="hidden sm:inline">{t('common.share')}</span>
               </button>
 
+              {/* 계정 버튼 (회원 기능 설정된 경우만) - 로그인 시 인장색 강조 */}
+              {authEnabled && (
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className={`p-2 rounded-md transition-colors ${
+                    user ? 'text-seal hover:bg-paper' : 'text-muted hover:text-ink hover:bg-paper'
+                  }`}
+                  aria-label={t('auth.title')}
+                >
+                  <Icon name="user" size={19} />
+                </button>
+              )}
+
               {/* 설정 버튼 */}
               <button
                 onClick={() => setIsSettingsModalOpen(true)}
@@ -68,6 +88,17 @@ export default function Header() {
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onOpenHistory={() => setIsHistoryModalOpen(true)}
+      />
+
+      <HistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
       />
     </>
   )

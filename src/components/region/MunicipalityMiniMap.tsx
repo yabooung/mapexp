@@ -12,10 +12,11 @@ import { EXP_COLORS } from '@/constants'
 import { KOREA_PROV_CODE_BY_ID } from '@/constants/regions'
 import { loadMunicipalities, municipalityName, PREF_KANJI_BY_ID, type Country } from '@/lib/geo'
 import { loadJpMuniNames, muniDisplayName } from '@/lib/muniNames'
-import { mapLangNow, useMapLang, useLang, useT, levelLabel, I18nKey } from '@/lib/i18n'
+import { mapLangNow, useMapLang, useLang, useT, levelLabel, I18nKey, type Lang } from '@/lib/i18n'
 import Icon from '@/components/common/Icon'
 
 const TILES_KEY = 'mapexp_minimap_tiles' // 배경 지도 토글 기억 (모달을 다시 열어도 유지)
+const LABELS_KEY = 'mapexp_minimap_labels' // 지명 라벨 표시 토글 기억
 
 interface Props {
   country: Country
@@ -110,6 +111,8 @@ export default function MunicipalityMiniMap({ country, prefectureId, focusMuniId
   // selector 없이 구독 → 레벨 변경 시 리렌더되어 아래 재스타일 effect가 돈다
   useMapExpStore()
   const { getRegionById, addRegion, updateRegion } = useMapExpStore.getState()
+  const settings = useMapExpStore((s) => s.settings)
+  const updateSettings = useMapExpStore((s) => s.updateSettings)
   const mapLang = useMapLang()
   const lang = useLang()
   const t = useT()
@@ -131,6 +134,35 @@ export default function MunicipalityMiniMap({ country, prefectureId, focusMuniId
       return !v
     })
   }
+  const [showLabels, setShowLabels] = useState(() => {
+    try {
+      return localStorage.getItem(LABELS_KEY) !== '0'
+    } catch {
+      return true
+    }
+  })
+  const toggleLabels = () => {
+    setShowLabels((v) => {
+      try {
+        localStorage.setItem(LABELS_KEY, v ? '0' : '1')
+      } catch { /* 무시 */ }
+      return !v
+    })
+  }
+  // 지명 라벨 언어 순환: 자동 → 한국어 → 日本語 → English (지도 패널 설정과 동일한 소스)
+  const cycleMapLang = () => {
+    const order: Array<'auto' | Lang> = ['auto', 'ko', 'ja', 'en']
+    const cur = settings.mapLanguage ?? 'auto'
+    updateSettings({ mapLanguage: order[(order.indexOf(cur) + 1) % order.length] })
+  }
+  const mapLangLabel =
+    (settings.mapLanguage ?? 'auto') === 'auto'
+      ? t('map.langAuto')
+      : settings.mapLanguage === 'ko'
+        ? '한국어'
+        : settings.mapLanguage === 'en'
+          ? 'English'
+          : '日本語'
   const [labels, setLabels] = useState<MiniLabel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const layerRef = useRef<L.GeoJSON | null>(null)
@@ -283,8 +315,8 @@ export default function MunicipalityMiniMap({ country, prefectureId, focusMuniId
             onEachFeature={onEach}
           />
         )}
-        {/* 시정촌 이름 라벨 (id당 1개, 본체 폴리곤 중심) */}
-        {labels.map((l) => (
+        {/* 시정촌 이름 라벨 (id당 1개, 본체 폴리곤 중심) - 라벨 끄기로 숨김 */}
+        {showLabels && labels.map((l) => (
           <Marker
             key={l.id}
             position={l.position}
@@ -300,16 +332,41 @@ export default function MunicipalityMiniMap({ country, prefectureId, focusMuniId
         <FitToData data={geo} focusMuniId={focusMuniId} />
       </MapContainer>
 
-      {/* 배경 지도 켬/끔 - 기억 단서(도로·역)가 필요할 때와 깔끔한 색 지도가 필요할 때 */}
-      <button
-        onClick={toggleTiles}
-        className={`absolute top-2 right-2 z-[1000] flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-semibold shadow-[0_2px_8px_rgba(38,35,28,0.12)] transition-colors ${
-          showTiles ? 'bg-ink text-paper border-ink' : 'bg-card text-muted border-line hover:text-ink'
-        }`}
-      >
-        <Icon name="layers" size={12} />
-        {t('map.baseTiles')} {showTiles ? t('map.on') : t('map.off')}
-      </button>
+      {/* 지도 컨트롤 스택 (우상단): 배경 지도 · 지명 라벨 · 라벨 언어 */}
+      <div className="absolute top-2 right-2 z-[1000] flex flex-col items-end gap-1.5">
+        {/* 배경 지도 켬/끔 - 기억 단서(도로·역)가 필요할 때와 깔끔한 색 지도가 필요할 때 */}
+        <button
+          onClick={toggleTiles}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-semibold shadow-[0_2px_8px_rgba(38,35,28,0.12)] transition-colors ${
+            showTiles ? 'bg-ink text-paper border-ink' : 'bg-card text-muted border-line hover:text-ink'
+          }`}
+        >
+          <Icon name="layers" size={12} />
+          {t('map.baseTiles')} {showTiles ? t('map.on') : t('map.off')}
+        </button>
+
+        {/* 지명 라벨 켬/끔 */}
+        <button
+          onClick={toggleLabels}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-semibold shadow-[0_2px_8px_rgba(38,35,28,0.12)] transition-colors ${
+            showLabels ? 'bg-ink text-paper border-ink' : 'bg-card text-muted border-line hover:text-ink'
+          }`}
+        >
+          <Icon name="pin" size={12} />
+          {t('map.labels')} {showLabels ? t('map.on') : t('map.off')}
+        </button>
+
+        {/* 라벨 언어 순환 (라벨 켜져 있을 때만 의미) */}
+        {showLabels && (
+          <button
+            onClick={cycleMapLang}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border bg-card text-muted border-line hover:text-ink text-[11px] font-semibold shadow-[0_2px_8px_rgba(38,35,28,0.12)] transition-colors"
+          >
+            <Icon name="globe" size={12} />
+            {mapLangLabel}
+          </button>
+        )}
+      </div>
 
       {/* 등급 색 범례 - 지도에서 색이 무슨 뜻인지 바로 알 수 있게 (호버 시 한 줄 설명) */}
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2.5 bg-card/95 border border-line rounded-full shadow-[0_2px_8px_rgba(38,35,28,0.12)] px-3 py-1.5 max-w-[calc(100%-16px)] overflow-x-auto">

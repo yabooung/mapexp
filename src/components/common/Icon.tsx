@@ -29,6 +29,10 @@ export type IconName =
   | 'chevron-left'
   | 'chevron-right'
   | 'search'
+  | 'user'
+  | 'calendar'
+  | 'logout'
+  | 'mail'
 
 const PATHS: Record<IconName, React.ReactNode> = {
   map: (
@@ -144,6 +148,30 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <circle cx="11" cy="11" r="7" />
       <path d="m20.5 20.5-4.5-4.5" />
+    </>
+  ),
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 9h18M8 3v4M16 3v4" />
+    </>
+  ),
+  logout: (
+    <>
+      <path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" />
+      <path d="M10 12H3m0 0 3.5-3.5M3 12l3.5 3.5" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3.5 7 8.5 6 8.5-6" />
     </>
   ),
 }
