@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
@@ -92,8 +93,9 @@ export default function RootLayout({
           }}
         />
         <ServiceWorkerRegister />
-        {/* 방문 통계 (Vercel 배포 시에만 동작, 쿠키 미사용) */}
+        {/* 방문 통계 + 성능(Core Web Vitals) 측정 (Vercel 배포 시에만 동작, 쿠키 미사용) */}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
