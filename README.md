@@ -33,14 +33,16 @@ Based on Japan's [経県値 (Keikenchi)](https://uub.jp/kkn/) concept, reimagine
 - **GPS location stamp** — One tap detects the region you're currently in (province + municipality) and stamps it, auto-recognizing which country you're in
   - GPS-verified records can't be edited or deleted; manual records allow free past-date entry
 - **Gamification** — Per-country traveler level, kanji seal stamp book — milestone stamps plus **region-completion stamps** (earned by stamping every municipality of a province, or completing a regional block like Shikoku or Jeolla; shown in indigo blue), per-region and municipal score breakdowns
-- **Sharing** — SNS image card (game-style Lv/EXP score, rank tier, optional place-name labels and badge row, Japan/Korea/both × regions/municipalities), per-region card with share preview, QR codes, read-only share links, JSON file exchange. Overlay a friend's map on yours in a 3-color compare view (only me / only them / both)
-- **i18n UI** — Korean · English · Japanese
+- **Accounts & cloud sync** *(optional)* — Sign in with email or Google. Signed-in records auto-save to the cloud and sync across your devices, merged losslessly with any local data. Without signing in, everything stays local — accounts are opt-in
+- **Monthly journal** *(members)* — Your visits are auto-organized by month; write, edit, and delete multiple journal entries per month, freely re-date them, and browse your history by month or by year
+- **Sharing** — SNS image card (game-style Lv/EXP score, rank tier, optional place-name labels and badge row, Japan/Korea/both × regions/municipalities), per-region card with share preview, QR codes, read-only share links, JSON file exchange. Overlay a friend's map on yours in a 3-color compare view (only me / only them / both). Device-to-device code sync (no account needed)
+- **i18n UI & routes** — Korean · English · Japanese, with per-language pages (`/ko`, `/ja`, `/en`)
 - **PWA** — Home-screen install, offline map caching
-- **Privacy** — All records and location data stay in your browser only (no server, no login)
+- **Local-first & privacy** — Without signing in, all records and location data stay in your browser only. GPS coordinates are used on-device and never sent to a server. See the [Privacy Policy](https://mapexp.app/privacy) and [Terms](https://mapexp.app/terms)
 
 ## Tech Stack
 
-Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Leaflet (react-leaflet) · Zustand · Turf.js · d3-geo
+Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Leaflet (react-leaflet) · Zustand · Turf.js · d3-geo · Supabase (auth & cloud sync)
 
 ## Development
 
