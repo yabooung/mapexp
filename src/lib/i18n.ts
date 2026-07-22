@@ -475,10 +475,12 @@ const STRINGS = {
 
   // 푸터
   'footer.privacy': [
-    '기록과 위치 정보는 내 기기(브라우저)에만 저장됩니다',
-    'Your records and location never leave your device',
-    '記録と位置情報は端末内にのみ保存されます',
+    '로그인하지 않으면 기록은 이 기기에만 저장됩니다',
+    'Without signing in, your records stay on this device',
+    'ログインしなければ記録はこの端末にのみ保存されます',
   ],
+  'footer.privacyPolicy': ['개인정보처리방침', 'Privacy', 'プライバシー'],
+  'footer.terms': ['이용약관', 'Terms', '利用規約'],
   'footer.sources': ['지도 데이터 출처:', 'Map data:', '地図データ出典:'],
   'footer.concept': [
     "'경현치(経県値)' 개념 원조",

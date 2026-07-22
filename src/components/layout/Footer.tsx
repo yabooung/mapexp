@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { APP_NAME, APP_VERSION } from '@/constants'
 import { useT } from '@/lib/i18n'
 
@@ -15,8 +16,17 @@ export default function Footer() {
             © {currentYear} {APP_NAME} <span className="text-faint">v{APP_VERSION}</span>
           </div>
 
-          {/* 프라이버시 한 줄 */}
-          <div className="text-xs text-muted">{t('footer.privacy')}</div>
+          {/* 프라이버시 한 줄 + 법률 문서 링크 */}
+          <div className="flex items-center gap-3 text-xs text-muted">
+            <span className="hidden sm:inline">{t('footer.privacy')}</span>
+            <Link href="/privacy" className="hover:text-ink transition-colors">
+              {t('footer.privacyPolicy')}
+            </Link>
+            <span className="text-faint">·</span>
+            <Link href="/terms" className="hover:text-ink transition-colors">
+              {t('footer.terms')}
+            </Link>
+          </div>
 
           <a
             href="https://github.com/yabooung/mapexp"

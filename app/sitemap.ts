@@ -18,5 +18,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     alternates: { languages },
   })
 
-  return [entry(''), entry('/ko'), entry('/ja'), entry('/en')]
+  const legal = (path: string): MetadataRoute.Sitemap[number] => ({
+    url: `${BASE}${path}`,
+    lastModified: now,
+    changeFrequency: 'yearly',
+    priority: 0.3,
+  })
+
+  return [entry(''), entry('/ko'), entry('/ja'), entry('/en'), legal('/privacy'), legal('/terms')]
 }
