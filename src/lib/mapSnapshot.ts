@@ -592,7 +592,10 @@ export async function renderPrefectureCardImage(
   // ── 지도: 먼 섬(부속도서)은 컷하지 않고 인셋 박스로 떼어 표시 ──
   const boxes = feats.map(({ feature }) => {
     try {
-      return geoBounds(feature) // [[minLng,minLat],[maxLng,maxLat]]
+      const bb = geoBounds(feature) // [[minLng,minLat],[maxLng,maxLat]]
+      // 빈 지오메트리(치바 所属未定地 등)는 NaN bbox를 반환해 본체 범위 계산을
+      // 통째로 오염시키므로(카드 렌더 실패) 제외한다
+      return bb[0].every(Number.isFinite) && bb[1].every(Number.isFinite) ? bb : null
     } catch {
       return null
     }
@@ -626,6 +629,41 @@ export async function renderPrefectureCardImage(
       c = Math.max(c, bb[1][0]); d = Math.max(d, bb[1][1])
     }
     return Number.isFinite(a) ? [[a, b], [c, d]] : null
+  }
+
+  // 가짜 이상치 되돌리기: 인셋은 본체 축소를 막기 위한 것이므로, 포함해도 본체 범위가
+  // 거의 안 커지는 지역(예: 오사카 남부처럼 육지로 이어진 곳)은 인셋으로 빼지 않는다
+  // — 그런 지역까지 인셋에 넣으면 박스가 본체 지도를 가린다.
+  // 본체 범위를 갱신해가며 수렴할 때까지 반복 — 이웃끼리 인셋에 몰린 경우(교토 북부처럼)
+  // 하나가 복귀하면 그 옆도 복귀할 수 있다. 연쇄 병합으로 진짜 낙도(아마미 등)까지
+  // 끌려오지 않도록 최초 대각선의 1.8배를 절대 상한으로 둔다.
+  if (outlierIdx.length > 0) {
+    const mb0 = boundsOf(mainIdx)
+    const diag0 = mb0 ? Math.hypot(mb0[1][0] - mb0[0][0], mb0[1][1] - mb0[0][1]) : 0
+    let merged = diag0 > 0
+    while (merged && outlierIdx.length > 0) {
+      merged = false
+      const mb = boundsOf(mainIdx)
+      if (!mb) break
+      const diag = Math.hypot(mb[1][0] - mb[0][0], mb[1][1] - mb[0][1])
+      const trueOutliers: number[] = []
+      for (const i of outlierIdx) {
+        const bb = boxes[i]
+        if (!bb) continue
+        const uDiag = Math.hypot(
+          Math.max(mb[1][0], bb[1][0]) - Math.min(mb[0][0], bb[0][0]),
+          Math.max(mb[1][1], bb[1][1]) - Math.min(mb[0][1], bb[0][1]),
+        )
+        if (uDiag <= diag * 1.35 && uDiag <= diag0 * 1.8) {
+          mainIdx.push(i)
+          merged = true
+        } else {
+          trueOutliers.push(i)
+        }
+      }
+      outlierIdx.length = 0
+      outlierIdx.push(...trueOutliers)
+    }
   }
   const mainBounds = boundsOf(mainIdx) ?? boundsOf(feats.map((_, i) => i))
   if (!mainBounds) return null
@@ -712,8 +750,40 @@ export async function renderPrefectureCardImage(
   if (outlierIdx.length > 0 && insetFitBounds) {
     const iw = Math.round(width * 0.34)
     const ih = Math.round(mapH * 0.36)
-    const ix = width - pad - iw
-    const iy = mapTop + mapH - ih - 10
+    // 인셋 위치: 네 모서리 중 본체 지도와 가장 덜 겹치는 곳 (본체를 가리지 않게)
+    const corners: Array<[number, number]> = [
+      [width - pad - iw, mapTop + mapH - ih - 10], // 우하 (기본)
+      [pad, mapTop + mapH - ih - 10], // 좌하
+      [width - pad - iw, mapTop + 10], // 우상
+      [pad, mapTop + 10], // 좌상
+    ]
+    const featPx = mainIdx
+      .map((i) => {
+        try {
+          return path.bounds(feats[i].feature)
+        } catch {
+          return null
+        }
+      })
+      .filter((b): b is [[number, number], [number, number]] => !!b)
+    const overlapArea = ([cx, cy]: [number, number]) => {
+      let sum = 0
+      for (const [[x0, y0], [x1, y1]] of featPx) {
+        const w = Math.min(x1, cx + iw) - Math.max(x0, cx)
+        const h = Math.min(y1, cy + ih) - Math.max(y0, cy)
+        if (w > 0 && h > 0) sum += w * h
+      }
+      return sum
+    }
+    let [ix, iy] = corners[0]
+    let best = overlapArea(corners[0])
+    for (const c of corners.slice(1)) {
+      const a = overlapArea(c)
+      if (a < best * 0.95) {
+        best = a
+        ;[ix, iy] = c
+      }
+    }
     ctx.fillStyle = '#f5f3ec'
     ctx.strokeStyle = '#c9c4b6'
     ctx.lineWidth = 1.2
