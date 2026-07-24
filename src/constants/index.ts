@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   MAP_DATA: 'mapexp_data',
   USER_SETTINGS: 'mapexp_settings',
   SELECTED_COUNTRY: 'mapexp_country',
+  SEEN_BADGES: 'mapexp_seen_badges',
 } as const
 
 /**
