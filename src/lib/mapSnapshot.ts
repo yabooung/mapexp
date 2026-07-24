@@ -668,11 +668,68 @@ export async function renderPrefectureCardImage(
   const mainBounds = boundsOf(mainIdx) ?? boundsOf(feats.map((_, i) => i))
   if (!mainBounds) return null
 
+  // 먼 섬 인셋 범위: 이상치 중에서도 밀집 군집에 맞춘다 — 극단 무인암초(도쿄 南鳥島 등)가
+  // 인셋을 뭉개 이즈제도 같은 실제 방문 섬이 점처럼 작아지지 않도록.
+  // 범위는 bbox가 아닌 '중심점 bbox + 중앙값 피처 크기 패딩'(원 bbox로 클램프) —
+  // 한 시정촌에 딸린 외딴 암초(이시가키시의 센카쿠 등)가 fit을 부풀리지 않게 한다.
+  const insetFitBounds = ((): [[number, number], [number, number]] | null => {
+    if (outlierIdx.length === 0) return null
+    const oc = outlierIdx.map((i) => centers[i]).filter((c): c is [number, number] => !!c)
+    if (oc.length === 0) return boundsOf(outlierIdx)
+    const oMedLng = median(oc.map((c) => c[0]))
+    const oMedLat = median(oc.map((c) => c[1]))
+    const oDists = oc.map((c) => Math.hypot(c[0] - oMedLng, c[1] - oMedLat))
+    const oCut = Math.max(0.5, median(oDists) * 3)
+    const clustered = outlierIdx.filter((i) => {
+      const c = centers[i]
+      return c && Math.hypot(c[0] - oMedLng, c[1] - oMedLat) <= oCut
+    })
+    const idxs = clustered.length ? clustered : outlierIdx
+    const bb = boundsOf(idxs)
+    if (!bb) return null
+    const cs = idxs.map((i) => centers[i]).filter((c): c is [number, number] => !!c)
+    const sizes = idxs
+      .map((i) => boxes[i])
+      .filter((b): b is [[number, number], [number, number]] => !!b)
+      .map((b) => [b[1][0] - b[0][0], b[1][1] - b[0][1]])
+    if (cs.length === 0 || sizes.length === 0) return bb
+    const padW = median(sizes.map((s) => s[0])) * 0.6
+    const padH = median(sizes.map((s) => s[1])) * 0.6
+    const lngs = cs.map((c) => c[0])
+    const lats = cs.map((c) => c[1])
+    return [
+      [Math.max(bb[0][0], Math.min(...lngs) - padW), Math.max(bb[0][1], Math.min(...lats) - padH)],
+      [Math.min(bb[1][0], Math.max(...lngs) + padW), Math.min(bb[1][1], Math.max(...lats) + padH)],
+    ]
+  })()
+
+  // 인셋 자리 예약: 본체 위에 겹치면(오버레이) 지도가 가려지므로, 지도 영역을 분할해
+  // 인셋 전용 패널을 떼어준다. 군집이 세로로 길면(이즈제도) 우측 칼럼,
+  // 가로로 길면(사키시마) 하단 스트립 — 군집 모양에 맞춰 섬이 크게 보이는 쪽으로.
   const mapTop = pad + 180
+  let mapRight = width - pad
+  let mapBottom = mapTop + mapH
+  let paneRect: { x: number; y: number; w: number; h: number } | null = null
+  if (insetFitBounds) {
+    const midLat = (insetFitBounds[0][1] + insetFitBounds[1][1]) / 2
+    const cw = Math.max(1e-6, (insetFitBounds[1][0] - insetFitBounds[0][0]) * Math.cos((midLat * Math.PI) / 180))
+    const ch = Math.max(1e-6, insetFitBounds[1][1] - insetFitBounds[0][1])
+    const aspect = cw / ch
+    if (aspect >= 1.3) {
+      const h = Math.round(Math.min(mapH * 0.38, Math.max(mapH * 0.24, (width - pad * 2) / aspect)))
+      paneRect = { x: pad, y: mapTop + mapH - h, w: width - pad * 2, h }
+      mapBottom = paneRect.y - 14
+    } else {
+      const w = Math.round(Math.min(width * 0.32, Math.max(width * 0.2, mapH * aspect)))
+      paneRect = { x: width - pad - w, y: mapTop, w, h: mapH }
+      mapRight = paneRect.x - 14
+    }
+  }
+
   const projection = geoMercator().fitExtent(
     [
       [pad, mapTop],
-      [width - pad, mapTop + mapH],
+      [mapRight, mapBottom],
     ],
     {
       type: 'Feature',
@@ -707,11 +764,11 @@ export async function renderPrefectureCardImage(
     }
   }
 
-  // 본체 지도 (클리핑)
+  // 본체 지도 (클리핑 - 인셋 패널을 침범하지 않게 본체 영역까지만)
   const mainFeats = mainIdx.map((i) => feats[i])
   ctx.save()
   ctx.beginPath()
-  ctx.rect(0, mapTop - 24, width, mapH + 48)
+  ctx.rect(0, mapTop - 24, mapRight + 10, mapBottom - mapTop + 34)
   ctx.clip()
   paintFeats(path, mainFeats)
 
@@ -731,59 +788,9 @@ export async function renderPrefectureCardImage(
   }
   ctx.restore()
 
-  // ── 먼 섬 인셋: 우하단 박스에 떼어 표시 (전체 지도의 오키나와 인셋과 같은 방식) ──
-  // 인셋 범위는 먼 섬들 중에서도 밀집 군집에 맞춘다 — 극단 무인암초(도쿄 南鳥島 등)가
-  // 인셋을 뭉개 이즈제도 같은 실제 방문 섬이 점처럼 작아지지 않도록.
-  const insetFitBounds = ((): [[number, number], [number, number]] | null => {
-    const oc = outlierIdx.map((i) => centers[i]).filter((c): c is [number, number] => !!c)
-    if (oc.length === 0) return boundsOf(outlierIdx)
-    const oMedLng = median(oc.map((c) => c[0]))
-    const oMedLat = median(oc.map((c) => c[1]))
-    const oDists = oc.map((c) => Math.hypot(c[0] - oMedLng, c[1] - oMedLat))
-    const oCut = Math.max(0.5, median(oDists) * 3)
-    const clustered = outlierIdx.filter((i) => {
-      const c = centers[i]
-      return c && Math.hypot(c[0] - oMedLng, c[1] - oMedLat) <= oCut
-    })
-    return boundsOf(clustered.length ? clustered : outlierIdx)
-  })()
-  if (outlierIdx.length > 0 && insetFitBounds) {
-    const iw = Math.round(width * 0.34)
-    const ih = Math.round(mapH * 0.36)
-    // 인셋 위치: 네 모서리 중 본체 지도와 가장 덜 겹치는 곳 (본체를 가리지 않게)
-    const corners: Array<[number, number]> = [
-      [width - pad - iw, mapTop + mapH - ih - 10], // 우하 (기본)
-      [pad, mapTop + mapH - ih - 10], // 좌하
-      [width - pad - iw, mapTop + 10], // 우상
-      [pad, mapTop + 10], // 좌상
-    ]
-    const featPx = mainIdx
-      .map((i) => {
-        try {
-          return path.bounds(feats[i].feature)
-        } catch {
-          return null
-        }
-      })
-      .filter((b): b is [[number, number], [number, number]] => !!b)
-    const overlapArea = ([cx, cy]: [number, number]) => {
-      let sum = 0
-      for (const [[x0, y0], [x1, y1]] of featPx) {
-        const w = Math.min(x1, cx + iw) - Math.max(x0, cx)
-        const h = Math.min(y1, cy + ih) - Math.max(y0, cy)
-        if (w > 0 && h > 0) sum += w * h
-      }
-      return sum
-    }
-    let [ix, iy] = corners[0]
-    let best = overlapArea(corners[0])
-    for (const c of corners.slice(1)) {
-      const a = overlapArea(c)
-      if (a < best * 0.95) {
-        best = a
-        ;[ix, iy] = c
-      }
-    }
+  // ── 먼 섬 인셋 패널 (예약된 자리에 렌더 - 본체를 가리지 않음) ──
+  if (paneRect && insetFitBounds) {
+    const { x: ix, y: iy, w: iw, h: ih } = paneRect
     ctx.fillStyle = '#f5f3ec'
     ctx.strokeStyle = '#c9c4b6'
     ctx.lineWidth = 1.2
@@ -791,8 +798,8 @@ export async function renderPrefectureCardImage(
     ctx.rect(ix, iy, iw, ih)
     ctx.fill()
     ctx.stroke()
-    const innerPad = Math.round(Math.min(iw, ih) * 0.08)
-    const insetProj = geoMercator().fitExtent(
+    const innerPad = Math.round(Math.min(iw, ih) * 0.1)
+    let insetProj = geoMercator().fitExtent(
       [
         [ix + innerPad, iy + innerPad],
         [ix + iw - innerPad, iy + ih - innerPad],
@@ -803,6 +810,17 @@ export async function renderPrefectureCardImage(
         geometry: { type: 'MultiPoint', coordinates: insetFitBounds },
       } as unknown as Parameters<ReturnType<typeof geoMercator>['fitExtent']>[1],
     )
+    // 스케일 상한: 본체의 4배 — 작은 낙도 하나(울릉도 등)가 본체보다 커 보이지 않게
+    const scaleCap = projection.scale() * 4
+    if (insetProj.scale() > scaleCap) {
+      insetProj = geoMercator()
+        .scale(scaleCap)
+        .center([
+          (insetFitBounds[0][0] + insetFitBounds[1][0]) / 2,
+          (insetFitBounds[0][1] + insetFitBounds[1][1]) / 2,
+        ])
+        .translate([ix + iw / 2, iy + ih / 2])
+    }
     ctx.save()
     ctx.beginPath()
     ctx.rect(ix, iy, iw, ih)
