@@ -507,6 +507,10 @@ export interface PrefectureCardOpts {
   /** 기초 지명 라벨 (props·원어명 → 표시명, 미지정 시 라벨 없음) */
   getLabel?: (props: Record<string, string | null> | null, name: string) => string | null
   siteUrl?: string
+  /** 먼 섬 인셋 패널 포함 여부 (기본 true). false면 본체만 전폭으로 그린다 */
+  includeOutliers?: boolean
+  /** 렌더 부가 정보 콜백 — 이 지역에 낙도 인셋이 존재하는지 (옵션 토글 노출 판단용) */
+  onMeta?: (meta: { hasOutliers: boolean }) => void
 }
 
 /**
@@ -520,7 +524,7 @@ export async function renderPrefectureCardImage(
   getLevel: (regionId: string) => ExperienceGrade,
   opts: PrefectureCardOpts,
 ): Promise<string | null> {
-  const { regionName, subtitle, stats, getLabel, siteUrl = 'mapexp.app' } = opts
+  const { regionName, subtitle, stats, getLabel, siteUrl = 'mapexp.app', includeOutliers = true, onMeta } = opts
   const muniFc = await loadMunicipalities(country)
   if (!muniFc) return null
 
@@ -665,7 +669,50 @@ export async function renderPrefectureCardImage(
       outlierIdx.push(...trueOutliers)
     }
   }
-  const mainBounds = boundsOf(mainIdx) ?? boundsOf(feats.map((_, i) => i))
+  // 본체 fit 범위는 각 피처의 '최대 폴리곤' bbox 합집합 — 시정촌에 딸린 외딴 암초
+  // (久米島町의 硫黄鳥島 등)가 feature bbox를 부풀려 본체가 구석에 몰리지 않게 한다.
+  // (암초 자체는 그려지되 fit 대상에서만 빠져 화면 밖으로 잘릴 수 있음 - 의도된 동작)
+  const corePolyBounds = (feature: Feature): [[number, number], [number, number]] | null => {
+    const g = feature.geometry as { type: string; coordinates: unknown }
+    const rings: number[][][] =
+      g.type === 'MultiPolygon'
+        ? (g.coordinates as number[][][][]).map((p) => p[0])
+        : g.type === 'Polygon'
+          ? [(g.coordinates as number[][][])[0]]
+          : []
+    let best: number[][] | null = null
+    let bestArea = -1
+    for (const ring of rings) {
+      if (!ring || ring.length < 4) continue
+      let a = 0
+      for (let i = 0; i < ring.length - 1; i++) a += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1]
+      a = Math.abs(a)
+      if (a > bestArea) {
+        bestArea = a
+        best = ring
+      }
+    }
+    if (!best) return null
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+    for (const [x, y] of best) {
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y)
+      x1 = Math.max(x1, x); y1 = Math.max(y1, y)
+    }
+    return Number.isFinite(x0) && Number.isFinite(y0) && Number.isFinite(x1) && Number.isFinite(y1)
+      ? [[x0, y0], [x1, y1]]
+      : null
+  }
+  const coreUnion = (idxs: number[]): [[number, number], [number, number]] | null => {
+    let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity
+    for (const i of idxs) {
+      const bb = corePolyBounds(feats[i].feature)
+      if (!bb) continue
+      a = Math.min(a, bb[0][0]); b = Math.min(b, bb[0][1])
+      c = Math.max(c, bb[1][0]); d = Math.max(d, bb[1][1])
+    }
+    return Number.isFinite(a) ? [[a, b], [c, d]] : null
+  }
+  const mainBounds = coreUnion(mainIdx) ?? boundsOf(mainIdx) ?? boundsOf(feats.map((_, i) => i))
   if (!mainBounds) return null
 
   // 먼 섬 인셋 범위: 이상치 중에서도 밀집 군집에 맞춘다 — 극단 무인암초(도쿄 南鳥島 등)가
@@ -706,11 +753,13 @@ export async function renderPrefectureCardImage(
   // 인셋 자리 예약: 본체 위에 겹치면(오버레이) 지도가 가려지므로, 지도 영역을 분할해
   // 인셋 전용 패널을 떼어준다. 군집이 세로로 길면(이즈제도) 우측 칼럼,
   // 가로로 길면(사키시마) 하단 스트립 — 군집 모양에 맞춰 섬이 크게 보이는 쪽으로.
+  onMeta?.({ hasOutliers: !!insetFitBounds })
+
   const mapTop = pad + 180
   let mapRight = width - pad
   let mapBottom = mapTop + mapH
   let paneRect: { x: number; y: number; w: number; h: number } | null = null
-  if (insetFitBounds) {
+  if (includeOutliers && insetFitBounds) {
     const midLat = (insetFitBounds[0][1] + insetFitBounds[1][1]) / 2
     const cw = Math.max(1e-6, (insetFitBounds[1][0] - insetFitBounds[0][0]) * Math.cos((midLat * Math.PI) / 180))
     const ch = Math.max(1e-6, insetFitBounds[1][1] - insetFitBounds[0][1])

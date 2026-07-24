@@ -66,6 +66,8 @@ export default function MunicipalityManagerModal({
   // 지역 카드 공유 프리뷰
   const [sharePreview, setSharePreview] = useState(false)
   const [cardLabels, setCardLabels] = useState(true) // 기본: 지명 표시
+  const [cardIslands, setCardIslands] = useState(true) // 기본: 낙도 인셋 포함 (전체 지도)
+  const [hasIslands, setHasIslands] = useState(false) // 이 광역에 낙도 인셋이 있는지 (토글 노출용)
   const [cardImg, setCardImg] = useState<string | null>(null)
   const [sharing, setSharing] = useState(false)
 
@@ -210,6 +212,10 @@ export default function MunicipalityManagerModal({
       getLabel: cardLabels
         ? (props, name) => muniDisplayName(country as Country, props, name, lang)
         : undefined,
+      includeOutliers: cardIslands,
+      onMeta: ({ hasOutliers }) => {
+        if (!cancelled) setHasIslands(hasOutliers)
+      },
     }).then((url) => {
       if (!cancelled) setCardImg(url)
     })
@@ -217,11 +223,13 @@ export default function MunicipalityManagerModal({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sharePreview, isOpen, cardLabels, prefectureId, municipalities, lang])
+  }, [sharePreview, isOpen, cardLabels, cardIslands, prefectureId, municipalities, lang])
 
-  // 광역이 바뀌거나 모달이 닫히면 프리뷰 정리
+  // 광역이 바뀌거나 모달이 닫히면 프리뷰 정리 (낙도 토글도 지역 종속이라 리셋)
   useEffect(() => {
     setSharePreview(false)
+    setCardIslands(true)
+    setHasIslands(false)
   }, [prefectureId, isOpen])
 
   const handleShareCard = async () => {
@@ -553,10 +561,21 @@ export default function MunicipalityManagerModal({
             >
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-ink truncate">{prefName}</span>
+                {/* 낙도 표시 토글 (낙도 인셋이 있는 지역만 - 끄면 본체만 전폭으로) */}
+                {hasIslands && (
+                  <button
+                    onClick={() => setCardIslands((v) => !v)}
+                    className={`ml-auto shrink-0 px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors ${
+                      cardIslands ? 'bg-ink text-paper border-ink' : 'bg-card text-muted border-line hover:text-ink'
+                    }`}
+                  >
+                    {t('share.optIslands')}
+                  </button>
+                )}
                 {/* 지명 표시 토글 (기본 켬) */}
                 <button
                   onClick={() => setCardLabels((v) => !v)}
-                  className={`ml-auto shrink-0 px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors ${
+                  className={`${hasIslands ? '' : 'ml-auto '}shrink-0 px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors ${
                     cardLabels ? 'bg-ink text-paper border-ink' : 'bg-card text-muted border-line hover:text-ink'
                   }`}
                 >

@@ -450,6 +450,7 @@ const STRINGS = {
   // 카드 옵션
   'share.optLabels': ['지명 표시', 'Place names', '地名を表示'],
   'share.optBadges': ['도장첩 표시', 'Badges', 'スタンプ帳を表示'],
+  'share.optIslands': ['낙도 표시', 'Remote islands', '離島を表示'],
 
   // 공유 뷰어
   'viewer.banner': ['공유된 지도를 보는 중 — 내 기록은 안전하게 보관돼 있어요', 'Viewing a shared map — your own records are safe', '共有地図を表示中 — 自分の記録は保管されています'],
