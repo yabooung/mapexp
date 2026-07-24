@@ -45,6 +45,28 @@ function writeSeenBadges(country: CountryKey, ids: Set<string>) {
   }
 }
 
+function readSeenLevel(country: CountryKey): number | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SEEN_LEVEL)
+    if (!raw) return null
+    const v = (JSON.parse(raw) as Partial<Record<CountryKey, number>>)[country]
+    return typeof v === 'number' && Number.isFinite(v) ? v : null
+  } catch {
+    return null
+  }
+}
+
+function writeSeenLevel(country: CountryKey, level: number) {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SEEN_LEVEL)
+    const parsed = (raw ? JSON.parse(raw) : {}) as Partial<Record<CountryKey, number>>
+    parsed[country] = level
+    localStorage.setItem(STORAGE_KEYS.SEEN_LEVEL, JSON.stringify(parsed))
+  } catch {
+    // 저장 실패 시 세션 ref 기준으로만 동작
+  }
+}
+
 export default function LevelUpWatcher() {
   const regions = useMapExpStore((s) => s.regions)
   const country = useMapExpStore((s) => s.country)
@@ -70,14 +92,19 @@ export default function LevelUpWatcher() {
     const achieved = new Set(badges.filter((b) => b.achieved).map((b) => b.id))
     const countrySwitch = country !== prevCountryRef.current
 
-    // 레벨업 감지 (세션 내 상승만 — 첫 실행/국가 전환은 기준만 저장)
-    if (prevLevelRef.current !== null && !countrySwitch && level > prevLevelRef.current) {
+    // 레벨업 감지: 기준은 세션 ref → 없으면 localStorage — 뱃지와 같은 이유로,
+    // 새로고침 후 클라우드 병합이 점수를 되살릴 때마다 축하가 다시 뜨지 않게 한다.
+    // 기준은 최고값으로만 갱신해 일시적 빈 상태에도 줄어들지 않는다.
+    const baseLevel = countrySwitch ? readSeenLevel(country) : (prevLevelRef.current ?? readSeenLevel(country))
+    if (baseLevel !== null && level > baseLevel) {
       setCelebration(level)
       ev('level_up', { level })
       setTimeout(() => setCelebration(null), 2500)
     }
-    prevLevelRef.current = level
+    const topLevel = Math.max(level, baseLevel ?? level)
+    prevLevelRef.current = topLevel
     prevCountryRef.current = country
+    writeSeenLevel(country, topLevel)
 
     // 새 뱃지 감지: 기준은 세션 ref → 없으면 localStorage (국가 전환 시엔 저장분으로 재조회)
     // 저장된 기준이 아예 없으면(최초 사용) 토스트 없이 현재 달성분을 기준으로 삼는다.
